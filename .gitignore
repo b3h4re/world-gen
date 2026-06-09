@@ -15,3 +15,12 @@ CMakeUserPresets.json
 # JetBrains-specific files can be ignored here as needed.
 cmake-build-*/
 build
+.vscode
+libs
+tools/
+.clang*
+.cmake-format.yaml
+.editorconfig
+.gitattributes
+.github
+.pre-commit-config.yaml

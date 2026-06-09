@@ -27,7 +27,7 @@ target_include_directories(world_gen PRIVATE
 
 
 target_compile_features(world_gen PRIVATE cxx_std_20)
-target_link_libraries(world_gen PRIVATE Vulkan::Vulkan glfw PNG::PNG)
+target_link_libraries(world_gen PRIVATE Vulkan::Vulkan glfw)
 
 include(CTest)
 enable_testing()

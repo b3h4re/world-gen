@@ -4,11 +4,13 @@
 #include "game/2d/input/camera_controller_2d.hpp"
 #include "game/2d/rendering/render_system_2d.hpp"
 #include "terrain/terrain.hpp"
+#include "terrain/generators/generators.hpp"
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <chrono>
 #include <memory>
+#include <random>
 
 namespace lve {
 namespace {
@@ -29,13 +31,19 @@ glm::vec3 terrainColor(float height) {
 } // namespace
 
 TerrainApp::TerrainApp() {
+    std::random_device rd;
+    std::uint32_t seed = rd();
+    generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
+    generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+
     loadTerrain();
 }
 
 void TerrainApp::loadTerrain() {
     constexpr std::size_t width = 96;
     constexpr std::size_t height = 64;
-    const auto heightMap = wgen::generatePreview(width, height, 7);
+    // const auto heightMap =  wgen::generatePreview(width, height, 7);
+    const auto heightMap = generators[used_generator]->generateheightMap(width, height);
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;

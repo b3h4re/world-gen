@@ -1,0 +1,28 @@
+#include "value_noise.hpp"
+
+#include <random>
+#include <algorithm>
+
+namespace wgen {
+    ValueNoiseGenerator::ValueNoiseGenerator() {
+        std::random_device rd;
+        this->seed = rd();
+    }
+
+    ValueNoiseGenerator::ValueNoiseGenerator(std::uint32_t seed) : seed{seed} {}
+
+
+    HeightMap ValueNoiseGenerator::generateheightMap(std::size_t width, std::size_t height) {
+        HeightMap map{width, height};
+        std::mt19937 random{seed};
+        std::uniform_real_distribution<float> noise{-0.08F, 0.08F};
+
+        for (std::size_t y = 0; y < height; ++y) {
+            for (std::size_t x = 0; x < width; ++x) {
+                map.at(x, y) = std::clamp(noise(random), 0.0F, 1.0F);
+            }
+        }
+
+        return map;
+    }
+}

@@ -24,6 +24,4 @@ private:
     std::vector<float> samples_;
 };
 
-HeightMap generatePreview(std::size_t width, std::size_t height, std::uint32_t seed);
-
 } // namespace wgen

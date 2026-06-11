@@ -12,8 +12,8 @@ namespace wgen {
     LayeredSinNoiseGenerator::LayeredSinNoiseGenerator(std::uint32_t seed) : seed{seed} {}
 
 
-    HeightMap LayeredSinNoiseGenerator::generateheightMap(std::size_t width, std::size_t height) {
-        HeightMap map{width, height};
+    HeightMap<float> LayeredSinNoiseGenerator::generateheightMap(std::size_t width, std::size_t height) {
+        HeightMap<float> map{width, height};
         std::mt19937 random{seed};
         std::uniform_real_distribution<float> noise{-0.08F, 0.08F};
 

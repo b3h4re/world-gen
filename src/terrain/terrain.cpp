@@ -72,43 +72,4 @@ glm::vec3 terrainBlackAndWhite(float height) {
     return glm::vec3{(height + 1) / 2};
 }
 
-HeightMap::HeightMap(std::size_t width, std::size_t height) : width_{width}, height_{height}, samples_(width * height) {
-    if (width < 2 || height < 2) {
-        throw std::invalid_argument("height map dimensions must be at least 2x2");
-    }
-}
-
-HeightMap& HeightMap::normalize() {
-    float avg{0};
-    float size = width_ * height_;
-
-    for (std::size_t y = 0; y < height_; ++y) {
-        for (std::size_t x = 0; x < width_; ++x) {
-            avg += this->at(x, y) / size;
-        }
-    }
-
-    float maxAbs{0};
-
-    for (std::size_t y = 0; y < height_; ++y) {
-        for (std::size_t x = 0; x < width_; ++x) {
-            this->at(x, y) -= avg;
-            maxAbs = std::max(maxAbs, std::abs(this->at(x, y)));
-        }
-    }
-
-    for (std::size_t y = 0; y < height_; ++y) {
-        for (std::size_t x = 0; x < width_; ++x) {
-            this->at(x, y) /= maxAbs;
-        }
-    }
-    return *this;
-}
-
-HeightMap HeightMap::normal() const {
-    HeightMap newHeightmap{*this};
-    newHeightmap.normalize();
-    return newHeightmap;
-}
-
 }

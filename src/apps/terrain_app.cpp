@@ -35,6 +35,9 @@ namespace {
 TerrainApp::TerrainApp() {
     std::random_device rd;
     std::uint32_t seed = rd();
+    generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
+        100, 100, 100, seed, wgen::defaultPerlinInterp
+    )));
     generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
     generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
 

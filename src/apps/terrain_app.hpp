@@ -24,7 +24,7 @@ public:
 
 private:
     void loadTerrain();
-    std::size_t used_generator = 1;
+    std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
 
     LveWindow window_{WIDTH, HEIGHT, "World Generator"};

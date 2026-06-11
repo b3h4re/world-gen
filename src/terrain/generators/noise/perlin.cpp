@@ -16,16 +16,21 @@ float defaultPerlinInterp(float t) {
     return 6 * glm::pow(t, 5) - 15 * glm::pow(t, 4) + 10 * glm::pow(t, 3);
 }
 
-PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, float (*funcInterpolate)(float)) {
-    std::random_device rd;
-    PerlinNoise2d(gridWidth, gridHeight, dotsPerCell, rd(), funcInterpolate);
-}
+PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, float (*funcInterpolate)(float))
+: PerlinNoise2d(gridWidth, gridHeight, dotsPerCell, std::random_device()(), funcInterpolate) {}
 
 PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, std::uint32_t seed, float (*funcInterpolate)(float))
 : funcInterpolate{funcInterpolate}, gridWidth{gridWidth}, dotsPerCell{dotsPerCell},
 gridHeight{gridHeight}, grid{gridWidth, gridHeight}, cells{gridWidth - 1, gridHeight - 1} {
-    setSeed(seed);
+    this->setSeed(seed);
+}
 
+void PerlinNoise2d::setSeed(const std::uint32_t& newSeed) {
+    this->seed = newSeed;
+    generateNoise();
+}
+
+void PerlinNoise2d::generateNoise() {
     std::mt19937 random{getSeed()};
     std::uniform_int_distribution<std::size_t> dist{0, 1110001};
     gridOffsetX = dist(random);
@@ -34,7 +39,10 @@ gridHeight{gridHeight}, grid{gridWidth, gridHeight}, cells{gridWidth - 1, gridHe
 
     for (std::size_t y = 0; y < gridHeight; ++y) {
         for (std::size_t x = 0; x < gridWidth; ++x) {
-            double hashVal = std::hash<glm::vec2>()(glm::vec2{x + gridOffsetX, y + gridOffsetY});
+            float hashVal = glm::mod<float>(
+                std::hash<glm::vec2>()(glm::vec<2, std::size_t>{x + gridOffsetX, y + gridOffsetY}),
+                glm::two_pi<float>()
+            );
             grid.at(x, y) = glm::vec2{glm::cos(hashVal), glm::sin(hashVal)};
         }
     }
@@ -62,8 +70,8 @@ gridHeight{gridHeight}, grid{gridWidth, gridHeight}, cells{gridWidth - 1, gridHe
                     float s_10 = glm::dot(d_10, g_10);
                     float s_11 = glm::dot(d_11, g_11);
 
-                    float U = funcInterpolate(u);
-                    float V = funcInterpolate(v);
+                    float U = funcInterpolate(p.x);
+                    float V = funcInterpolate(p.y);
 
                     // lerp(a, b, c) = (1 - c)a + cb
 
@@ -93,7 +101,7 @@ float PerlinNoise2d::noise(std::size_t x, std::size_t y) {
 
 
 HeightMap<float> PerlinNoise2d::generateheightMap(std::size_t width, std::size_t height) {
-    assert(width <= gridWidth * dotsPerCell & height <= gridHeight * dotsPerCell);
+    assert(width <= cells.width() * dotsPerCell && height <= cells.height() * dotsPerCell);
 
 
     HeightMap<float> map{width, height};

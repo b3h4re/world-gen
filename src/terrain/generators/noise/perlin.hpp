@@ -14,8 +14,11 @@ public:
     PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, std::uint32_t seed, float (*funcInterpolate)(float) = defaultPerlinInterp);
     PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, float (*funcInterpolate)(float) = defaultPerlinInterp);
 
+    void setSeed(const std::uint32_t& newSeed);
+
     HeightMap<float> generateheightMap(std::size_t width, std::size_t height);
 private:
+    std::uint32_t seed;
     using FloatFunction = float (*)(float);
     FloatFunction funcInterpolate;
 
@@ -27,6 +30,8 @@ private:
     std::size_t dotsPerCell;
     HeightMap<glm::vec2> grid;
     HeightMap<HeightMap<glm::vec3>> cells;
+
+    void generateNoise();
 
     float noise(std::size_t x, std::size_t y);
 

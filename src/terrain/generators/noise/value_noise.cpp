@@ -6,7 +6,7 @@
 namespace wgen {
     ValueNoiseGenerator::ValueNoiseGenerator() {
         std::random_device rd;
-        this->seed = rd();
+        setSeed(rd());
     }
 
     ValueNoiseGenerator::ValueNoiseGenerator(std::uint32_t seed) : seed{seed} {}

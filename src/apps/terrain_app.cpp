@@ -15,18 +15,20 @@
 namespace lve {
 namespace {
 
-glm::vec3 terrainColor(float height) {
-    if (height < 0.34F) {
-        return {0.08F, 0.25F + height * 0.45F, 0.65F};
-    }
-    if (height < 0.52F) {
-        return {0.18F, 0.55F, 0.24F};
-    }
-    if (height < 0.72F) {
-        return {0.42F, 0.35F, 0.20F};
-    }
-    return {0.86F, 0.88F, 0.82F};
-}
+// glm::vec3 terrainColor(float height) {
+//     // if (height < 0.34F) {
+//     //     return {0.08F, 0.25F + height * 0.45F, 0.65F};
+//     // }
+//     // if (height < 0.52F) {
+//     //     return {0.18F, 0.55F, 0.24F};
+//     // }
+//     // if (height < 0.72F) {
+//     //     return {0.42F, 0.35F, 0.20F};
+//     // }
+//     // return {0.86F, 0.88F, 0.82F};
+//     const float t = (height + 1.0F) * 0.5F;
+
+// }
 
 } // namespace
 
@@ -43,7 +45,7 @@ void TerrainApp::loadTerrain() {
     constexpr std::size_t width = 96;
     constexpr std::size_t height = 64;
     // const auto heightMap =  wgen::generatePreview(width, height, 7);
-    const auto heightMap = generators[used_generator]->generateheightMap(width, height);
+    const auto heightMap = generators[used_generator]->generateheightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
@@ -57,7 +59,7 @@ void TerrainApp::loadTerrain() {
             const float top = -1.0F + 2.0F * static_cast<float>(y) / static_cast<float>(height - 1);
             const float bottom = -1.0F + 2.0F * static_cast<float>(y + 1) / static_cast<float>(height - 1);
             const float sample = heightMap.at(x, y);
-            const glm::vec3 color = terrainColor(sample);
+            const glm::vec3 color = wgen::terrainColor(sample);
             const auto base = static_cast<std::uint32_t>(vertices.size());
 
             vertices.insert(

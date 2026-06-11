@@ -10,6 +10,8 @@ namespace wgen {
 
 glm::vec3 terrainColor(float height);
 
+glm::vec3 terrainBlackAndWhite(float height);
+
 class HeightMap {
 public:
     HeightMap(std::size_t width, std::size_t height);

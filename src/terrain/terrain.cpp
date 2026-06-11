@@ -63,6 +63,15 @@ glm::vec3 terrainColor(float height) {
 
 }
 
+
+glm::vec3 terrainBlackAndWhite(float height) {
+    if (std::abs(height) > 1.0f) {
+        std::runtime_error("height must be in [-1; 1] to get color mapping.");
+    }
+
+    return glm::vec3{(height + 1) / 2};
+}
+
 HeightMap::HeightMap(std::size_t width, std::size_t height) : width_{width}, height_{height}, samples_(width * height) {
     if (width < 2 || height < 2) {
         throw std::invalid_argument("height map dimensions must be at least 2x2");

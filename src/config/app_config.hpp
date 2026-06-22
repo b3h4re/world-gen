@@ -1,5 +1,7 @@
 #pragma once
 
+#include "files/file_path.hpp"
+
 #include <string>
 #include <cstdint>
 #include <filesystem>
@@ -9,7 +11,7 @@
 namespace wgen {
     // command line arguments parser
     struct ProgramArgs{
-        std::filesystem::path configPath = "~/.config/world-gen/config.toml";
+        std::filesystem::path configPath = files::Path::homeConfigPath("world-gen", "config.toml").get();
     };
 
     ProgramArgs parseArgs(int argc, char** argv);

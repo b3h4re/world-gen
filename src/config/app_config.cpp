@@ -18,7 +18,7 @@ namespace wgen {
                 if (i + 1 >= argc) {
                     throw std::runtime_error("Missing value after " + current);
                 }
-                args.configPath = argv[++i];
+                args.configPath = files::Path{argv[++i]}.get();
             }
         }
 
@@ -127,13 +127,17 @@ namespace wgen {
 
     AppConfig loadConfig(const std::filesystem::path &path) {
         AppConfig config{};
-        if (!std::filesystem::exists(path)) {
-            std::cout << "Config file not found at: " << path.string() << "  Loading defaults.\n";
+        files::Path configPath{path};
+        if (!std::filesystem::exists(configPath.get())) {
+            std::cout << "Config file not found at: " << configPath.string() << "  Loading defaults.\n";
             return config;
         }
-        std::cout << "Config file found at: " << path.string() << "\n";
+        if (!std::filesystem::is_regular_file(configPath.get())) {
+            throw std::runtime_error("Config path is not a regular file: " + configPath.string());
+        }
+        std::cout << "Config file found at: " << configPath.string() << "\n";
 
-        toml::table tbl = toml::parse_file(path.string());
+        toml::table tbl = toml::parse_file(configPath.string());
 
         config.windowConfig = parse_window_config(tbl);
         config.terrainConfig = parse_terrain_config(tbl);

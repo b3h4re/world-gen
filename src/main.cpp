@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        lve::TerrainApp app{};
+        lve::TerrainApp app{config};
         app.run();
     } catch (const std::exception &exception) {
         std::cerr << exception.what() << '\n';

@@ -75,6 +75,12 @@ namespace wgen {
         std::string_view name
     );
 
+    bool checked_bool(
+        const toml::node_view<const toml::node>& node,
+        bool default_value,
+        std::string_view name
+    );
+
 
     // app config struct
     struct WindowConfig {
@@ -91,7 +97,8 @@ namespace wgen {
 
     struct TerrainConfig {
         std::string generator{"perlin"};
-        std::uint32_t seed{12345};
+        bool setSeed = false;
+        std::uint32_t seed{0};
         std::size_t width{96};
         std::size_t height{64};
         PerlinConfig perlin{};

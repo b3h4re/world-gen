@@ -43,6 +43,24 @@ namespace wgen {
         return std::string{*value};
     }
 
+    bool checked_bool(
+        const toml::node_view<const toml::node>& node,
+        bool default_value,
+        std::string_view name
+    ) {
+        auto value = node.value<bool>();
+
+        if (!value) {
+            if (node) {
+                throw std::runtime_error(std::string{name} + " must be a boolean");
+            }
+
+            return default_value;
+        }
+
+        return *value;
+    }
+
 
     WindowConfig parse_window_config(const toml::table& root) {
         WindowConfig config;
@@ -105,6 +123,12 @@ namespace wgen {
             root["terrain"]["seed"],
             config.seed,
             "terrain.seed"
+        );
+
+        config.setSeed = checked_bool(
+            root["terrain"]["set_seed"],
+            config.setSeed,
+            "terrain.set_seed"
         );
 
         config.width = checked_uinteger<std::size_t>(

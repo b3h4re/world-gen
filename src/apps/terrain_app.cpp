@@ -32,11 +32,23 @@ namespace {
 
 } // namespace
 
-TerrainApp::TerrainApp() {
-    std::random_device rd;
-    std::uint32_t seed = rd();
+TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
+
+TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
+    std::uint32_t seed;
+    if (config.terrainConfig.setSeed) {
+        seed = config.terrainConfig.seed;
+    } else {
+        std::random_device rd;
+        seed = rd();
+    }
+
     generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-        100, 100, 100, seed, wgen::defaultPerlinInterp
+        config.terrainConfig.perlin.gridWidth,
+        config.terrainConfig.perlin.gridHeight,
+        config.terrainConfig.perlin.dotsPerCell,
+        seed,
+        wgen::defaultPerlinInterp
     )));
     generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
     generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
@@ -45,8 +57,8 @@ TerrainApp::TerrainApp() {
 }
 
 void TerrainApp::loadTerrain() {
-    constexpr std::size_t width = 96;
-    constexpr std::size_t height = 64;
+    std::size_t width = config.windowConfig.width;
+    std::size_t height = config.windowConfig.height;
     // const auto heightMap =  wgen::generatePreview(width, height, 7);
     const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 

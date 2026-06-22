@@ -5,6 +5,7 @@ title="World Generator"
 
 [terrain]
 generator="perlin"
+set_seed=true
 seed=12345
 width=96
 height=64

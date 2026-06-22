@@ -13,24 +13,6 @@
 #include <random>
 
 namespace lve {
-namespace {
-
-// glm::vec3 terrainColor(float height) {
-//     // if (height < 0.34F) {
-//     //     return {0.08F, 0.25F + height * 0.45F, 0.65F};
-//     // }
-//     // if (height < 0.52F) {
-//     //     return {0.18F, 0.55F, 0.24F};
-//     // }
-//     // if (height < 0.72F) {
-//     //     return {0.42F, 0.35F, 0.20F};
-//     // }
-//     // return {0.86F, 0.88F, 0.82F};
-//     const float t = (height + 1.0F) * 0.5F;
-
-// }
-
-} // namespace
 
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
@@ -59,7 +41,6 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
 void TerrainApp::loadTerrain() {
     std::size_t width = config.windowConfig.width;
     std::size_t height = config.windowConfig.height;
-    // const auto heightMap =  wgen::generatePreview(width, height, 7);
     const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;

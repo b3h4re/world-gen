@@ -60,3 +60,15 @@ add_dependencies(world_gen shaders)
 
 include(CTest)
 enable_testing()
+
+if(BUILD_TESTING)
+    add_executable(perlin_tests
+        tests/perlin_tests.cpp
+        src/terrain/generators/noise/perlin.cpp
+    )
+    target_include_directories(perlin_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_compile_features(perlin_tests PRIVATE cxx_std_20)
+    add_test(NAME perlin_tests COMMAND perlin_tests)
+endif()

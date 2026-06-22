@@ -72,21 +72,21 @@ namespace wgen {
         PerlinConfig config;
 
         config.gridWidth = checked_integer<std::size_t>(
-            root["terrain"]["perlin"]["gridWidth"],
+            root["terrain"]["perlin"]["grid_width"],
             config.gridWidth,
-            "terrain.perlin.gridWidth"
+            "terrain.perlin.grid_width"
         );
 
         config.gridHeight = checked_integer<std::size_t>(
-            root["terrain"]["perlin"]["gridHeight"],
+            root["terrain"]["perlin"]["grid_height"],
             config.gridHeight,
-            "terrain.perlin.gridHeight"
+            "terrain.perlin.grid_height"
         );
 
         config.dotsPerCell = checked_integer<std::size_t>(
-            root["terrain"]["perlin"]["dotsPerCell"],
+            root["terrain"]["perlin"]["dots_per_cell"],
             config.dotsPerCell,
-            "terrain.perlin.dotsPerCell"
+            "terrain.perlin.dots_per_cell"
         );
 
         return config;
@@ -107,13 +107,13 @@ namespace wgen {
             "terrain.seed"
         );
 
-        config.width = checked_integer<std::size_t>(
+        config.width = checked_uinteger<std::size_t>(
             root["terrain"]["width"],
             config.width,
             "terrain.width"
         );
 
-        config.height = checked_integer<std::size_t>(
+        config.height = checked_uinteger<std::size_t>(
             root["terrain"]["height"],
             config.height,
             "terrain.height"

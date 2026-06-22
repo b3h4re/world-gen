@@ -43,6 +43,32 @@ namespace wgen {
         return static_cast<Int>(*value);
     }
 
+    template <typename UInt>
+    UInt checked_uinteger(
+        const toml::node_view<const toml::node>& node,
+        UInt default_value,
+        std::string_view name
+    ) {
+        static_assert(std::is_integral_v<UInt>);
+
+        auto value = node.value<uint64_t>();
+
+        if (!value) {
+            if (node) {
+                throw std::runtime_error(std::string{name} + " must be an integer");
+            }
+
+            return default_value;
+        }
+
+        if (*value < static_cast<uint64_t>(std::numeric_limits<UInt>::min()) ||
+            *value > static_cast<uint64_t>(std::numeric_limits<UInt>::max())) {
+            throw std::runtime_error(std::string{name} + " is out of range");
+        }
+
+        return static_cast<UInt>(*value);
+    }
+
     std::string checked_string(
         const toml::node_view<const toml::node>& node,
         std::string default_value,

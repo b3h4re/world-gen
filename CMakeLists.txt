@@ -8,6 +8,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 
+# Fetching toml++
+include(FetchContent)
+fetchcontent_declare(
+    tomlplusplus
+    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+    GIT_TAG v3.4.0
+)
+fetchcontent_makeavailable(tomlplusplus)
+
+
 # Adding source/headers
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
@@ -25,7 +35,13 @@ target_include_directories(world_gen PRIVATE
 )
 
 target_compile_features(world_gen PRIVATE cxx_std_20)
-target_link_libraries(world_gen PRIVATE Vulkan::Vulkan glfw)
+target_link_libraries(world_gen PRIVATE
+    Vulkan::Vulkan
+    glfw
+    tomlplusplus::tomlplusplus
+)
+
+# Adding and compiling shaders
 target_compile_definitions(world_gen PRIVATE
     WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"
 )
@@ -58,6 +74,7 @@ endforeach()
 add_custom_target(shaders DEPENDS ${SHADER_BINARY_FILES})
 add_dependencies(world_gen shaders)
 
+# Testing
 include(CTest)
 enable_testing()
 

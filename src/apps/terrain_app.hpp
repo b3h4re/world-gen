@@ -5,6 +5,7 @@
 #include "renderer/lve_renderer.hpp"
 #include "window/lve_window.hpp"
 #include "terrain/generators/generator.hpp"
+#include "config/app_config.hpp"
 
 #include <vector>
 
@@ -16,6 +17,7 @@ public:
     static constexpr int HEIGHT = 720;
 
     TerrainApp();
+    TerrainApp(const wgen::AppConfig &config);
 
     TerrainApp(const TerrainApp &) = delete;
     TerrainApp &operator=(const TerrainApp &) = delete;
@@ -23,6 +25,8 @@ public:
     void run();
 
 private:
+    wgen::AppConfig config;
+
     void loadTerrain();
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;

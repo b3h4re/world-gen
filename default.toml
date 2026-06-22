@@ -1,0 +1,16 @@
+[window]
+width=1280
+height=720
+title="World Generator"
+
+[terrain]
+generator="perlin"
+set_seed=true
+seed=12345
+width=96
+height=64
+
+[perlin]
+grid_width=100
+grid_height=100
+dots_per_cell=100

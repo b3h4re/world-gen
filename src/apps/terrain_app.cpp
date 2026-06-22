@@ -48,7 +48,7 @@ void TerrainApp::loadTerrain() {
     constexpr std::size_t width = 96;
     constexpr std::size_t height = 64;
     // const auto heightMap =  wgen::generatePreview(width, height, 7);
-    const auto heightMap = generators[used_generator]->generateheightMap(width, height).normal();
+    const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;

@@ -4,17 +4,16 @@
 #include <algorithm>
 
 namespace wgen {
-    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator() {
-        std::random_device rd;
-        this->seed = rd();
+
+    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator() : LayeredSinNoiseGenerator{std::random_device{}()} {}
+
+    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator(std::uint32_t seed) {
+        setSeed(seed);
     }
 
-    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator(std::uint32_t seed) : seed{seed} {}
-
-
-    HeightMap<float> LayeredSinNoiseGenerator::generateheightMap(std::size_t width, std::size_t height) {
+    HeightMap<float> LayeredSinNoiseGenerator::generateHeightMap(std::size_t width, std::size_t height) {
         HeightMap<float> map{width, height};
-        std::mt19937 random{seed};
+        std::mt19937 random{getSeed()};
         std::uniform_real_distribution<float> noise{-0.08F, 0.08F};
 
         for (std::size_t y = 0; y < height; ++y) {
@@ -29,4 +28,5 @@ namespace wgen {
 
         return map;
     }
+
 }

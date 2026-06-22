@@ -5,13 +5,13 @@
 
 
 namespace wgen {
+
     class LayeredSinNoiseGenerator : public Generator {
     public:
         LayeredSinNoiseGenerator();
-        LayeredSinNoiseGenerator(std::uint32_t seed);
+        explicit LayeredSinNoiseGenerator(std::uint32_t seed);
 
-        HeightMap<float> generateheightMap(std::size_t width, std::size_t height);
-    private:
-        std::uint32_t seed;
+        HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) override;
     };
+
 }

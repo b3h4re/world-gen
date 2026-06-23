@@ -10,7 +10,16 @@ seed=12345
 width=96
 height=64
 
-[perlin]
+[terrain.perlin]
 grid_width=100
 grid_height=100
 dots_per_cell=100
+
+[terrain.simplex]
+grid_width=100
+grid_height=100
+dots_per_cell=100
+
+[terrain.wavelet]
+grid_width=128
+grid_height=128

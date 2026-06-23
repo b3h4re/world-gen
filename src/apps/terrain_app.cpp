@@ -11,6 +11,7 @@
 #include <chrono>
 #include <memory>
 #include <random>
+#include <iostream>
 
 namespace lve {
 
@@ -51,8 +52,8 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
 }
 
 void TerrainApp::loadTerrain() {
-    std::size_t width = config.windowConfig.width;
-    std::size_t height = config.windowConfig.height;
+    std::size_t width = config.terrainConfig.width;
+    std::size_t height = config.terrainConfig.height;
     const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;

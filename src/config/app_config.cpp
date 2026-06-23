@@ -89,19 +89,19 @@ namespace wgen {
     PerlinConfig parse_perlin_config(const toml::table& root) {
         PerlinConfig config;
 
-        config.gridWidth = checked_integer<std::size_t>(
+        config.gridWidth = checked_uinteger<std::size_t>(
             root["terrain"]["perlin"]["grid_width"],
             config.gridWidth,
             "terrain.perlin.grid_width"
         );
 
-        config.gridHeight = checked_integer<std::size_t>(
+        config.gridHeight = checked_uinteger<std::size_t>(
             root["terrain"]["perlin"]["grid_height"],
             config.gridHeight,
             "terrain.perlin.grid_height"
         );
 
-        config.dotsPerCell = checked_integer<std::size_t>(
+        config.dotsPerCell = checked_uinteger<std::size_t>(
             root["terrain"]["perlin"]["dots_per_cell"],
             config.dotsPerCell,
             "terrain.perlin.dots_per_cell"
@@ -113,19 +113,19 @@ namespace wgen {
     SimplexConfig parse_simplex_config(const toml::table& root) {
         SimplexConfig config;
 
-        config.gridWidth = checked_integer<std::size_t>(
+        config.gridWidth = checked_uinteger<std::size_t>(
             root["terrain"]["simplex"]["grid_width"],
             config.gridWidth,
             "terrain.simplex.grid_width"
         );
 
-        config.gridHeight = checked_integer<std::size_t>(
+        config.gridHeight = checked_uinteger<std::size_t>(
             root["terrain"]["simplex"]["grid_height"],
             config.gridHeight,
             "terrain.simplex.grid_height"
         );
 
-        config.dotsPerCell = checked_integer<std::size_t>(
+        config.dotsPerCell = checked_uinteger<std::size_t>(
             root["terrain"]["simplex"]["dots_per_cell"],
             config.dotsPerCell,
             "terrain.simplex.dots_per_cell"
@@ -137,13 +137,13 @@ namespace wgen {
     WaveletConfig parse_wavelet_config(const toml::table& root) {
         WaveletConfig config;
 
-        config.gridWidth = checked_integer<std::size_t>(
+        config.gridWidth = checked_uinteger<std::size_t>(
             root["terrain"]["wavelet"]["grid_width"],
             config.gridWidth,
             "terrain.wavelet.grid_width"
         );
 
-        config.gridHeight = checked_integer<std::size_t>(
+        config.gridHeight = checked_uinteger<std::size_t>(
             root["terrain"]["wavelet"]["grid_height"],
             config.gridHeight,
             "terrain.wavelet.grid_height"

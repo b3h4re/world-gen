@@ -152,6 +152,30 @@ namespace wgen {
         return config;
     }
 
+    WorleyConfig parse_worley_config(const toml::table& root) {
+        WorleyConfig config;
+
+        config.gridWidth = checked_uinteger<std::size_t>(
+            root["terrain"]["worley"]["grid_width"],
+            config.gridWidth,
+            "terrain.worley.grid_width"
+        );
+
+        config.gridHeight = checked_uinteger<std::size_t>(
+            root["terrain"]["worley"]["grid_height"],
+            config.gridHeight,
+            "terrain.worley.grid_height"
+        );
+
+        config.dotsPerCell = checked_uinteger<std::size_t>(
+            root["terrain"]["worley"]["dots_per_cell"],
+            config.dotsPerCell,
+            "terrain.worley.dots_per_cell"
+        );
+
+        return config;
+    }
+
     TerrainConfig parse_terrain_config(const toml::table& root) {
         TerrainConfig config;
 
@@ -188,6 +212,7 @@ namespace wgen {
         config.perlin = parse_perlin_config(root);
         config.simplex = parse_simplex_config(root);
         config.wavelet = parse_wavelet_config(root);
+        config.worley = parse_worley_config(root);
 
         return config;
     }

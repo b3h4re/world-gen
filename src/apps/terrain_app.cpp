@@ -27,8 +27,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     }
 
     generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-        config.terrainConfig.wavelet.gridWidth,
-        config.terrainConfig.wavelet.gridHeight,
+        config.terrainConfig.worley.gridWidth,
+        config.terrainConfig.worley.gridHeight,
+        config.terrainConfig.worley.dotsPerCell,
         seed
     )));
     generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(

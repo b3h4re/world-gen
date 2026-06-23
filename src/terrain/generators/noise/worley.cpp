@@ -20,7 +20,9 @@ namespace wgen {
     void WorleyNoise2d::generateGradients() {
         for (std::size_t y = 0; y < gridHeight_; ++y) {
             for (std::size_t x = 0; x < gridWidth_; ++x) {
-                gradients_.at(x, y) = hash2(x, y);
+                // hash2 gives values from [-1, 1)
+                // So add 1 and divide by two to get [0, 1)
+                gradients_.at(x, y) = (glm::vec2{1, 1} + hash2(x, y)) / 2.0F;
             }
         }
     }
@@ -42,7 +44,7 @@ namespace wgen {
         const float Y = static_cast<float>(j0) + localY;
         const glm::vec2 point{X, Y};
 
-        std::vector<glm::vec2> closestFeaturePoints{0};
+        std::vector<glm::vec2> closestFeaturePoints{};
         // Adding adjecent cell's feature points
         closestFeaturePoints.push_back(featurePointAt(i0, j0));
         if (i0 > 0 && j0 > 0) {
@@ -73,7 +75,8 @@ namespace wgen {
         // Calculate distance to each feature point
         std::vector<std::pair<float, std::size_t>> distances{};
         for (int it = 0; it < closestFeaturePoints.size(); ++it) {
-            distances.emplace_back(std::sqrt(glm::dot(point, closestFeaturePoints[it])), it);
+            auto delta = point - closestFeaturePoints[it];
+            distances.emplace_back(std::sqrt(glm::dot(delta, delta)), it);
         }
 
         // Sort by distance, first element is the closest

@@ -88,4 +88,13 @@ if(BUILD_TESTING)
     )
     target_compile_features(perlin_tests PRIVATE cxx_std_20)
     add_test(NAME perlin_tests COMMAND perlin_tests)
+
+    add_executable(heightmap_tests
+        tests/heightmap_tests.cpp
+    )
+    target_include_directories(heightmap_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_compile_features(heightmap_tests PRIVATE cxx_std_20)
+    add_test(NAME heightmap_tests COMMAND heightmap_tests)
 endif()

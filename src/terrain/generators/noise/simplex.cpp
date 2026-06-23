@@ -59,8 +59,8 @@ namespace wgen {
         const float t2 = 0.5F - d2.x*d2.x - d2.y*d2.y;
 
         const float n0 = t0 > 0.0F ? t0*t0*t0*t0 * glm::dot(g0, d0) : 0.0F;
-        const float n1 = t0 > 0.0F ? t1*t1*t1*t1 * glm::dot(g1, d1) : 0.0F;
-        const float n2 = t0 > 0.0F ? t2*t2*t2*t2 * glm::dot(g2, d2) : 0.0F;
+        const float n1 = t1 > 0.0F ? t1*t1*t1*t1 * glm::dot(g1, d1) : 0.0F;
+        const float n2 = t2 > 0.0F ? t2*t2*t2*t2 * glm::dot(g2, d2) : 0.0F;
 
         return NORMALIZATION_CONSTANT * (n0 + n1 + n2);
     }

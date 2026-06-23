@@ -4,9 +4,18 @@
 
 #include <cstdint>
 #include <utility>
+#include <cmath>
 
 
 namespace wgen {
+
+    template<float p>
+    float minkowskiDistance(glm::vec2 v1, glm::vec2 v2) {
+        return std::pow(
+                std::pow(std::abs(v1.x - v2.x), p) + std::pow(std::abs(v1.y - v2.y), p),
+                1.0F/p
+            );
+    }
 
     constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
         x += 0x9E3779B97F4A7C15ull;

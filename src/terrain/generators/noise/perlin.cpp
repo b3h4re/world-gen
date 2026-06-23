@@ -8,16 +8,25 @@
 namespace wgen {
     namespace {
 
-        constexpr float DIAGONAL = 0.7071067811865475F;
-        constexpr std::array<glm::vec2, 8> GRADIENT_DIRECTIONS{{
+        constexpr float SQRT_3 = 1.7320508075688772F;
+        constexpr float SQRT_2 = 1.4142135623730951F;
+        constexpr std::array<glm::vec2, 16> GRADIENT_DIRECTIONS{{
             {1.0F, 0.0F},
-            {-1.0F, 0.0F},
+            {SQRT_3 / 2.0f, 0.5f},
+            {SQRT_2 / 2, SQRT_2 / 2},
+            {0.5f, SQRT_3 / 2.0f},
             {0.0F, 1.0F},
+            {-0.5f, SQRT_3 / 2.0f},
+            {-SQRT_2 / 2, SQRT_2 / 2},
+            {-SQRT_3 / 2.0f, 0.5f},
+            {-1.0F, 0.0F},
+            {-SQRT_3 / 2.0f, -0.5f},
+            {-SQRT_2 / 2, -SQRT_2 / 2},
+            {-0.5f, -SQRT_3 / 2.0f},
             {0.0F, -1.0F},
-            {DIAGONAL, DIAGONAL},
-            {-DIAGONAL, DIAGONAL},
-            {DIAGONAL, -DIAGONAL},
-            {-DIAGONAL, -DIAGONAL},
+            {0.5f, -SQRT_3 / 2.0f},
+            {SQRT_2 / 2, -SQRT_2 / 2},
+            {SQRT_3 / 2.0f, -0.5f},
         }};
 
     }

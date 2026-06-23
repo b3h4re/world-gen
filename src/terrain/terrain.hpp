@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <cassert>
 
 namespace wgen {
 
@@ -32,6 +33,31 @@ public:
 
     HeightMap& operator=(const HeightMap&) = default;
     HeightMap& operator=(HeightMap&&) noexcept = default;
+
+    // Adds values from a different heightmap starting at position (x, y)
+    /*
+    If the other heightmap is of size (w, h) and position at (x, y)
+    Then this will add othe heightmap values to a sub heightmap with corners (x, y) and (x + w, y + h).
+    This will also crop the result if it goes out of bounds
+    */
+    void add_at(const HeightMap& other, std::size_t x = 0, std::size_t y = 0) {
+        for (std::size_t j = y; j < std::min(height_, y + other.height()); ++j) {
+            for (std::size_t i = x; i < std::min(width_, x + other.width()); ++i) {
+                this->at(i, j) += other.at(i - x, j - y);
+            }
+        }
+    }
+
+    // uses add_at method
+    void operator+=(const HeightMap& other) {
+        this->add_at(other, 0, 0);
+    }
+
+    HeightMap<T> operator+(const HeightMap& other) const {
+        HeightMap<T> res(*this);
+        res += other;
+        return res;
+    }
 
     T &at(std::size_t x, std::size_t y) { return samples_.at(y * width_ + x); }
     T at(std::size_t x, std::size_t y) const { return samples_.at(y * width_ + x); }

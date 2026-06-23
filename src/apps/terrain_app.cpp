@@ -30,7 +30,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         config.terrainConfig.worley.gridWidth,
         config.terrainConfig.worley.gridHeight,
         config.terrainConfig.worley.dotsPerCell,
-        seed
+        seed,
+        config.terrainConfig.worley.p,
+        config.terrainConfig.worley.numPoints
     )));
     generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
         config.terrainConfig.wavelet.gridWidth,

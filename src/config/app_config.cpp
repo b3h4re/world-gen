@@ -61,6 +61,24 @@ namespace wgen {
         return *value;
     }
 
+    float checked_float(
+        const toml::node_view<const toml::node>& node,
+        float default_value,
+        std::string_view name
+    ) {
+        auto value = node.value<double>();
+
+        if (!value) {
+            if (node) {
+                throw std::runtime_error(std::string{name} + " must be a float");
+            }
+
+            return default_value;
+        }
+
+        return static_cast<float>(*value);
+    }
+
 
     WindowConfig parse_window_config(const toml::table& root) {
         WindowConfig config;
@@ -171,6 +189,18 @@ namespace wgen {
             root["terrain"]["worley"]["dots_per_cell"],
             config.dotsPerCell,
             "terrain.worley.dots_per_cell"
+        );
+
+        config.p = checked_float(
+            root["terrain"]["worley"]["p"],
+            config.p,
+            "terrain.worley.p"
+        );
+
+        config.numPoints = checked_uinteger<std::size_t>(
+            root["terrain"]["worley"]["num_points"],
+            config.numPoints,
+            "terrain.worley.num_points"
         );
 
         return config;

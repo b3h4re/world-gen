@@ -88,8 +88,7 @@ namespace wgen {
         std::size_t dotsPerCell_;
         HeightMap<glm::vec2> gradients_;
 
-    private:
-        void generateGradients() {
+        virtual void generateGradients() {
             std::mt19937 random{getSeed()};
 
             for (std::size_t y = 0; y < gridHeight_; ++y) {

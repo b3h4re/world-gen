@@ -2,7 +2,47 @@
 
 #include "terrain/terrain.hpp"
 
+#include <cstdint>
+#include <utility>
+
+
 namespace wgen {
+
+    constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
+        x += 0x9E3779B97F4A7C15ull;
+        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
+        x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
+        return x ^ (x >> 31);
+    }
+
+    constexpr std::uint64_t makeKey(int i, int j) noexcept {
+        auto ui = static_cast<std::uint32_t>(i);
+        auto uj = static_cast<std::uint32_t>(j);
+
+        return (static_cast<std::uint64_t>(ui) << 32)
+            |  static_cast<std::uint64_t>(uj);
+    }
+
+    constexpr float toUnitFloat(std::uint64_t h) noexcept {
+        // Uses 24 random bits, matching float mantissa precision.
+        constexpr float scale = 1.0f / static_cast<float>(1u << 24);
+
+        return static_cast<float>((h >> 40) & 0xFFFFFFu) * scale;
+    }
+
+    constexpr float toSignedFloat(std::uint64_t h) noexcept {
+        // [0, 1) -> [-1, 1)
+        return 2.0f * toUnitFloat(h) - 1.0f;
+    }
+
+    constexpr glm::vec2 hash2(int i, int j) noexcept {
+        std::uint64_t key = makeKey(i, j);
+
+        std::uint64_t h1 = splitmix64(key);
+        std::uint64_t h2 = splitmix64(h1);
+
+        return {toSignedFloat(h1), toSignedFloat(h2)};
+    }
 
     std::size_t wrapIndex(std::size_t index, std::size_t size);
 

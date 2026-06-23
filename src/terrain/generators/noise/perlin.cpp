@@ -8,25 +8,45 @@
 namespace wgen {
     namespace {
 
+        // So basically a bunch of unit vectors
         constexpr float SQRT_3 = 1.7320508075688772F;
         constexpr float SQRT_2 = 1.4142135623730951F;
-        constexpr std::array<glm::vec2, 16> GRADIENT_DIRECTIONS{{
+        constexpr float SQRT_5 = 2.2360679774997897F;
+        constexpr std::array<glm::vec2, 32> GRADIENT_DIRECTIONS{{
             {1.0F, 0.0F},
-            {SQRT_3 / 2.0f, 0.5f},
+            {SQRT_3 / 2.0f, 0.5F},
             {SQRT_2 / 2, SQRT_2 / 2},
-            {0.5f, SQRT_3 / 2.0f},
+            {0.5F, SQRT_3 / 2.0f},
             {0.0F, 1.0F},
-            {-0.5f, SQRT_3 / 2.0f},
+            {-0.5F, SQRT_3 / 2.0f},
             {-SQRT_2 / 2, SQRT_2 / 2},
-            {-SQRT_3 / 2.0f, 0.5f},
+            {-SQRT_3 / 2.0f, 0.5F},
             {-1.0F, 0.0F},
-            {-SQRT_3 / 2.0f, -0.5f},
+            {-SQRT_3 / 2.0f, -0.5F},
             {-SQRT_2 / 2, -SQRT_2 / 2},
-            {-0.5f, -SQRT_3 / 2.0f},
+            {-0.5F, -SQRT_3 / 2.0f},
             {0.0F, -1.0F},
-            {0.5f, -SQRT_3 / 2.0f},
+            {0.5F, -SQRT_3 / 2.0f},
             {SQRT_2 / 2, -SQRT_2 / 2},
-            {SQRT_3 / 2.0f, -0.5f},
+            {SQRT_3 / 2.0f, -0.5F},
+            // 3/5 and 4/5
+            {0.6F, 0.8F},
+            {0.6F, -0.8F},
+            {-0.6F, 0.8F},
+            {-0.6F, -0.8F},
+            {0.8F, 0.6F},
+            {0.8F, -0.6F},
+            {-0.8F, 0.6F},
+            {-0.8F, -0.6F},
+            // 1/sqrt{5} and 2/sqrt{5}
+            {1.0F / SQRT_5, 2.0F / SQRT_5},
+            {1.0F / SQRT_5, -2.0F / SQRT_5},
+            {-1.0F / SQRT_5, 2.0F / SQRT_5},
+            {-1.0F / SQRT_5, -2.0F / SQRT_5},
+            {2.0F / SQRT_5, 1.0F / SQRT_5},
+            {2.0F / SQRT_5, -1.0F / SQRT_5},
+            {-2.0F / SQRT_5, 1.0F / SQRT_5},
+            {-2.0F / SQRT_5, -1.0F / SQRT_5},
         }};
 
     }

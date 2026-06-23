@@ -81,7 +81,11 @@ enable_testing()
 if(BUILD_TESTING)
     add_executable(perlin_tests
         tests/perlin_tests.cpp
+        src/terrain/generators/generator.cpp
+        src/terrain/generators/generator.hpp
+        src/terrain/generators/noise/gradient_noise_interface.hpp
         src/terrain/generators/noise/perlin.cpp
+        src/terrain/generators/noise/perlin.hpp
     )
     target_include_directories(perlin_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"

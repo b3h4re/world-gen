@@ -2,14 +2,6 @@
 
 namespace wgen {
 
-    namespace {
-
-        std::size_t wrapIndex(std::size_t index, std::size_t size) {
-            return index % size;
-        }
-
-    }
-
     SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell)
     : SimplexNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}()} {}
 

@@ -83,8 +83,6 @@ namespace wgen {
         std::size_t sampleWidth() const { return (gridWidth_ - 1) * dotsPerCell_; }
         std::size_t sampleHeight() const { return (gridHeight_ - 1) * dotsPerCell_; }
 
-        static float lerp(float a, float b, float c) { return a + c * (b - a); }
-
         std::size_t gridWidth_;
         std::size_t gridHeight_;
         std::size_t dotsPerCell_;

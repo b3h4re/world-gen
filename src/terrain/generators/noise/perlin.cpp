@@ -5,10 +5,6 @@
 
 namespace wgen {
 
-    float defaultPerlinInterp(float t) {
-        return t * t * t * (t * (t * 6.0F - 15.0F) + 10.0F);
-    }
-
     PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
                                  FloatFunction funcInterpolate)
     : PerlinNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), funcInterpolate} {}

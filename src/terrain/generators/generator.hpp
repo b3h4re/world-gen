@@ -4,6 +4,29 @@
 
 namespace wgen {
 
+    std::size_t wrapIndex(std::size_t index, std::size_t size);
+
+    float defaultPerlinInterp(float t);
+
+    float lerp(float a, float b, float c);
+
+    // Low pass filter for {-1, 0, 1}, h[a, b, c]
+    template<float a, float b, float c>
+    float lowPassFilter(int x) {
+        switch (x) {
+            case -1:
+                return a;
+                break;
+            case 0:
+                return b;
+                break;
+            case 1:
+                return c;
+                break;
+        }
+        throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
+    }
+
     class Generator {
     public:
         virtual ~Generator() = default;

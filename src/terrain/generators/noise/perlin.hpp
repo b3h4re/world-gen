@@ -4,7 +4,6 @@
 
 namespace wgen {
 
-    float defaultPerlinInterp(float t);
 
     class PerlinNoise2d : public GradientNoise {
     public:

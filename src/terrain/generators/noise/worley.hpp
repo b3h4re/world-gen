@@ -16,6 +16,9 @@ namespace wgen {
         void generateGradients() override;
         glm::vec2 featurePointAt(std::size_t i, std::size_t j) const;
 
+        static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);
+        glm::vec2 deltaToAdjacentFeaturePoint(std::size_t x, std::size_t y, std::ptrdiff_t i, std::ptrdiff_t j) const;
+
     };
 
 }

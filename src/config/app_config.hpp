@@ -95,6 +95,12 @@ namespace wgen {
         std::size_t dotsPerCell{100};
     };
 
+    struct SimplexConfig {
+        std::size_t gridWidth{100};
+        std::size_t gridHeight{100};
+        std::size_t dotsPerCell{100};
+    };
+
     struct TerrainConfig {
         std::string generator{"perlin"};
         bool setSeed = false;
@@ -102,6 +108,7 @@ namespace wgen {
         std::size_t width{96};
         std::size_t height{64};
         PerlinConfig perlin{};
+        SimplexConfig simplex{};
     };
 
     class AppConfig {

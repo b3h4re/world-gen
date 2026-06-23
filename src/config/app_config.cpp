@@ -110,6 +110,30 @@ namespace wgen {
         return config;
     }
 
+    SimplexConfig parse_simplex_config(const toml::table& root) {
+        SimplexConfig config;
+
+        config.gridWidth = checked_integer<std::size_t>(
+            root["terrain"]["simplex"]["grid_width"],
+            config.gridWidth,
+            "terrain.simplex.grid_width"
+        );
+
+        config.gridHeight = checked_integer<std::size_t>(
+            root["terrain"]["simplex"]["grid_height"],
+            config.gridHeight,
+            "terrain.simplex.grid_height"
+        );
+
+        config.dotsPerCell = checked_integer<std::size_t>(
+            root["terrain"]["simplex"]["dots_per_cell"],
+            config.dotsPerCell,
+            "terrain.simplex.dots_per_cell"
+        );
+
+        return config;
+    }
+
     TerrainConfig parse_terrain_config(const toml::table& root) {
         TerrainConfig config;
 
@@ -144,6 +168,7 @@ namespace wgen {
         );
 
         config.perlin = parse_perlin_config(root);
+        config.simplex = parse_simplex_config(root);
 
         return config;
     }

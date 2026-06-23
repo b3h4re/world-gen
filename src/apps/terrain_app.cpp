@@ -26,9 +26,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     }
 
     generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-        config.terrainConfig.perlin.gridWidth,
-        config.terrainConfig.perlin.gridHeight,
-        config.terrainConfig.perlin.dotsPerCell,
+        config.terrainConfig.simplex.gridWidth,
+        config.terrainConfig.simplex.gridHeight,
+        config.terrainConfig.simplex.dotsPerCell,
         seed
     )));
     generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(

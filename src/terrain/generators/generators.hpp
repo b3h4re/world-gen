@@ -2,3 +2,4 @@
 #include "terrain/generators/noise/value_noise.hpp"
 #include "terrain/generators/noise/layered_sin_noise.hpp"
 #include "terrain/generators/noise/perlin.hpp"
+#include "terrain/generators/noise/simplex.hpp"

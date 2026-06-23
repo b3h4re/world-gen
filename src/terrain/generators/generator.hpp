@@ -10,6 +10,8 @@ namespace wgen {
 
     float lerp(float a, float b, float c);
 
+    float defaultReconstructionKernel(float t);
+
     // Low pass filter for {-1, 0, 1}, h[a, b, c]
     template<float a, float b, float c>
     float lowPassFilter(int x) {

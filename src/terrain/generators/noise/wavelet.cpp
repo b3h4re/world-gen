@@ -3,13 +3,28 @@
 
 namespace wgen {
 
-    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, FloatFunction funcInterpolate)
-    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), funcInterpolate} {}
+    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, FloatFunction reconstructionKernel)
+    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel} {}
 
-    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed, FloatFunction funcInterpolate)
-    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, funcInterpolate_{funcInterpolate}, randomValues{gridWidth, gridHeight} {
+    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed, FloatFunction reconstructionKernel)
+    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, reconstructionKernel_{reconstructionKernel},
+        kernelWidth_{1}, kernelHeight_{1}, randomValues{gridWidth, gridHeight} {
         setSeed(seed);
     }
+
+    void WaveletNoise2d::setKernelSize(std::size_t kernelWidth, std::size_t kernelHeight) {
+        setKernelHeight(kernelHeight);
+        setKernelWidth(kernelWidth);
+    }
+    void WaveletNoise2d::setKernelWidth(std::size_t kernelWidth) {
+        kernelWidth_ = kernelWidth;
+    }
+    void WaveletNoise2d::setKernelHeight(std::size_t kernelHeight) {
+        kernelHeight_ = kernelHeight;
+    }
+
+    std::size_t WaveletNoise2d::getKernelWidth() const { return kernelWidth_; }
+    std::size_t WaveletNoise2d::getKernelHeight() const { return kernelHeight_; }
 
     void WaveletNoise2d::generateRandomValues() {
         std::mt19937 random{getSeed()};
@@ -26,14 +41,25 @@ namespace wgen {
         return hFilter(a) * hFilter(b);
     }
 
-    float WaveletNoise2d::randomAt(std::size_t i, std::size_t j) const {
+    std::size_t WaveletNoise2d::wrapSignedIndex(std::ptrdiff_t index, std::size_t size) {
+        const auto signedSize = static_cast<std::ptrdiff_t>(size);
+        const auto wrapped = index % signedSize;
+
+        if (wrapped < 0) {
+            return static_cast<std::size_t>(wrapped + signedSize);
+        }
+
+        return static_cast<std::size_t>(wrapped);
+    }
+
+    float WaveletNoise2d::randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const {
         return randomValues.at(
-                    wrapIndex(i, gridWidth_),
-                    wrapIndex(j, gridHeight_)
+                    wrapSignedIndex(i, gridWidth_),
+                    wrapSignedIndex(j, gridHeight_)
                 );
     }
 
-    float WaveletNoise2d::smoothedGridAt(std::size_t i, std::size_t j) const {
+    float WaveletNoise2d::smoothedGridAt(std::ptrdiff_t i, std::ptrdiff_t j) const {
         float res = 0;
         for (int a = -1; a <= 1; ++a) {
             for (int b = -1; b <= 1; ++b) {
@@ -43,7 +69,7 @@ namespace wgen {
         return res;
     }
 
-    float WaveletNoise2d::waveletNoiseTile(std::size_t x, std::size_t y) const {
+    float WaveletNoise2d::waveletNoiseTile(std::ptrdiff_t x, std::ptrdiff_t y) const {
         return randomAt(x, y) - smoothedGridAt(x, y);
     }
 
@@ -54,24 +80,20 @@ namespace wgen {
         const float u_T = glm::mod<float>(u, gridWidth_);
         const float v_T = glm::mod<float>(v, gridHeight_);
 
-        const std::size_t i = static_cast<std::size_t>(std::floor(u_T));
-        const std::size_t j = static_cast<std::size_t>(std::floor(v_T));
+        const auto i = static_cast<std::ptrdiff_t>(std::floor(u_T));
+        const auto j = static_cast<std::ptrdiff_t>(std::floor(v_T));
+        const auto kernelWidth = static_cast<std::ptrdiff_t>(kernelWidth_);
+        const auto kernelHeight = static_cast<std::ptrdiff_t>(kernelHeight_);
 
-        // local coordinates
-        const float alpha = u_T - static_cast<float>(i);
-        const float beta = v_T - static_cast<float>(j);
-
-        const float W00 = waveletNoiseTile(i, j);
-        const float W01 = waveletNoiseTile(i, j + 1);
-        const float W10 = waveletNoiseTile(i + 1, j);
-        const float W11 = waveletNoiseTile(i + 1, j + 1);
-
-        const float alpha_smooth = funcInterpolate_(alpha);
-        const float beta_smooth = funcInterpolate_(beta);
-        const float AA = lerp(W00, W10, alpha_smooth);
-        const float BB = lerp(W01, W11, beta_smooth);
-
-        return lerp(AA, BB, beta_smooth);
+        float noise = 0;
+        for (auto m = i - kernelWidth; m <= i + kernelWidth; ++m ) {
+            for (auto n = j - kernelHeight; n <= j + kernelHeight; ++n) {
+                noise += waveletNoiseTile(m, n)
+                        * reconstructionKernel_(u_T - static_cast<float>(m))
+                        * reconstructionKernel_(v_T - static_cast<float>(n));
+            }
+        }
+        return noise;
     }
 
 }

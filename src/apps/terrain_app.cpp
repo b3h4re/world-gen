@@ -27,10 +27,10 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     }
 
     generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-        config.terrainConfig.perlin.gridWidth,
-        config.terrainConfig.perlin.gridHeight,
+        config.terrainConfig.wavelet.gridWidth,
+        config.terrainConfig.wavelet.gridHeight,
         seed,
-        wgen::defaultPerlinInterp
+        wgen::defaultReconstructionKernel
     )));
     generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
         config.terrainConfig.simplex.gridWidth,

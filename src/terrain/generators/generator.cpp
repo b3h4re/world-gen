@@ -4,6 +4,13 @@
 
 namespace wgen {
 
+    float minkowskiDistance(glm::vec2 v1, glm::vec2 v2, float p) {
+        return std::pow(
+                std::pow(std::abs(v1.x - v2.x), p) + std::pow(std::abs(v1.y - v2.y), p),
+                1.0F/p
+            );
+    }
+
     std::size_t wrapIndex(std::size_t index, std::size_t size) {
         return index % size;
     }

@@ -2,38 +2,53 @@
 
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 #include <utility>
 
 
 namespace wgen {
 
-    WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell)
-    : WorleyNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}()} {}
+    WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
+                                 float p, std::size_t numPoints)
+    : WorleyNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), p, numPoints} {}
 
     WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 std::uint32_t seed)
-    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed} {
+                                 std::uint32_t seed, float p, std::size_t numPoints)
+    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, p_{p}, numPoints_{numPoints},
+        featurePoints_{gridWidth, gridHeight} {
+        if (p_ <= 0.0F) {
+            throw std::invalid_argument("Worley distance exponent must be positive");
+        }
+        if (numPoints_ == 0) {
+            throw std::invalid_argument("Worley feature point count must be at least one");
+        }
+
         generateGradients();
     }
 
     void WorleyNoise2d::generateGradients() {
+        std::mt19937 random{getSeed()};
+
         for (std::size_t y = 0; y < gridHeight_; ++y) {
             for (std::size_t x = 0; x < gridWidth_; ++x) {
-                // hash2 gives values from [-1, 1)
-                // So add 1 and divide by two to get [0, 1)
-                gradients_.at(x, y) = (
-                    glm::vec2{1, 1} + hash2(
-                        static_cast<int>(x + getSeed()),
-                        static_cast<int>(y + getSeed())
-                    )
-                ) / 2.0F;
+                featurePoints_.at(x, y).clear();
+                featurePoints_.at(x, y).reserve(numPoints_);
+                for (std::size_t n = 0; n < numPoints_; ++n) {
+                    featurePoints_.at(x, y).emplace_back(
+                        (glm::vec2{1, 1} + hash2(static_cast<int>(x + random()), static_cast<int>(y + random()))) / 2.0F
+                    );
+                }
             }
         }
     }
 
-    glm::vec2 WorleyNoise2d::featurePointAt(std::size_t i, std::size_t j) const {
-        return glm::vec2{i, j} + gradients_.at(i, j);
+    std::vector<glm::vec2> WorleyNoise2d::featurePointsAt(std::size_t i, std::size_t j) const {
+        std::vector<glm::vec2> points{};
+        for (auto& elem : featurePoints_.at(i, j)) {
+            points.emplace_back(glm::vec2{i, j} + elem);
+        }
+        return points;
     }
 
     std::size_t WorleyNoise2d::wrapSignedIndex(std::ptrdiff_t index, std::size_t size) {
@@ -47,13 +62,18 @@ namespace wgen {
         return static_cast<std::size_t>(wrapped);
     }
 
-    glm::vec2 WorleyNoise2d::deltaToAdjacentFeaturePoint(std::size_t x, std::size_t y, std::ptrdiff_t i, std::ptrdiff_t j) const {
+    std::vector<glm::vec2> WorleyNoise2d::deltaToAdjacentFeaturePoints(std::size_t x, std::size_t y, std::ptrdiff_t i, std::ptrdiff_t j) const {
         const auto cellX = static_cast<std::ptrdiff_t>(x) + i;
         const auto cellY = static_cast<std::ptrdiff_t>(y) + j;
         const auto wrappedX = wrapSignedIndex(cellX, gridWidth_);
         const auto wrappedY = wrapSignedIndex(cellY, gridHeight_);
 
-        return glm::vec2{cellX, cellY} + gradients_.at(wrappedX, wrappedY);
+        std::vector<glm::vec2> points{};
+        for (auto& elem : featurePoints_.at(wrappedX, wrappedY)) {
+            points.emplace_back(glm::vec2{cellX, cellY} + elem);
+        }
+
+        return points;
     }
 
     float WorleyNoise2d::noise(std::size_t x, std::size_t y) const {
@@ -73,16 +93,16 @@ namespace wgen {
         std::vector<glm::vec2> featurePointDeltas{};
         for (std::ptrdiff_t i = -1; i <= 1; ++i) {
             for (std::ptrdiff_t j = -1; j <= 1; ++j) {
-                featurePointDeltas.emplace_back(
-                    deltaToAdjacentFeaturePoint(i0, j0, i, j) - point
-                );
+                for (auto elem : deltaToAdjacentFeaturePoints(i0, j0, i, j)) {
+                    featurePointDeltas.emplace_back(elem - point);
+                }
             }
         }
 
         // Calculate distance to each feature point
         std::vector<std::pair<float, std::size_t>> distances{};
         for (int it = 0; it < featurePointDeltas.size(); ++it) {
-            distances.emplace_back(std::sqrt(glm::dot(featurePointDeltas[it], featurePointDeltas[it])), it);
+            distances.emplace_back(minkowskiDistance(featurePointDeltas[it], {0, 0}, p_), it);
         }
 
         // Sort by distance, first element is the closest

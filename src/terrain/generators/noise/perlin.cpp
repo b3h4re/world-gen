@@ -23,7 +23,7 @@ namespace wgen {
 
     float PerlinNoise2d::noise(std::size_t x, std::size_t y) const {
         if (x >= sampleWidth() || y >= sampleHeight()) {
-            throw std::out_of_range("Perlin sample coordinate is outside the gradient grid");
+            throw std::invalid_argument("Perlin sample coordinate is outside the gradient grid");
         }
 
         const std::size_t gridX = x / dotsPerCell_;

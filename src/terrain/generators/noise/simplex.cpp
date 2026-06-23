@@ -18,7 +18,7 @@ namespace wgen {
 
     float SimplexNoise2d::noise(std::size_t x, std::size_t y) const {
         if (x >= sampleWidth() || y >= sampleHeight()) {
-            throw std::out_of_range("Perlin sample coordinate is outside the gradient grid");
+            throw std::invalid_argument("Simplex sample coordinate is outside the gradient grid");
         }
 
         const float globalX = static_cast<float>(x) / static_cast<float>(dotsPerCell_);

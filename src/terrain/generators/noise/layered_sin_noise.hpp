@@ -11,7 +11,7 @@ namespace wgen {
         LayeredSinNoiseGenerator();
         explicit LayeredSinNoiseGenerator(std::uint32_t seed);
 
-        HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) override;
+        float noise(std::size_t x, std::size_t y) const override;
     };
 
 }

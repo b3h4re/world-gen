@@ -77,24 +77,9 @@ namespace wgen {
             generateGradients();
         }
 
-        HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) override {
-            if (width > sampleWidth() || height > sampleHeight()) {
-                throw std::invalid_argument("requested height map exceeds the gradient grid");
-            }
-
-            HeightMap<float> map{width, height};
-            for (std::size_t y = 0; y < height; ++y) {
-                for (std::size_t x = 0; x < width; ++x) {
-                    map.at(x, y) = noise(x, y);
-                }
-            }
-
-            return map;
-        }
+        float noise(std::size_t x, std::size_t y) const override = 0;
 
     protected:
-        virtual float noise(std::size_t x, std::size_t y) const = 0;
-
         std::size_t sampleWidth() const { return (gridWidth_ - 1) * dotsPerCell_; }
         std::size_t sampleHeight() const { return (gridHeight_ - 1) * dotsPerCell_; }
 

@@ -2,6 +2,14 @@
 
 namespace wgen {
 
+    namespace {
+
+        std::size_t wrapIndex(std::size_t index, std::size_t size) {
+            return index % size;
+        }
+
+    }
+
     SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell)
     : SimplexNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}()} {}
 
@@ -13,23 +21,21 @@ namespace wgen {
             throw std::out_of_range("Perlin sample coordinate is outside the gradient grid");
         }
 
-        const std::size_t gridX = x / dotsPerCell_;
-        const std::size_t gridY = y / dotsPerCell_;
-        const float localX = static_cast<float>(x % dotsPerCell_) / static_cast<float>(dotsPerCell_);
-        const float localY = static_cast<float>(y % dotsPerCell_) / static_cast<float>(dotsPerCell_);
+        const float globalX = static_cast<float>(x) / static_cast<float>(dotsPerCell_);
+        const float globalY = static_cast<float>(y) / static_cast<float>(dotsPerCell_);
 
-        const float skewing = (localX + localY) * SKEWING_CONSTANT_F2;
-        const float skewed_i = std::floor(localX + skewing);
-        const float skewed_j = std::floor(localY + skewing);
+        const float skewing = (globalX + globalY) * SKEWING_CONSTANT_F2;
+        const std::size_t skewed_i = static_cast<std::size_t>(std::floor(globalX + skewing));
+        const std::size_t skewed_j = static_cast<std::size_t>(std::floor(globalY + skewing));
 
-        const float unskewing = (skewed_i + skewed_j) * UNSKEWING_CONSTANT_G2;
-        const float simplex_cell_X0 = skewed_i - unskewing;
-        const float simplex_cell_Y0 = skewed_j - unskewing;
+        const float unskewing = static_cast<float>(skewed_i + skewed_j) * UNSKEWING_CONSTANT_G2;
+        const float simplex_cell_X0 = static_cast<float>(skewed_i) - unskewing;
+        const float simplex_cell_Y0 = static_cast<float>(skewed_j) - unskewing;
 
         const glm::vec2 simplex_corner{simplex_cell_X0, simplex_cell_Y0};
 
-        const float x0 = localX - simplex_cell_X0;
-        const float y0 = localY - simplex_cell_Y0;
+        const float x0 = globalX - simplex_cell_X0;
+        const float y0 = globalY - simplex_cell_Y0;
 
         // Deciding which triangle we are in
         // x0 > y0:  (i1​, j1​) = (1, 0)
@@ -38,9 +44,18 @@ namespace wgen {
         const std::size_t j1 = x0 > y0 ? 0 : 1;
         // Now we have three corners in skewed coords: (i, j), (i + i1, j + j1), (i + 1, j + 1)
         // get gradients for those corners and then get points in real coordinates
-        const glm::vec2 g0 = gradients_.at(gridX, gridY);
-        const glm::vec2 g1 = gradients_.at(gridX + i1, gridY + j1);
-        const glm::vec2 g2 = gradients_.at(gridX + 1, gridY + 1);
+        const glm::vec2 g0 = gradients_.at(
+            wrapIndex(skewed_i, gridWidth_),
+            wrapIndex(skewed_j, gridHeight_)
+        );
+        const glm::vec2 g1 = gradients_.at(
+            wrapIndex(skewed_i + i1, gridWidth_),
+            wrapIndex(skewed_j + j1, gridHeight_)
+        );
+        const glm::vec2 g2 = gradients_.at(
+            wrapIndex(skewed_i + 1, gridWidth_),
+            wrapIndex(skewed_j + 1, gridHeight_)
+        );
 
         const glm::vec2 d0 = {x0, y0};
         const glm::vec2 d1 = {

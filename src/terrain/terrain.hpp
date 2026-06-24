@@ -5,10 +5,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <concepts>
 #include <random>
 #include <stdexcept>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 #include <cassert>
 
@@ -56,6 +58,98 @@ public:
     HeightMap<T> operator+(const HeightMap& other) const {
         HeightMap<T> res(*this);
         res += other;
+        return res;
+    }
+
+    template<typename N>
+        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+            && requires(T& t, const N& n) { t += n; }
+    void operator+=(const N& rhs) {
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                this->at(x, y) += rhs;
+            }
+        }
+    }
+    template<typename N>
+        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+            && requires(const T& t, const N& n) { t + n; }
+    HeightMap<T> operator+(const N& rhs) const {
+        HeightMap<T> res(*this);
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                res.at(x, y) = res.at(x, y) + rhs;
+            }
+        }
+        return res;
+    }
+
+    template<typename N> requires requires(const T& t, const N& n) { t -= n; }
+    void operator-=(const N& rhs) {
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                this->at(x, y) -= rhs;
+            }
+        }
+    }
+    template<typename N> requires requires(const T& t, const N& n) { t - n; }
+    HeightMap<T> operator-(const N& rhs) {
+        HeightMap<T> res(*this);
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                res.at(x, y) = res.at(x, y) - rhs;
+            }
+        }
+        return res;
+    }
+
+    template<typename N> requires requires(const T& t, const N& n) { t *= n; }
+    void operator*=(const N& rhs) {
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                this->at(x, y) *= rhs;
+            }
+        }
+    }
+
+    template<typename N> requires requires(const T& t, const N& n) { t * n; }
+    HeightMap<T> operator*(const N& rhs) const {
+        HeightMap<T> res(*this);
+        res *= rhs;
+        return res;
+    }
+
+    template<typename N> requires requires(const N& n, const T& t) { n * t; }
+    friend HeightMap<T> operator*(const N& lhs, const HeightMap<T>& rhs) {
+        HeightMap<T> res(rhs);
+        for (std::size_t y = 0; y < res.height(); ++y) {
+            for (std::size_t x = 0; x < res.width(); ++x) {
+                res.at(x, y) = lhs * res.at(x, y);
+            }
+        }
+        return res;
+    }
+
+    template<typename N>
+        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+            && requires(const N& n, const T& t) { n + t; }
+    friend HeightMap<T> operator+(const N& lhs, const HeightMap<T>& rhs) {
+        HeightMap<T> res(rhs);
+        for (std::size_t y = 0; y < res.height(); ++y) {
+            for (std::size_t x = 0; x < res.width(); ++x) {
+                res.at(x, y) = lhs + res.at(x, y);
+            }
+        }
+        return res;
+    }
+    template<typename N> requires requires(const N& n, const T& t) { n - t; }
+    friend HeightMap<T> operator-(const N& lhs, const HeightMap<T>& rhs) {
+        HeightMap<T> res(rhs);
+        for (std::size_t y = 0; y < res.height(); ++y) {
+            for (std::size_t x = 0; x < res.width(); ++x) {
+                res.at(x, y) = lhs - res.at(x, y);
+            }
+        }
         return res;
     }
 

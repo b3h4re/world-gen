@@ -120,6 +120,10 @@ namespace wgen {
         std::size_t numPoints{1};
     };
 
+    struct DLAConfig {
+        std::size_t numSteps{700};
+    };
+
     struct TerrainConfig {
         std::string generator{"perlin"};
         bool setSeed = false;
@@ -130,6 +134,7 @@ namespace wgen {
         SimplexConfig simplex{};
         WaveletConfig wavelet{};
         WorleyConfig worley{};
+        DLAConfig dla{};
     };
 
     class AppConfig {

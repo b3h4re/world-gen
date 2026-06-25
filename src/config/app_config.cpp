@@ -206,6 +206,18 @@ namespace wgen {
         return config;
     }
 
+    DLAConfig parse_dla_config(const toml::table& root) {
+        DLAConfig config;
+
+        config.numSteps = checked_uinteger<std::size_t>(
+            root["terrain"]["dla"]["num_steps"],
+            config.numSteps,
+            "terrain.dla.num_steps"
+        );
+
+        return config;
+    }
+
     TerrainConfig parse_terrain_config(const toml::table& root) {
         TerrainConfig config;
 
@@ -243,6 +255,7 @@ namespace wgen {
         config.simplex = parse_simplex_config(root);
         config.wavelet = parse_wavelet_config(root);
         config.worley = parse_worley_config(root);
+        config.dla = parse_dla_config(root);
 
         return config;
     }

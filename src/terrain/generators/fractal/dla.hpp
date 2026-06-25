@@ -62,4 +62,25 @@ namespace wgen {
     };
 
 
+    class DLADualFilterBlur : public DLABasic {
+    public:
+        DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+
+    protected:
+        HeightFunc heightFunc_;
+        std::size_t numSteps_;
+
+        void getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos,
+                                    std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates) const;
+
+        void connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2) const;
+
+        void constructUpscaledPixels(std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates, HeightMap<int>& pixels) const;
+
+    private:
+
+    };
+
+
 }

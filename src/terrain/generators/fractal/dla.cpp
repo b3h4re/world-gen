@@ -259,4 +259,109 @@ namespace wgen {
         return 0.0F;
     }
 
+
+    // DLA with dual filter blur
+    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc)
+        : DLADualFilterBlur{numSteps, std::random_device{}(), heightFunc} {}
+    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
+        : DLABasic{numSteps, seed, heightFunc} {
+        setSeed(seed);
+    }
+
+    /*
+    So essantially for each pixel remember its relative coordinate to grid and remember its neighboor
+    */
+    void DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos,
+            std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates) const {
+
+        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
+        std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
+        for (const auto& dir : DIRECTIONS) {
+            if (!isInside(startingPos, dir, pixelsOld.width(), pixelsOld.height())) {
+                continue;
+            }
+            if (pixelsOld.at(startingPos + dir) != 1) {
+                continue;
+            }
+            glm::ivec2 neighboor = startingPos + dir;
+            q.push({startingPos, neighboor});
+            counted.insert({startingPos, neighboor});counted.insert({neighboor, startingPos});
+        }
+
+        while (q.size() > 0) {
+            std::pair<glm::ivec2, glm::ivec2> sf = q.front();
+            q.pop();
+            glm::ivec2 start = sf.first;
+            glm::ivec2 end = sf.second;
+
+            glm::vec2 startRel = {
+                static_cast<float>(start.x) / static_cast<float>(pixelsOld.width() - 1),
+                static_cast<float>(start.y) / static_cast<float>(pixelsOld.height() - 1)
+            };
+            glm::vec2 endRel = {
+                static_cast<float>(end.x) / static_cast<float>(pixelsOld.width() - 1),
+                static_cast<float>(end.y) / static_cast<float>(pixelsOld.height() - 1)
+            };
+            relCoordinates.push_back({startRel, endRel});
+
+            for (const auto& dir : DIRECTIONS) {
+                if (!isInside(end, dir, pixelsOld.width(), pixelsOld.height())) {
+                    continue;
+                }
+                if (pixelsOld.at(end + dir) != 1
+                    || counted.contains({end, end + dir}) || counted.contains({end + dir, end})) {
+                    continue;
+                }
+                glm::ivec2 neighboor = end + dir;
+                q.push({end, neighboor});
+                counted.insert({end, neighboor});counted.insert({neighboor, end});
+            }
+        }
+    }
+
+    void DLADualFilterBlur::connectTwoPoints(
+            HeightMap<int>& pixels,
+            glm::ivec2 p1,
+            glm::ivec2 p2) const {
+        const int deltaX = std::abs(p2.x - p1.x);
+        const int stepX = p1.x < p2.x ? 1 : -1;
+        const int deltaY = -std::abs(p2.y - p1.y);
+        const int stepY = p1.y < p2.y ? 1 : -1;
+        int error = deltaX + deltaY;
+
+        while (true) {
+            pixels.at(p1) = 1;
+            if (p1 == p2) {
+                break;
+            }
+
+            const int doubledError = 2 * error;
+            if (doubledError >= deltaY) {
+                error += deltaY;
+                p1.x += stepX;
+            }
+            if (doubledError <= deltaX) {
+                error += deltaX;
+                p1.y += stepY;
+            }
+        }
+    }
+
+    void DLADualFilterBlur::constructUpscaledPixels(std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates, HeightMap<int>& pixels) const {
+        pixels.clear(0);
+        for (const auto& relPair : relCoordinates) {
+            glm::vec2 startRel = relPair.first;
+            glm::vec2 endRel = relPair.second;
+            glm::ivec2 start = {
+                startRel.x * static_cast<float>(pixels.width() - 1),
+                startRel.y * static_cast<float>(pixels.height() - 1),
+            };
+            glm::ivec2 end = {
+                endRel.x * static_cast<float>(pixels.width() - 1),
+                endRel.y * static_cast<float>(pixels.height() - 1),
+            };
+            connectTwoPoints(pixels, start, end);
+        }
+    }
+
 }

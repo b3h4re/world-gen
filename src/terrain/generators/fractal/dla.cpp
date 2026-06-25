@@ -271,58 +271,76 @@ namespace wgen {
     /*
     So essantially for each pixel remember its relative coordinate to grid and remember its neighboor
     */
-    void DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos,
-            std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates) const {
+    PointGraph<glm::vec2> DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixels, glm::ivec2 startingPos) {
+        // A vector where at v[i] is a list of neighboors of i
+        PointGraph<glm::ivec2> intGraph{};
+        // std::vector<std::unordered_set<std::size_t>> pointGraph{};
+        // std::unordered_map<glm::ivec2, int, Vec2Hash> posIndicies{}; // m[v] is index of a vertex with position v
+        // std::vector<glm::ivec2> vertexPositions{}; // v[i] is position of vertex i in pixel grid
 
-        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
+        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> visited{}; // travelled edges
+
         std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
-        for (const auto& dir : DIRECTIONS) {
-            if (!isInside(startingPos, dir, pixelsOld.width(), pixelsOld.height())) {
-                continue;
-            }
-            if (pixelsOld.at(startingPos + dir) != 1) {
-                continue;
-            }
-            glm::ivec2 neighboor = startingPos + dir;
-            q.push({startingPos, neighboor});
-            counted.insert({startingPos, neighboor});counted.insert({neighboor, startingPos});
-        }
+
+        intGraph.pointGraph.emplace_back();
+        intGraph.posIndicies.at(startingPos) = 0;
+        intGraph.vertexPositions.push_back(startingPos);
+
+        q.push({startingPos, startingPos});
+
 
         while (q.size() > 0) {
-            std::pair<glm::ivec2, glm::ivec2> sf = q.front();
-            q.pop();
-            glm::ivec2 start = sf.first;
-            glm::ivec2 end = sf.second;
+            std::pair<glm::ivec2, glm::ivec2> sf = q.front(); q.pop();
+            glm::ivec2 prev = sf.first;
+            glm::ivec2 cur = sf.second;
 
-            glm::vec2 startRel = {
-                static_cast<float>(start.x) / static_cast<float>(pixelsOld.width() - 1),
-                static_cast<float>(start.y) / static_cast<float>(pixelsOld.height() - 1)
-            };
-            glm::vec2 endRel = {
-                static_cast<float>(end.x) / static_cast<float>(pixelsOld.width() - 1),
-                static_cast<float>(end.y) / static_cast<float>(pixelsOld.height() - 1)
-            };
-            relCoordinates.push_back({startRel, endRel});
+            if (!intGraph.posIndicies.contains(cur)) {
+                intGraph.pointGraph.emplace_back();
+                intGraph.posIndicies.at(cur) = intGraph.pointGraph.size() - 1;
+                intGraph.vertexPositions.push_back(cur);
+            }
+
+            int curId = intGraph.posIndicies[cur];
+            int prevId = intGraph.posIndicies[prev];
+            intGraph.pointGraph[curId].insert(prevId);
+            intGraph.pointGraph[prevId].insert(curId);
+
 
             for (const auto& dir : DIRECTIONS) {
-                if (!isInside(end, dir, pixelsOld.width(), pixelsOld.height())) {
+                if (!isInside(cur, dir, pixels.width(), pixels.height())) {
                     continue;
                 }
-                if (pixelsOld.at(end + dir) != 1
-                    || counted.contains({end, end + dir}) || counted.contains({end + dir, end})) {
+                if (pixels.at(cur + dir) != 1) {
                     continue;
                 }
-                glm::ivec2 neighboor = end + dir;
-                q.push({end, neighboor});
-                counted.insert({end, neighboor});counted.insert({neighboor, end});
+                glm::ivec2 neighboor = cur + dir;
+                if (visited.contains({cur, neighboor}) || visited.contains({neighboor, cur})) {
+                    continue;
+                }
+
+                q.push({cur, neighboor});
+                visited.insert({cur, neighboor});
+                visited.insert({neighboor, cur});
             }
         }
+
+        // Now construct graph with relative positions
+        // pointGraph is the same but convert positions from int grid to float vals
+        PointGraph<glm::vec2> relPointGraph{};
+        for (std::size_t i = 0; i < intGraph.pointGraph.size(); ++i) {
+            glm::ivec2 pos = intGraph.vertexPositions[i];
+            glm::vec2 relPos = {
+                static_cast<float>(pos.x) / static_cast<float>(pixels.width() - 1),
+                static_cast<float>(pos.x) / static_cast<float>(pixels.width() - 1)
+            };
+            relPointGraph.vertexPositions.push_back(relPos);
+            relPointGraph.posIndicies.at(relPos) = i;
+        }
+        relPointGraph.pointGraph = std::move(intGraph.pointGraph);
+        return relPointGraph;
     }
 
-    void DLADualFilterBlur::connectTwoPoints(
-            HeightMap<int>& pixels,
-            glm::ivec2 p1,
-            glm::ivec2 p2) const {
+    void DLADualFilterBlur::connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2) {
         const int deltaX = std::abs(p2.x - p1.x);
         const int stepX = p1.x < p2.x ? 1 : -1;
         const int deltaY = -std::abs(p2.y - p1.y);
@@ -347,20 +365,38 @@ namespace wgen {
         }
     }
 
-    void DLADualFilterBlur::constructUpscaledPixels(std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates, HeightMap<int>& pixels) const {
-        pixels.clear(0);
-        for (const auto& relPair : relCoordinates) {
-            glm::vec2 startRel = relPair.first;
-            glm::vec2 endRel = relPair.second;
-            glm::ivec2 start = {
-                startRel.x * static_cast<float>(pixels.width() - 1),
-                startRel.y * static_cast<float>(pixels.height() - 1),
+    // Just do bfs. Get each vertex position on new grid and just connect them
+    void DLADualFilterBlur::constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels) {
+        std::queue<std::pair<std::size_t, std::size_t>> q{};
+        std::unordered_set<std::pair<std::size_t, std::size_t>, SizeSizeHash> travelled{};
+
+        q.push({0, 0});
+
+        while (q.size() > 0) {
+            std::pair<std::size_t, std::size_t> sf = q.front(); q.pop();
+            std::size_t prevId = sf.first;
+            std::size_t curId = sf.second;
+            glm::vec2 prevRel = relPointGraph.vertexPositions[prevId];
+            glm::vec2 curRel = relPointGraph.vertexPositions[curId];
+
+            glm::ivec2 prev = {
+                prevRel.x * static_cast<float>(pixels.width() - 1),
+                prevRel.y * static_cast<float>(pixels.height() - 1),
             };
-            glm::ivec2 end = {
-                endRel.x * static_cast<float>(pixels.width() - 1),
-                endRel.y * static_cast<float>(pixels.height() - 1),
+            glm::ivec2 cur = {
+                curRel.x * static_cast<float>(pixels.width() - 1),
+                curRel.y * static_cast<float>(pixels.height() - 1),
             };
-            connectTwoPoints(pixels, start, end);
+
+            connectTwoPoints(pixels, prev, cur);
+            for (const auto& neighboorId : relPointGraph.pointGraph[curId]) {
+                if (travelled.contains({curId, neighboorId}) || travelled.contains({neighboorId, curId})) {
+                    continue;
+                }
+                q.push({curId, neighboorId});
+                travelled.insert({curId, neighboorId});
+                travelled.insert({neighboorId, curId});
+            }
         }
     }
 

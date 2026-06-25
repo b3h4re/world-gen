@@ -33,6 +33,14 @@ namespace wgen {
             return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
         }
     };
+    struct SizeSizeHash {
+        std::size_t operator()(const std::pair<std::size_t, std::size_t>& p) const {
+            std::size_t h1 = std::hash<int>{}(p.first);
+            std::size_t h2 = std::hash<int>{}(p.second);
+
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
 
     float minkowskiDistance(glm::vec2 v1, glm::vec2 v2, float p);
 

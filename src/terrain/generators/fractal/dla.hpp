@@ -62,6 +62,15 @@ namespace wgen {
     };
 
 
+    template<typename VecType>
+    struct PointGraph {
+    public:
+        std::vector<std::unordered_set<std::size_t>> pointGraph{};
+        std::unordered_map<VecType, int, Vec2Hash> posIndicies{};
+        std::vector<VecType> vertexPositions{};
+    };
+
+
     class DLADualFilterBlur : public DLABasic {
     public:
         DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
@@ -71,12 +80,11 @@ namespace wgen {
         HeightFunc heightFunc_;
         std::size_t numSteps_;
 
-        void getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos,
-                                    std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates) const;
+        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
 
-        void connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2) const;
+        static void connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2);
 
-        void constructUpscaledPixels(std::vector<std::pair<glm::vec2, glm::vec2>>& relCoordinates, HeightMap<int>& pixels) const;
+        static void constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels);
 
     private:
 

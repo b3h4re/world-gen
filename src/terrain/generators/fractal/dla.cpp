@@ -220,6 +220,9 @@ namespace wgen {
             point += dir;
         }
 
+        pixels.at(point) = 1;
+        placedPoints.insert(point);
+
         int numNeighboorsSelf{0};
         for (const auto& dir : DIRECTIONS) {
             if (!isInside(point, dir, pixels.width(), pixels.height())) {
@@ -245,8 +248,6 @@ namespace wgen {
             }
         }
 
-        pixels.at(point) = 1;
-        placedPoints.insert(point);
         if (numNeighboorsSelf <= 1) {
             leafs.insert(point);
         }

@@ -30,3 +30,6 @@ grid_height=100
 dots_per_cell=100
 p=2.0
 num_points=1
+
+[terrain.dla]
+num_steps=700

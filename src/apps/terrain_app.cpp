@@ -25,36 +25,40 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         std::random_device rd;
         seed = rd();
     }
-
-    generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-        config.terrainConfig.worley.gridWidth,
-        config.terrainConfig.worley.gridHeight,
-        config.terrainConfig.worley.dotsPerCell,
+    generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
+        config.terrainConfig.dla.numSteps,
         seed,
-        config.terrainConfig.worley.p,
-        config.terrainConfig.worley.numPoints
+        wgen::defaultDLAHeightFunction<0.15F>
     )));
-    generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-        config.terrainConfig.wavelet.gridWidth,
-        config.terrainConfig.wavelet.gridHeight,
-        seed,
-        wgen::defaultReconstructionKernel
-    )));
-    generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-        config.terrainConfig.simplex.gridWidth,
-        config.terrainConfig.simplex.gridHeight,
-        config.terrainConfig.simplex.dotsPerCell,
-        seed
-    )));
-    generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-        config.terrainConfig.perlin.gridWidth,
-        config.terrainConfig.perlin.gridHeight,
-        config.terrainConfig.perlin.dotsPerCell,
-        seed,
-        wgen::defaultPerlinInterp
-    )));
-    generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
-    generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+    // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
+    //     config.terrainConfig.worley.gridWidth,
+    //     config.terrainConfig.worley.gridHeight,
+    //     config.terrainConfig.worley.dotsPerCell,
+    //     seed,
+    //     config.terrainConfig.worley.p,
+    //     config.terrainConfig.worley.numPoints
+    // )));
+    // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
+    //     config.terrainConfig.wavelet.gridWidth,
+    //     config.terrainConfig.wavelet.gridHeight,
+    //     seed,
+    //     wgen::defaultReconstructionKernel
+    // )));
+    // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
+    //     config.terrainConfig.simplex.gridWidth,
+    //     config.terrainConfig.simplex.gridHeight,
+    //     config.terrainConfig.simplex.dotsPerCell,
+    //     seed
+    // )));
+    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
+    //     config.terrainConfig.perlin.gridWidth,
+    //     config.terrainConfig.perlin.gridHeight,
+    //     config.terrainConfig.perlin.dotsPerCell,
+    //     seed,
+    //     wgen::defaultPerlinInterp
+    // )));
+    // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
+    // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
 
     loadTerrain();
 }
@@ -62,6 +66,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
 void TerrainApp::loadTerrain() {
     std::size_t width = config.terrainConfig.width;
     std::size_t height = config.terrainConfig.height;
+    std::cout << "Starting terrain generation...\n";
     const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;

@@ -76,7 +76,7 @@ namespace wgen {
     public:
         virtual ~Generator() = default;
 
-        HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const {
+        virtual HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const {
             HeightMap<float> map{width, height};
             for (std::size_t y = 0; y < height; ++y) {
                 for (std::size_t x = 0; x < width; ++x) {

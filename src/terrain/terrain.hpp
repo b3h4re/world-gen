@@ -153,8 +153,19 @@ public:
         return res;
     }
 
+
+
     T &at(std::size_t x, std::size_t y) { return samples_.at(y * width_ + x); }
+    template <typename Int> requires requires (const Int& elem) { static_cast<std::size_t>(elem); }
+    T &at(const glm::vec<2, Int>& pos) {
+        return this->at(static_cast<std::size_t>(pos.x), static_cast<std::size_t>(pos.y));
+    }
+
     T at(std::size_t x, std::size_t y) const { return samples_.at(y * width_ + x); }
+    template <typename Int> requires requires (const Int& elem) { static_cast<std::size_t>(elem); }
+    T at(const glm::vec<2, Int>& pos) const {
+        return this->at(static_cast<std::size_t>(pos.x), static_cast<std::size_t>(pos.y));
+    }
     std::size_t width() const { return width_; }
     std::size_t height() const { return height_; }
 
@@ -188,6 +199,14 @@ public:
         HeightMap newHeightmap{*this};
         newHeightmap.normalize();
         return newHeightmap;
+    }
+
+    void clear(const T& defaultVal) {
+        for (std::size_t y = 0; y < height_; ++y) {
+            for (std::size_t x = 0; x < width_; ++x) {
+                this->at(x, y) = defaultVal;
+            }
+        }
     }
 
 private:

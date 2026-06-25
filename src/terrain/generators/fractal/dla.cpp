@@ -218,9 +218,9 @@ namespace wgen {
                 continue;
             }
             point += dir;
-
         }
 
+        int numNeighboorsSelf{0};
         for (const auto& dir : DIRECTIONS) {
             if (!isInside(point, dir, pixels.width(), pixels.height())) {
                 continue;
@@ -228,12 +228,29 @@ namespace wgen {
             if (pixels.at(point + dir) != 1) {
                 continue;
             }
-            leafs.erase(point + dir);
+            numNeighboorsSelf++;
+            glm::ivec2 neighboor = point + dir;
+            int numNeighboorsNeighboor{0};
+            for (const auto& nDir: DIRECTIONS) {
+                if (!isInside(neighboor, nDir, pixels.width(), pixels.height())) {
+                    continue;
+                }
+                if (pixels.at(neighboor + nDir) != 1) {
+                    continue;
+                }
+                numNeighboorsNeighboor++;
+            }
+            if (numNeighboorsNeighboor > 1) {
+                leafs.erase(point + dir);
+            }
         }
 
         pixels.at(point) = 1;
         placedPoints.insert(point);
-        leafs.insert(point);
+        if (numNeighboorsSelf <= 1) {
+            leafs.insert(point);
+        }
+
         return true;
     }
 

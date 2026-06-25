@@ -29,8 +29,22 @@ namespace wgen {
     }
 
     bool isInside(const glm::ivec2 pos, const glm::ivec2 dir, const std::size_t width, const std::size_t height) {
+        return isInsideRectangle(pos, dir, {0, 0}, {width-1, height-1});
+    }
+
+
+    bool isInsideRectangle(const glm::ivec2 pos, const glm::ivec2 dir, glm::ivec2 cpos1, glm::ivec2 cpos2) {
         glm::ivec2 newPos = pos + dir;
-        return !(newPos.x > width || newPos.y > height || newPos.x < 0 || newPos.y < 0);
+        glm::ivec2 corner1{
+            std::min(cpos1.x, cpos2.x),
+            std::min(cpos1.y, cpos2.y)
+        };
+        glm::ivec2 corner2{
+            std::max(cpos1.x, cpos2.x),
+            std::max(cpos1.y, cpos2.y)
+        };
+
+        return corner1.x <= newPos.x && newPos.x <= corner2.x && corner1.y <= newPos.y && newPos.y <= corner2.y;
     }
 
 }

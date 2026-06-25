@@ -75,6 +75,7 @@ namespace wgen {
     std::size_t wrapIndex(std::size_t index, std::size_t size);
 
     bool isInside(const glm::ivec2 pos, const glm::ivec2 dir, const std::size_t width, const std::size_t height);
+    bool isInsideRectangle(const glm::ivec2 pos, const glm::ivec2 dir, glm::ivec2 c1, glm::ivec2 c2);
 
     float defaultPerlinInterp(float t);
 

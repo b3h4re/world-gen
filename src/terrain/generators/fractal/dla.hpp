@@ -12,12 +12,11 @@ namespace wgen {
     public:
         using Point = glm::vec<2, int>;
 
-        RandomGridPoints(std::size_t width, std::size_t height);
-        RandomGridPoints(std::size_t width, std::size_t height, std::uint32_t seed);
+        RandomGridPoints();
+        RandomGridPoints(std::uint32_t seed);
 
-        Point next();
-        // bool empty() const;
-        void clear(); // Clears everything and resets
+        Point next(std::size_t width, std::size_t height);
+
         void reset(); // Resets random device
         void setSeed(std::uint32_t seed);
         template <typename... Args>

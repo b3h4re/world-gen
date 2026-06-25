@@ -3,21 +3,16 @@
 
 #include <unordered_map>
 #include <queue>
+#include <iostream>
 
 
 namespace wgen {
 
-    RandomGridPoints::RandomGridPoints(std::size_t width, std::size_t height)
-            : RandomGridPoints{width, height, std::random_device{}()} {}
-    RandomGridPoints::RandomGridPoints(std::size_t width, std::size_t height, std::uint32_t seed)
-            : seed_{seed}, width_{width}, height_{height} {
-        this->clear();
-    }
-
-    void RandomGridPoints::clear() {
-        excluded_points.clear();
+    RandomGridPoints::RandomGridPoints() : RandomGridPoints{std::random_device{}()} {}
+    RandomGridPoints::RandomGridPoints(std::uint32_t seed) : seed_{seed} {
         this->reset();
     }
+
     void RandomGridPoints::reset() {
         random_ = std::mt19937(seed_);
     }
@@ -27,17 +22,10 @@ namespace wgen {
         this->reset();
     }
 
-    RandomGridPoints::Point RandomGridPoints::next() {
-        std::uniform_int_distribution<int> x_dist(0, static_cast<int>(width_ - 1));
-        std::uniform_int_distribution<int> y_dist(0, static_cast<int>(height_ - 1));
-        while (true) {
-            Point p{x_dist(random_), y_dist(random_)};
-
-            if (excluded_points.contains(p)) {
-                continue;
-            }
-            return p;
-        }
+    RandomGridPoints::Point RandomGridPoints::next(std::size_t width, std::size_t height) {
+        std::uniform_int_distribution<int> x_dist(0, static_cast<int>(width - 1));
+        std::uniform_int_distribution<int> y_dist(0, static_cast<int>(height - 1));
+        return {x_dist(random_), y_dist(random_)};
     }
 
 
@@ -51,12 +39,14 @@ namespace wgen {
 
     HeightMap<float> DLABasic::generateHeightMap(std::size_t width, std::size_t height) const {
         HeightMap<int> pixels{gridWidth_, gridHeight_};
-        RandomGridPoints points{gridWidth_, gridHeight_, getSeed()};
+        pixels.at(startingPos_) = 1;
+        RandomGridPoints points{getSeed()};
         HeightMap<float> res{width, height};
 
         std::mt19937 random{getSeed()};
         std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
         for (std::size_t i = 0; i < numSteps_; ++i) {
+            std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
             dlaStep(pixels, points, random, placedPoints);
         }
 
@@ -139,15 +129,29 @@ namespace wgen {
     }
 
     void DLABasic::dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints) const {
-        glm::ivec2 point = points.next();
+        std::size_t randomSizeX = std::min(3 + placedPoints.size(), pixels.width());
+        std::size_t randomSizeY = std::min(3 + placedPoints.size(), pixels.height());
+        glm::ivec2 centerOfRand{randomSizeX/2, randomSizeY/2};
+        glm::ivec2 point = startingPos_ + points.next(randomSizeX, randomSizeY) - centerOfRand;
 
+        // std::cout << "Start position: (" << startingPos_.x << ", " << startingPos_.y << ")\n";
+        glm::ivec2 corner1 = startingPos_ - glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
+        glm::ivec2 corner2 = startingPos_ + glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
+        // std::cout << "Corner 1: (" << corner1.x << ", " << corner1.y << ")\n";
+        // std::cout << "Corner 2: (" << corner2.x << ", " << corner2.y << ")\n";
+        // std::cout << "Start point: (" << point.x << ", " << point.y << ")\n";
         while (!isAdjacent(pixels, point)) {
-            glm::ivec2 dir = getRandomDirection(randomDevice);
-            if (!isInside(point, dir, gridWidth_, gridHeight_)) {
+            glm::ivec2 dir = DIRECTIONS[randomDevice() % 4];
+            if (!isInside(point, dir, pixels.width(), pixels.height())) {
+                continue;
+            }
+            if (!isInsideRectangle(point, dir, corner1, corner2)) {
                 continue;
             }
             point += dir;
+            // std::cout << "Mid point: (" << point.x << ", " << point.y << ")\n";
         }
+        // std::cout << "End point: (" << point.x << ", " << point.y << ")\n";
         points.exclude(point);
         pixels.at(point) = 1;
         placedPoints.insert(point);

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <queue>
 #include <iostream>
+#include <vector>
 
 
 namespace wgen {
@@ -45,11 +46,14 @@ namespace wgen {
 
         std::mt19937 random{getSeed()};
         std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
+        placedPoints.insert(startingPos);
         std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
         leafs.insert(startingPos);
         for (std::size_t i = 0; i < numSteps_; ++i) {
             std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
-            dlaStep(pixels, points, random, placedPoints, leafs);
+            if (!dlaStep(pixels, points, random, placedPoints, leafs)) {
+                break;
+            }
         }
         std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
         // findLeafs(pixels, leafs);
@@ -151,7 +155,7 @@ namespace wgen {
         return false;
     }
 
-    void DLABasic::dlaStep(
+    bool DLABasic::dlaStep(
             HeightMap<int>& pixels,
             RandomGridPoints& points,
             std::mt19937& randomDevice,
@@ -162,17 +166,49 @@ namespace wgen {
         std::size_t randomSizeY = std::min(3 + placedPoints.size(), pixels.height());
         glm::ivec2 centerOfRand{randomSizeX/2, randomSizeY/2};
         glm::ivec2 startingPos{pixels.width()/2, pixels.height()/2};
-        glm::ivec2 point = startingPos + points.next(randomSizeX, randomSizeY) - centerOfRand;
-        while (placedPoints.contains(point)) {
+        glm::ivec2 point{};
+        bool foundPoint{false};
+        constexpr std::size_t maxRandomAttempts{10};
+        for (std::size_t attempt = 0; attempt < maxRandomAttempts; ++attempt) {
             point = startingPos + points.next(randomSizeX, randomSizeY) - centerOfRand;
+            if (pixels.at(point) == 0) {
+                foundPoint = true;
+                break;
+            }
         }
 
-        // std::cout << "Start position: (" << startingPos_.x << ", " << startingPos_.y << ")\n";
         glm::ivec2 corner1 = startingPos - glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
         glm::ivec2 corner2 = startingPos + glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
-        // std::cout << "Corner 1: (" << corner1.x << ", " << corner1.y << ")\n";
-        // std::cout << "Corner 2: (" << corner2.x << ", " << corner2.y << ")\n";
-        // std::cout << "Start point: (" << point.x << ", " << point.y << ")\n";
+        if (!foundPoint) {
+            std::vector<glm::ivec2> availablePoints;
+            availablePoints.reserve(pixels.width() * pixels.height() - placedPoints.size());
+            for (std::size_t y = 0; y < pixels.height(); ++y) {
+                for (std::size_t x = 0; x < pixels.width(); ++x) {
+                    if (pixels.at(x, y) == 0) {
+                        availablePoints.emplace_back(
+                            static_cast<int>(x),
+                            static_cast<int>(y)
+                        );
+                    }
+                }
+            }
+
+            if (availablePoints.empty()) {
+                return false;
+            }
+
+            std::uniform_int_distribution<std::size_t> pointDist{
+                0,
+                availablePoints.size() - 1
+            };
+            point = availablePoints[pointDist(randomDevice)];
+            corner1 = {0, 0};
+            corner2 = {
+                static_cast<int>(pixels.width() - 1),
+                static_cast<int>(pixels.height() - 1)
+            };
+        }
+
         while (!isAdjacent(pixels, point)) {
             glm::ivec2 dir = getRandomDirection(randomDevice);
             if (!isInside(point, dir, pixels.width(), pixels.height())) {
@@ -182,7 +218,7 @@ namespace wgen {
                 continue;
             }
             point += dir;
-            // std::cout << "Mid point: (" << point.x << ", " << point.y << ")\n";
+
         }
 
         for (const auto& dir : DIRECTIONS) {
@@ -194,10 +230,11 @@ namespace wgen {
             }
             leafs.erase(point + dir);
         }
-        // std::cout << "End point: (" << point.x << ", " << point.y << ")\n";
+
         pixels.at(point) = 1;
         placedPoints.insert(point);
         leafs.insert(point);
+        return true;
     }
 
     float DLABasic::noise(std::size_t x, std::size_t y) const {

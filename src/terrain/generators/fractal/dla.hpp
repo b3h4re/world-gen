@@ -46,14 +46,14 @@ namespace wgen {
     class DLABasic : public Generator {
     public:
         using HeightFunc = float (*)(int); // Function whic receives int of point and returns height
-        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps);
-        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, std::uint32_t seed);
+        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
 
         HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
 
 
     protected:
-        HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>;
+        HeightFunc heightFunc_;
         std::size_t gridWidth_;
         std::size_t gridHeight_;
         std::size_t numSteps_;
@@ -61,9 +61,10 @@ namespace wgen {
 
 
         static glm::ivec2 getRandomDirection(std::mt19937 randomDevice);
-        void findLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
+        void enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
+        void enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
         bool isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) const;
-        void dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints) const;
+        void dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
     private:
         float noise(std::size_t x, std::size_t y) const override;
     };

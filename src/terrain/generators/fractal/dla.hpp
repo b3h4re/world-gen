@@ -19,10 +19,7 @@ namespace wgen {
 
         void reset(); // Resets random device
         void setSeed(std::uint32_t seed);
-        template <typename... Args>
-        void exclude(Args&&... excludedPoints) {
-            (excluded_points.insert(std::forward<Args>(excludedPoints)), ...);
-        }
+
 
     private:
         std::size_t width_;
@@ -31,8 +28,6 @@ namespace wgen {
         // std::size_t index_ = 0;
         std::uint32_t seed_{};
         std::mt19937 random_{};
-
-        std::unordered_set<Point, Vec2Hash> excluded_points{};
     };
 
 
@@ -46,18 +41,15 @@ namespace wgen {
     class DLABasic : public Generator {
     public:
         using HeightFunc = float (*)(int); // Function whic receives int of point and returns height
-        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
-        DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        DLABasic(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
 
         HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
 
 
     protected:
         HeightFunc heightFunc_;
-        std::size_t gridWidth_;
-        std::size_t gridHeight_;
         std::size_t numSteps_;
-        glm::vec<2, int> startingPos_;
 
 
         static glm::ivec2 getRandomDirection(std::mt19937& randomDevice);

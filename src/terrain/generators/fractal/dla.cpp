@@ -29,30 +29,29 @@ namespace wgen {
     }
 
 
-    DLABasic::DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, HeightFunc heightFunc)
-        : DLABasic{gridWidth, gridHeight, numSteps, std::random_device{}(), heightFunc} {}
-    DLABasic::DLABasic(std::size_t gridWidth, std::size_t gridHeight, std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
-        : gridWidth_{gridWidth}, gridHeight_{gridHeight}, numSteps_{numSteps},
-        startingPos_{gridWidth / 2, gridHeight / 2}, heightFunc_{heightFunc} {
+    DLABasic::DLABasic(std::size_t numSteps, HeightFunc heightFunc)
+        : DLABasic{numSteps, std::random_device{}(), heightFunc} {}
+    DLABasic::DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
+        : numSteps_{numSteps}, heightFunc_{heightFunc} {
         setSeed(seed);
     }
 
     HeightMap<float> DLABasic::generateHeightMap(std::size_t width, std::size_t height) const {
-        HeightMap<int> pixels{gridWidth_, gridHeight_};
-        pixels.at(startingPos_) = 1;
+        HeightMap<int> pixels{width, height};
+        glm::ivec2 startingPos{width/2, height/2};
+        pixels.at(startingPos) = 1;
         RandomGridPoints points{getSeed()};
         HeightMap<float> res{width, height};
 
         std::mt19937 random{getSeed()};
         std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
         std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
-        leafs.insert(startingPos_);
+        leafs.insert(startingPos);
         for (std::size_t i = 0; i < numSteps_; ++i) {
             std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
             dlaStep(pixels, points, random, placedPoints, leafs);
         }
         std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
-        std::cout << "Starting pixel enumeration...\n";
         // findLeafs(pixels, leafs);
         enumPixelsFromLeafs(pixels, placedPoints, leafs);
 
@@ -67,7 +66,8 @@ namespace wgen {
     void DLABasic::enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const {
         std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
         std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
-        q.push({startingPos_, startingPos_});
+        glm::ivec2 startingPos{pixels.width()/2, pixels.height()/2};
+        q.push({startingPos, startingPos});
 
         // Basically bfs until we visit all generated points in cluster
         while (q.size() > 0) {
@@ -82,7 +82,7 @@ namespace wgen {
             }
 
             for (const auto& dir : DIRECTIONS) {
-                if (!isInside(pos, dir, pixels.width(), pixels.height()) || pos + dir == startingPos_
+                if (!isInside(pos, dir, pixels.width(), pixels.height()) || pos + dir == startingPos
                     || !placedPoints.contains(pos + dir)
                     || counted.contains({pos, pos+dir}) || counted.contains({pos + dir, pos})) {
                     continue;
@@ -141,7 +141,7 @@ namespace wgen {
     bool DLABasic::isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) const {
         for (int i = 0; i < 4; ++i) {
             glm::ivec2 adjacentPosition = point + DIRECTIONS[i];
-            if (!isInside(adjacentPosition, {0,0}, gridWidth_, gridHeight_)) {
+            if (!isInside(adjacentPosition, {0,0}, pixels.width(), pixels.height())) {
                 continue;
             }
             if (pixels.at(adjacentPosition) == 1) {
@@ -161,14 +161,15 @@ namespace wgen {
         std::size_t randomSizeX = std::min(3 + placedPoints.size(), pixels.width());
         std::size_t randomSizeY = std::min(3 + placedPoints.size(), pixels.height());
         glm::ivec2 centerOfRand{randomSizeX/2, randomSizeY/2};
-        glm::ivec2 point = startingPos_ + points.next(randomSizeX, randomSizeY) - centerOfRand;
+        glm::ivec2 startingPos{pixels.width()/2, pixels.height()/2};
+        glm::ivec2 point = startingPos + points.next(randomSizeX, randomSizeY) - centerOfRand;
         while (placedPoints.contains(point)) {
-            point = startingPos_ + points.next(randomSizeX, randomSizeY) - centerOfRand;
+            point = startingPos + points.next(randomSizeX, randomSizeY) - centerOfRand;
         }
 
         // std::cout << "Start position: (" << startingPos_.x << ", " << startingPos_.y << ")\n";
-        glm::ivec2 corner1 = startingPos_ - glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
-        glm::ivec2 corner2 = startingPos_ + glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
+        glm::ivec2 corner1 = startingPos - glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
+        glm::ivec2 corner2 = startingPos + glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
         // std::cout << "Corner 1: (" << corner1.x << ", " << corner1.y << ")\n";
         // std::cout << "Corner 2: (" << corner2.x << ", " << corner2.y << ")\n";
         // std::cout << "Start point: (" << point.x << ", " << point.y << ")\n";
@@ -183,14 +184,17 @@ namespace wgen {
             point += dir;
             // std::cout << "Mid point: (" << point.x << ", " << point.y << ")\n";
         }
+
         for (const auto& dir : DIRECTIONS) {
+            if (!isInside(point, dir, pixels.width(), pixels.height())) {
+                continue;
+            }
             if (pixels.at(point + dir) != 1) {
                 continue;
             }
             leafs.erase(point + dir);
         }
         // std::cout << "End point: (" << point.x << ", " << point.y << ")\n";
-        points.exclude(point);
         pixels.at(point) = 1;
         placedPoints.insert(point);
         leafs.insert(point);

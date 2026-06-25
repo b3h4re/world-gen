@@ -5,3 +5,4 @@
 #include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/wavelet.hpp"
 #include "terrain/generators/noise/worley.hpp"
+#include "terrain/generators/fractal/dla.hpp"

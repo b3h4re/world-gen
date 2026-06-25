@@ -9,6 +9,31 @@
 
 namespace wgen {
 
+    struct Vec2Hash {
+        std::size_t operator()(const glm::ivec2& v) const noexcept {
+            std::size_t h1 = std::hash<int>{}(v.x);
+            std::size_t h2 = std::hash<int>{}(v.y);
+
+            // hash combine
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
+    struct Vec2Vec2Hash {
+        std::size_t operator()(const std::pair<glm::ivec2, glm::ivec2>& p) const {
+            auto hashVec2 = [](const glm::ivec2& v) {
+                std::size_t h1 = std::hash<int>{}(v.x);
+                std::size_t h2 = std::hash<int>{}(v.y);
+
+                return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+            };
+
+            std::size_t h1 = hashVec2(p.first);
+            std::size_t h2 = hashVec2(p.second);
+
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
+
     float minkowskiDistance(glm::vec2 v1, glm::vec2 v2, float p);
 
     constexpr std::uint64_t splitmix64(std::uint64_t x) noexcept {
@@ -49,6 +74,8 @@ namespace wgen {
 
     std::size_t wrapIndex(std::size_t index, std::size_t size);
 
+    bool isInside(const glm::ivec2 pos, const glm::ivec2 dir, const std::size_t width, const std::size_t height);
+
     float defaultPerlinInterp(float t);
 
     float lerp(float a, float b, float c);
@@ -72,6 +99,11 @@ namespace wgen {
         throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
     }
 
+    template<float k>
+    float defaultDLAHeightFunction(int x) {
+        return 1.0F / (1.0F + k*static_cast<float>(x));
+    }
+
     class Generator {
     public:
         virtual ~Generator() = default;
@@ -87,10 +119,11 @@ namespace wgen {
             return map;
         }
 
-        virtual float noise(std::size_t x, std::size_t y) const = 0;
 
         virtual void setSeed(std::uint32_t newSeed) { seed_ = newSeed; }
         std::uint32_t getSeed() const { return seed_; }
+    protected:
+        virtual float noise(std::size_t x, std::size_t y) const = 0;
 
     private:
         std::uint32_t seed_{};

@@ -28,4 +28,9 @@ namespace wgen {
         return 0;
     }
 
+    bool isInside(const glm::ivec2 pos, const glm::ivec2 dir, const std::size_t width, const std::size_t height) {
+        glm::ivec2 newPos = pos + dir;
+        return !(newPos.x > width || newPos.y > height || newPos.x < 0 || newPos.y < 0);
+    }
+
 }

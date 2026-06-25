@@ -1,6 +1,10 @@
 #include "dla.hpp"
 
 
+#include <unordered_map>
+#include <queue>
+
+
 namespace wgen {
 
     RandomGridPoints::RandomGridPoints(std::size_t width, std::size_t height)
@@ -51,11 +55,70 @@ namespace wgen {
         HeightMap<float> res{width, height};
 
         std::mt19937 random{getSeed()};
+        std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
         for (std::size_t i = 0; i < numSteps_; ++i) {
-            dlaStep(pixels, points, random);
+            dlaStep(pixels, points, random, placedPoints);
+        }
+
+        std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
+        findLeafs(pixels, leafs);
+        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
+        std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
+        for (const auto& pos : leafs) {
+            q.push({pos, pos});
+        }
+
+        // Basically bfs until we visit all generated points in cluster
+        while (q.size() > 0) {
+            glm::ivec2 pos = q.front().first;
+            glm::ivec2 prevPos = q.front().second;
+            counted.insert({pos, prevPos});
+            counted.insert({prevPos, pos});
+            q.pop();
+
+            if (pos != prevPos) {
+                pixels.at(pos) = std::max(pixels.at(pos), pixels.at(prevPos) + 1);
+            }
+
+            for (const auto& dir : DIRECTIONS) {
+                if (!isInside(pos, dir, pixels.width(), pixels.height()) || leafs.contains(pos + dir)
+                    || !placedPoints.contains(pos + dir)
+                    || counted.contains({pos, pos+dir}) || counted.contains({pos + dir, pos})) {
+                    continue;
+                }
+                if (pos != prevPos && pixels.at(pos) <= pixels.at(pos + dir)) {
+                    continue;
+                }
+                q.push({pos + dir, pos});
+            }
+        }
+
+        for (const auto& p : placedPoints) {
+            res.at(p) = heightFunc(pixels.at(p));
         }
 
         return res;
+    }
+
+    void DLABasic::findLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const {
+        for (std::size_t x = 0; x < pixels.width(); ++x) {
+            for (std::size_t y = 0; y < pixels.height(); ++y) {
+                glm::ivec2 pos{x, y};
+                if (pixels.at(pos) != 1) {
+                    continue;
+                }
+                int numNeighboors{0};
+                for (auto& dir : DIRECTIONS) {
+                    if (!isInside(pos, dir, pixels.width(), pixels.height())) { continue; }
+                    if (pixels.at(pos + dir) == 1) {
+                        numNeighboors++;
+                    }
+                }
+                if (numNeighboors <= 1) {
+                    leafs.insert(pos);
+                }
+            }
+        }
     }
 
     glm::ivec2 DLABasic::getRandomDirection(std::mt19937 randomDevice) {
@@ -65,8 +128,7 @@ namespace wgen {
     bool DLABasic::isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) const {
         for (int i = 0; i < 4; ++i) {
             glm::ivec2 adjacentPosition = point + DIRECTIONS[i];
-            if (adjacentPosition.x > gridWidth_ || adjacentPosition.y > gridHeight_
-                || adjacentPosition.x < 0 || adjacentPosition.y < 0) {
+            if (!isInside(adjacentPosition, {0,0}, gridWidth_, gridHeight_)) {
                 continue;
             }
             if (pixels.at(adjacentPosition) == 1) {
@@ -76,19 +138,23 @@ namespace wgen {
         return false;
     }
 
-    void DLABasic::dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937 randomDevice) const {
+    void DLABasic::dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints) const {
         glm::ivec2 point = points.next();
 
         while (!isAdjacent(pixels, point)) {
             glm::ivec2 dir = getRandomDirection(randomDevice);
-            glm::ivec2 nextPos = point + dir;
-            if (nextPos.x > gridWidth_ || nextPos.y > gridHeight_ || nextPos.x < 0 || nextPos.y < 0) {
+            if (!isInside(point, dir, gridWidth_, gridHeight_)) {
                 continue;
             }
-            point = nextPos;
+            point += dir;
         }
         points.exclude(point);
         pixels.at(point) = 1;
+        placedPoints.insert(point);
+    }
+
+    float DLABasic::noise(std::size_t x, std::size_t y) const {
+        return 0.0F;
     }
 
 }

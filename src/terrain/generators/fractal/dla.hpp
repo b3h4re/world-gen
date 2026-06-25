@@ -60,7 +60,7 @@ namespace wgen {
         glm::vec<2, int> startingPos_;
 
 
-        static glm::ivec2 getRandomDirection(std::mt19937 randomDevice);
+        static glm::ivec2 getRandomDirection(std::mt19937& randomDevice);
         void enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
         void enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
         bool isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) const;

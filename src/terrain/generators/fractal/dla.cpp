@@ -51,7 +51,8 @@ namespace wgen {
             std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
             dlaStep(pixels, points, random, placedPoints, leafs);
         }
-
+        std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
+        std::cout << "Starting pixel enumeration...\n";
         // findLeafs(pixels, leafs);
         enumPixelsFromLeafs(pixels, placedPoints, leafs);
 
@@ -133,7 +134,7 @@ namespace wgen {
         }
     }
 
-    glm::ivec2 DLABasic::getRandomDirection(std::mt19937 randomDevice) {
+    glm::ivec2 DLABasic::getRandomDirection(std::mt19937& randomDevice) {
         return DIRECTIONS[randomDevice() % 4];
     }
 
@@ -161,6 +162,9 @@ namespace wgen {
         std::size_t randomSizeY = std::min(3 + placedPoints.size(), pixels.height());
         glm::ivec2 centerOfRand{randomSizeX/2, randomSizeY/2};
         glm::ivec2 point = startingPos_ + points.next(randomSizeX, randomSizeY) - centerOfRand;
+        while (placedPoints.contains(point)) {
+            point = startingPos_ + points.next(randomSizeX, randomSizeY) - centerOfRand;
+        }
 
         // std::cout << "Start position: (" << startingPos_.x << ", " << startingPos_.y << ")\n";
         glm::ivec2 corner1 = startingPos_ - glm::ivec2{randomSizeX/2 + 1, randomSizeY/2 + 1};
@@ -169,7 +173,7 @@ namespace wgen {
         // std::cout << "Corner 2: (" << corner2.x << ", " << corner2.y << ")\n";
         // std::cout << "Start point: (" << point.x << ", " << point.y << ")\n";
         while (!isAdjacent(pixels, point)) {
-            glm::ivec2 dir = DIRECTIONS[randomDevice() % 4];
+            glm::ivec2 dir = getRandomDirection(randomDevice);
             if (!isInside(point, dir, pixels.width(), pixels.height())) {
                 continue;
             }

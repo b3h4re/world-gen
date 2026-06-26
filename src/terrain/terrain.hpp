@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <type_traits>
 #include <vector>
 #include <cassert>
@@ -41,6 +42,25 @@ public:
     HeightMap(std::size_t width, std::size_t height) : width_{width}, height_{height}, samples_(width * height) {
         if (width < 2 || height < 2) {
             throw std::invalid_argument("height map dimensions must be at least 2x2");
+        }
+    }
+    HeightMap(std::size_t width, std::size_t height, const T& defaultValue) : HeightMap(width, height) {
+        this->clear(defaultValue);
+    }
+    HeightMap(std::initializer_list<std::initializer_list<T>> rows)
+        : width_{rows.size() == 0 ? 0 : rows.begin()->size()},
+          height_{rows.size()},
+          samples_{} {
+        if (width_ < 2 || height_ < 2) {
+            throw std::invalid_argument("height map dimensions must be at least 2x2");
+        }
+
+        samples_.reserve(width_ * height_);
+        for (const auto& row : rows) {
+            if (row.size() != width_) {
+                throw std::invalid_argument("height map initializer rows must have equal sizes");
+            }
+            samples_.insert(samples_.end(), row.begin(), row.end());
         }
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "terrain/generators/generator.hpp"
+#include "terrain/utils/kernel.hpp"
 
 #include <unordered_set>
 #include <iostream>
@@ -65,6 +66,12 @@ namespace wgen {
         std::unordered_map<VecType, int, Vec2Hash> posIndicies{};
         std::vector<VecType> vertexPositions{};
     };
+
+    const static Kernel<float> SMALL_BLUR({
+        {false, true, false},
+        {true,  true, true},
+        {false, true, false}
+    }, 1.0F / 5.0F);
 
 
     class DLADualFilterBlur : public DLABasic {
@@ -170,6 +177,5 @@ namespace wgen {
         }
 
     }
-
 
 }

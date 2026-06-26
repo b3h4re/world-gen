@@ -15,6 +15,43 @@
 
 namespace lve {
 
+namespace {
+
+void appendHeightMapMesh(
+        const wgen::HeightMap<float>& heightMap,
+        float minX,
+        float maxX,
+        float minY,
+        float maxY,
+        std::vector<Vertex2d>& vertices,
+        std::vector<std::uint32_t>& indices,
+        wgen::colorFromHeightFunc colorFunc = wgen::terrainColor) {
+    const std::size_t width = heightMap.width();
+    const std::size_t height = heightMap.height();
+
+    vertices.reserve(vertices.size() + width * height * 4);
+    indices.reserve(indices.size() + width * height * 6);
+
+    for (std::size_t y = 0; y < height; ++y) {
+        for (std::size_t x = 0; x < width; ++x) {
+            const float left = minX + (maxX - minX) * static_cast<float>(x) / static_cast<float>(width - 1);
+            const float right = minX + (maxX - minX) * static_cast<float>(x + 1) / static_cast<float>(width - 1);
+            const float top = minY + (maxY - minY) * static_cast<float>(y) / static_cast<float>(height - 1);
+            const float bottom = minY + (maxY - minY) * static_cast<float>(y + 1) / static_cast<float>(height - 1);
+            const float sample = heightMap.at(x, y);
+            const glm::vec3 color = colorFunc(sample);
+            const auto base = static_cast<std::uint32_t>(vertices.size());
+
+            vertices.insert(
+                vertices.end(),
+                {{{left, top}, color}, {{right, top}, color}, {{right, bottom}, color}, {{left, bottom}, color}});
+            indices.insert(indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
+        }
+    }
+}
+
+}
+
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
@@ -26,10 +63,15 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        config.terrainConfig.dla.numSteps,
+        3,
         seed,
         wgen::defaultDLAHeightFunction<0.15F>
     )));
+    // generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
+    //     config.terrainConfig.dla.numSteps,
+    //     seed,
+    //     wgen::defaultDLAHeightFunction<0.15F>
+    // )));
     // generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
     //     config.terrainConfig.dla.numSteps,
     //     seed,
@@ -71,30 +113,11 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
 void TerrainApp::loadTerrain() {
     std::size_t width = config.terrainConfig.width;
     std::size_t height = config.terrainConfig.height;
-    std::cout << "Starting terrain generation...\n";
-    const auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
+    auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
-    vertices.reserve((width - 1) * (height - 1) * 4);
-    indices.reserve((width - 1) * (height - 1) * 6);
-
-    for (std::size_t y = 0; y + 1 < height; ++y) {
-        for (std::size_t x = 0; x + 1 < width; ++x) {
-            const float left = -1.5F + 3.0F * static_cast<float>(x) / static_cast<float>(width - 1);
-            const float right = -1.5F + 3.0F * static_cast<float>(x + 1) / static_cast<float>(width - 1);
-            const float top = -1.0F + 2.0F * static_cast<float>(y) / static_cast<float>(height - 1);
-            const float bottom = -1.0F + 2.0F * static_cast<float>(y + 1) / static_cast<float>(height - 1);
-            const float sample = heightMap.at(x, y);
-            const glm::vec3 color = wgen::terrainBlackAndWhite(sample);
-            const auto base = static_cast<std::uint32_t>(vertices.size());
-
-            vertices.insert(
-                vertices.end(),
-                {{{left, top}, color}, {{right, top}, color}, {{right, bottom}, color}, {{left, bottom}, color}});
-            indices.insert(indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
-        }
-    }
+    appendHeightMapMesh(heightMap, -0.9F, 0.9F, -0.9F, 0.9F, vertices, indices, wgen::terrainColor);
 
     auto mesh = std::make_shared<Mesh2d>(device_, vertices, indices);
     objects_.push_back({std::move(mesh), {}});

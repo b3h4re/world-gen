@@ -78,7 +78,7 @@ namespace wgen {
     // }, 1.0F / 5.0F);
     const static Kernel<float> SMALL_BLUR(HeightMap<float>({
         {0.0F, 0.2F, 0.0F},
-        {0.2F, 0.8F, 0.2F},
+        {0.2F, 0.9F, 0.2F},
         {0.0F, 0.2F, 0.0F}
     }));
 
@@ -86,9 +86,8 @@ namespace wgen {
 
     class DLADualFilterBlur : public DLABasic {
     public:
-        DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
-        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
-        constexpr static float FILL = 0.25F;
+        DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>, float fill = 0.25, float jiggle = 0.021);
+        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>, float fill = 0.25, float jiggle = 0.021);
 
         HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
 
@@ -102,6 +101,8 @@ namespace wgen {
         static void jigglePoints(PointGraph<glm::vec2, Vec2Hash>& pgraph, float sigma, std::mt19937& rd);
 
     protected:
+        float fill_;
+        float jiggle_;
 
         static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld);
         static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);

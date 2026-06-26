@@ -240,10 +240,10 @@ namespace wgen {
 
 
     // DLA with dual filter blur
-    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc)
-        : DLADualFilterBlur{numSteps, std::random_device{}(), heightFunc} {}
-    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
-        : DLABasic{numSteps, seed, heightFunc} {
+    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc, float fill, float jiggle)
+        : DLADualFilterBlur{numSteps, std::random_device{}(), heightFunc, fill, jiggle} {}
+    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc, float fill, float jiggle)
+        : DLABasic{numSteps, seed, heightFunc}, fill_{fill}, jiggle_{jiggle} {
         setSeed(seed);
     }
 
@@ -461,7 +461,7 @@ namespace wgen {
             }
         }
         std::size_t targetSize = static_cast<std::size_t>(
-            FILL * static_cast<float>(pixels.width() * pixels.height())
+            fill_ * static_cast<float>(pixels.width() * pixels.height())
         );
         std::uint32_t innerSeed = randomDevice();
         RandomGridPoints points{innerSeed};
@@ -511,7 +511,7 @@ namespace wgen {
         placedPoints.insert(startingPos);
         std::unordered_set<glm::ivec2, Ivec2Hash> leafs{};
         leafs.insert(startingPos);
-        std::size_t pointToPlace = static_cast<std::size_t>(FILL * static_cast<float>(width * height));
+        std::size_t pointToPlace = static_cast<std::size_t>(fill_ * static_cast<float>(width * height));
         for (std::size_t i = 0; i < pointToPlace; ++i) {
             if (!dlaStep(pixelsStart, points, random, placedPoints, leafs)) {
                 break;
@@ -558,7 +558,7 @@ namespace wgen {
             pixelsStart = crispUpscale;
             graph = getRelativeCoordinates(pixelsStart);
             std::cout << "    added new heightmap to old one\n";
-            jigglePoints(graph, 0.021, random);
+            jigglePoints(graph, jiggle_, random);
             std::cout << "    jiggled points\n";
         }
         return initialHeightMap;

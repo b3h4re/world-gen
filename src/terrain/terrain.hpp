@@ -214,15 +214,19 @@ public:
 
 
 
-    T &at(std::size_t x, std::size_t y) { return samples_.at(y * width_ + x); }
+    typename std::vector<T>::reference at(std::size_t x, std::size_t y) {
+        return samples_.at(y * width_ + x);
+    }
     template <typename Int> requires requires (const Int& elem) { static_cast<std::size_t>(elem); }
-    T &at(const glm::vec<2, Int>& pos) {
+    typename std::vector<T>::reference at(const glm::vec<2, Int>& pos) {
         return this->at(static_cast<std::size_t>(pos.x), static_cast<std::size_t>(pos.y));
     }
 
-    T at(std::size_t x, std::size_t y) const { return samples_.at(y * width_ + x); }
+    typename std::vector<T>::const_reference at(std::size_t x, std::size_t y) const {
+        return samples_.at(y * width_ + x);
+    }
     template <typename Int> requires requires (const Int& elem) { static_cast<std::size_t>(elem); }
-    T at(const glm::vec<2, Int>& pos) const {
+    typename std::vector<T>::const_reference at(const glm::vec<2, Int>& pos) const {
         return this->at(static_cast<std::size_t>(pos.x), static_cast<std::size_t>(pos.y));
     }
     std::size_t width() const { return width_; }

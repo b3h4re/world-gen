@@ -419,6 +419,7 @@ namespace wgen {
         HeightMap<int> pixelsTmp{pixels};
         auto leafs = getLeafs(pixels);
         std::unordered_set<glm::ivec2, Ivec2Hash> placedPoints{};
+        std::cout << "        counting placed points\n";
         for (std::size_t x = 0; x < pixels.width(); ++x) {
             for (std::size_t y = 0; y < pixels.height(); ++y) {
                 if (pixels.at(x, y) == 1) {
@@ -426,6 +427,7 @@ namespace wgen {
                 }
             }
         }
+        std::cout << "        enuming leafs\n";
 
         enumPixelsFromLeafs(pixelsTmp, placedPoints, leafs);
         for (const auto& p : placedPoints) {
@@ -497,6 +499,26 @@ namespace wgen {
         }
     }
 
+    void DLADualFilterBlur::jigglePoints(PointGraph<glm::vec2, Vec2Hash>& pgraph, float sigma, std::mt19937& rd) {
+        std::normal_distribution<float> normalDist(0, sigma);
+        for (std::size_t vertex = 0; vertex < pgraph.pointGraph.size(); ++vertex) {
+            glm::vec2 oldPos = pgraph.vertexPositions[vertex];
+            glm::vec2 offset{
+                normalDist(rd),
+                normalDist(rd)
+            };
+            glm::vec2 newPos = oldPos + offset;
+            newPos.x = std::min(1.0F, newPos.x);
+            newPos.x = std::max(0.0F, newPos.x);
+            newPos.y = std::min(1.0F, newPos.y);
+            newPos.y = std::max(0.0F, newPos.y);
+
+            pgraph.vertexPositions[vertex] = newPos;
+            pgraph.posIndicies.erase(oldPos);
+            pgraph.posIndicies.emplace(newPos, vertex);
+        }
+    }
+
     HeightMap<float> DLADualFilterBlur::generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const {
         std::size_t deltaW = widthTarget / (numSteps_ + 1);
         std::size_t deltaH = heightTarget / (numSteps_ + 1);
@@ -544,19 +566,26 @@ namespace wgen {
             // Making a crisp upscale and its heightmap
             HeightMap<int> crispUpscale{newWidth, newHeight};
             auto crispLeafs = constructCrispUpscaledPixels(graph, crispUpscale);
+            std::cout << "    constructed crisp upscale\n";
             fillPixels(crispUpscale, crispLeafs, random);
+            std::cout << "    filled in crisp upscale\n";
             HeightMap<float> crispHeightMap = heightMapFromPixels(crispUpscale);
+            std::cout << "    created crisp heightmap\n";
 
 
             HeightMap<float> upscaledInitialHeightMap{newWidth, newHeight};
             upscaleHeightmapWeightedLerp(initialHeightMap, upscaledInitialHeightMap);
             upscaledInitialHeightMap = conv(upscaledInitialHeightMap, wgen::SMALL_BLUR);
+            std::cout << "    upscaled initial heightmap\n";
 
             upscaledInitialHeightMap += crispHeightMap;
 
             initialHeightMap = upscaledInitialHeightMap;
             pixelsStart = crispUpscale;
             graph = getRelativeCoordinates(pixelsStart);
+            std::cout << "    added new heightmap to old one\n";
+            jigglePoints(graph, 0.021, random);
+            std::cout << "    jiggled points\n";
         }
         return initialHeightMap;
     }

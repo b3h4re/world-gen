@@ -103,7 +103,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        3,
+        5,
         seed,
         wgen::defaultDLAHeightFunction<0.15F>
     )));

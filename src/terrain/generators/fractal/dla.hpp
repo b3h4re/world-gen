@@ -68,11 +68,17 @@ namespace wgen {
         std::unordered_set<std::size_t> leafs{};
     };
 
-    const static Kernel<float> SMALL_BLUR({
-        {false, true, false},
-        {true,  true, true},
-        {false, true, false}
-    }, 1.0F / 5.0F);
+    // const static Kernel<float> SMALL_BLUR({
+    //     {false, true, false},
+    //     {true,  true, true},
+    //     {false, true, false}
+    // }, 1.0F / 5.0F);
+    const static Kernel<float> SMALL_BLUR(HeightMap<float>({
+        {0.0F, 0.2F, 0.0F},
+        {0.2F, 0.8F, 0.2F},
+        {0.0F, 0.2F, 0.0F}
+    }));
+
 
 
     class DLADualFilterBlur : public DLABasic {
@@ -88,9 +94,11 @@ namespace wgen {
         void fillPixels(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs, std::mt19937& randomDevice) const;
         static std::unordered_set<glm::ivec2, Ivec2Hash> getLeafs(const HeightMap<int>& pixels);
 
+        // So slightly offset each points coordinates by a random vector
+        // Magnitudes of offset vectors are on a normal distribution with sigma as sigma
+        static void jigglePoints(PointGraph<glm::vec2, Vec2Hash>& pgraph, float sigma, std::mt19937& rd);
+
     protected:
-        // HeightFunc heightFunc_;
-        // std::size_t numSteps_;
 
         static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld);
         static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
@@ -111,19 +119,28 @@ namespace wgen {
         int error = deltaX + deltaY;
 
         while (true) {
+            const glm::ivec2 previous = p1;
             pixels.at(p1) = defaultVal;
             if (p1 == p2) {
                 break;
             }
 
             const int doubledError = 2 * error;
+            bool steppedX = false;
+            bool steppedY = false;
             if (doubledError >= deltaY) {
                 error += deltaY;
                 p1.x += stepX;
+                steppedX = true;
             }
             if (doubledError <= deltaX) {
                 error += deltaX;
                 p1.y += stepY;
+                steppedY = true;
+            }
+
+            if (steppedX && steppedY) {
+                pixels.at(previous.x, p1.y) = defaultVal;
             }
         }
     }

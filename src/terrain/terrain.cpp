@@ -24,7 +24,7 @@ Then convert the resulting vector to HSV and then to RGB
 */
 glm::vec3 terrainColor(float height) {
     if (std::abs(height) > 1.0f) {
-        std::runtime_error("height must be in [-1; 1] to get color mapping.");
+        throw std::runtime_error("height must be in [-1; 1] to get color mapping.");
     }
 
     float re = (1 - height * height) / (1 + height * height);
@@ -66,7 +66,7 @@ glm::vec3 terrainColor(float height) {
 
 glm::vec3 terrainBlackAndWhite(float height) {
     if (std::abs(height) > 1.0f) {
-        std::runtime_error("height must be in [-1; 1] to get color mapping.");
+        throw std::runtime_error("height must be in [-1; 1] to get color mapping.");
     }
 
     return glm::vec3{(height + 1) / 2};

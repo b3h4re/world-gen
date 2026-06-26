@@ -341,31 +341,6 @@ namespace wgen {
         return relPointGraph;
     }
 
-    void DLADualFilterBlur::connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2) {
-        const int deltaX = std::abs(p2.x - p1.x);
-        const int stepX = p1.x < p2.x ? 1 : -1;
-        const int deltaY = -std::abs(p2.y - p1.y);
-        const int stepY = p1.y < p2.y ? 1 : -1;
-        int error = deltaX + deltaY;
-
-        while (true) {
-            pixels.at(p1) = 1;
-            if (p1 == p2) {
-                break;
-            }
-
-            const int doubledError = 2 * error;
-            if (doubledError >= deltaY) {
-                error += deltaY;
-                p1.x += stepX;
-            }
-            if (doubledError <= deltaX) {
-                error += deltaX;
-                p1.y += stepY;
-            }
-        }
-    }
-
     // Just do bfs. Get each vertex position on new grid and just connect them
     void DLADualFilterBlur::constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels) {
         std::queue<std::pair<std::size_t, std::size_t>> q{};

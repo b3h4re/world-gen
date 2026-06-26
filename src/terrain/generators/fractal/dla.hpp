@@ -80,13 +80,90 @@ namespace wgen {
 
         static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
 
-        static void connectTwoPoints(HeightMap<int>& pixels, glm::ivec2 p1, glm::ivec2 p2);
-
         static void constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels);
 
     private:
 
     };
+
+    template<typename T, T defaultVal>
+    void connectTwoPoints(HeightMap<T>& pixels, glm::ivec2 p1, glm::ivec2 p2) {
+        const int deltaX = std::abs(p2.x - p1.x);
+        const int stepX = p1.x < p2.x ? 1 : -1;
+        const int deltaY = -std::abs(p2.y - p1.y);
+        const int stepY = p1.y < p2.y ? 1 : -1;
+        int error = deltaX + deltaY;
+
+        while (true) {
+            pixels.at(p1) = defaultVal;
+            if (p1 == p2) {
+                break;
+            }
+
+            const int doubledError = 2 * error;
+            if (doubledError >= deltaY) {
+                error += deltaY;
+                p1.x += stepX;
+            }
+            if (doubledError <= deltaX) {
+                error += deltaX;
+                p1.y += stepY;
+            }
+        }
+    }
+
+    template<typename T> requires requires (T t) { t = 1; }
+    void connectTwoPoints(HeightMap<T>& pixels, glm::ivec2 p1, glm::ivec2 p2) {
+        connectTwoPoints<T, 1>(pixels, p1, p2);
+    }
+
+    template<typename T>
+    void upscaleHeightmapWeightedLerp(const HeightMap<T>& pixelsOld, HeightMap<int>& pixelsNew) {
+        assert(
+            pixelsOld.width() <= pixelsNew.width() && pixelsOld.height() <= pixelsNew.height()
+            && "To upscale new heightmap needs to be larger than the old one"
+        );
+        if (pixelsOld.width() == pixelsNew.width() && pixelsOld.height() == pixelsNew.height()) {
+            pixelsNew = pixelsOld;
+            return;
+        }
+        for (std::size_t xNew; xNew < pixelsNew.width(); ++xNew) {
+            for (std::size_t yNew; yNew < pixelsNew.height(); ++yNew) {
+                float relX = static_cast<float>(xNew) / static_cast<float>(pixelsNew.width() - 1);
+                float relY = static_cast<float>(yNew) / static_cast<float>(pixelsNew.height() - 1);
+
+                float xOld = relX * static_cast<float>(pixelsOld.width() - 1);
+                float yOld = relY * static_cast<float>(pixelsOld.height() - 1);
+
+                std::size_t x1 = static_cast<std::size_t>(std::floor(xOld));
+                std::size_t x2 = static_cast<std::size_t>(std::ceil(xOld));
+                std::size_t y1 = static_cast<std::size_t>(std::floor(yOld));
+                std::size_t y2 = static_cast<std::size_t>(std::ceil(yOld));
+                // So now we have 4 pixels in between which lies our new one (x1, y1), (x1, y2), (x2, y1), (x2, y2)
+                glm::ivec2 p1{x1, y1}, p2{x1, y2}, p3{x2, y1}, p4{x2, y2};
+                std::vector<glm::ivec2> nearestPixels{p1, p2, p3, p4};
+                std::vector<std::pair<float, glm::ivec2>> distances{};
+                float totalDist{0};
+                distances.reserve(4);
+                for (int i = 0; i < 4; ++i) {
+                    float dist = minkowskiDistance({xOld, yOld}, nearestPixels[i], 2.0F);
+                    totalDist += dist;
+                    distances.emplace_back(dist, nearestPixels[i]);
+                }
+
+                float heightVal{0};
+                float totalWeight{0};
+                for (int i = 0; i < 4; ++i) {
+                    float weight = (totalDist - distances[i].first) / totalDist;
+                    totalWeight += weight;
+                    heightVal += weight * pixelsOld[distances[i].second];
+                }
+                heightVal /= totalWeight;
+                pixelsNew.at(xNew, yNew) = heightVal;
+            }
+        }
+
+    }
 
 
 }

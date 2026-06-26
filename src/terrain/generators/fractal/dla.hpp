@@ -118,7 +118,7 @@ namespace wgen {
     }
 
     template<typename T>
-    void upscaleHeightmapWeightedLerp(const HeightMap<T>& pixelsOld, HeightMap<int>& pixelsNew) {
+    void upscaleHeightmapWeightedLerp(const HeightMap<T>& pixelsOld, HeightMap<T>& pixelsNew) {
         assert(
             pixelsOld.width() <= pixelsNew.width() && pixelsOld.height() <= pixelsNew.height()
             && "To upscale new heightmap needs to be larger than the old one"
@@ -156,7 +156,7 @@ namespace wgen {
                 for (int i = 0; i < 4; ++i) {
                     float weight = (totalDist - distances[i].first) / totalDist;
                     totalWeight += weight;
-                    heightVal += weight * pixelsOld[distances[i].second];
+                    heightVal += weight * pixelsOld.at(distances[i].second);
                 }
                 heightVal /= totalWeight;
                 pixelsNew.at(xNew, yNew) = heightVal;

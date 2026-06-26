@@ -215,6 +215,18 @@ namespace wgen {
             "terrain.dla.num_steps"
         );
 
+        config.fill = checked_float(
+            root["terrain"]["dla"]["fill"],
+            config.fill,
+            "terrain.dla.fill"
+        );
+
+        config.jiggle = checked_float(
+            root["terrain"]["dla"]["jiggle"],
+            config.jiggle,
+            "terrain.dla.jiggle"
+        );
+
         return config;
     }
 

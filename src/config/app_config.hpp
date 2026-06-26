@@ -121,7 +121,9 @@ namespace wgen {
     };
 
     struct DLAConfig {
-        std::size_t numSteps{700};
+        std::size_t numSteps{5};
+        float fill{0.25F};
+        float jiggle{0.021F};
     };
 
     struct TerrainConfig {

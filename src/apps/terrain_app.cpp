@@ -103,20 +103,12 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        5,
+        config.terrainConfig.dla.numSteps,
         seed,
-        wgen::defaultDLAHeightFunction<0.15F>
+        wgen::defaultDLAHeightFunction<0.15F>,
+        config.terrainConfig.dla.fill,
+        config.terrainConfig.dla.jiggle
     )));
-    // generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
-    //     config.terrainConfig.dla.numSteps,
-    //     seed,
-    //     wgen::defaultDLAHeightFunction<0.15F>
-    // )));
-    // generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
-    //     config.terrainConfig.dla.numSteps,
-    //     seed,
-    //     wgen::defaultDLAHeightFunction<0.15F>
-    // )));
     // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
     //     config.terrainConfig.worley.gridWidth,
     //     config.terrainConfig.worley.gridHeight,

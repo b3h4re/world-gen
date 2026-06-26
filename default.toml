@@ -32,4 +32,6 @@ p=2.0
 num_points=1
 
 [terrain.dla]
-num_steps=700
+num_steps=5
+fill=0.25
+jiggle=0.021

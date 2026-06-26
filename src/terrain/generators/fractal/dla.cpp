@@ -332,7 +332,7 @@ namespace wgen {
             glm::ivec2 pos = intGraph.vertexPositions[i];
             glm::vec2 relPos = {
                 static_cast<float>(pos.x) / static_cast<float>(pixels.width() - 1),
-                static_cast<float>(pos.x) / static_cast<float>(pixels.width() - 1)
+                static_cast<float>(pos.y) / static_cast<float>(pixels.height() - 1)
             };
             relPointGraph.vertexPositions.push_back(relPos);
             relPointGraph.posIndicies.insert({relPos, i});

@@ -241,14 +241,16 @@ public:
 
         auto newMiddlePoint = (minVal + maxVal) / 2.0F;
         auto scale = (maxVal - minVal) / (mx - mn);
+        auto delta = minVal;
         if (std::abs(mx - mn) < 0.000001F) {
-            scale = 0;
+            scale = 1;
+            delta = (minVal + maxVal) / 2;
         }
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
                 auto newVal = this->at(x, y) - mn;
                 newVal *= scale;
-                newVal += minVal;
+                newVal += delta;
                 this->at(x, y) = newVal;
             }
         }

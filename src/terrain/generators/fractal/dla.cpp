@@ -55,84 +55,58 @@ namespace wgen {
             }
         }
         // findLeafs(pixels, leafs);
-        enumPixelsFromLeafs(pixels, placedPoints, leafs);
+        auto dists = enumPixelsFromLeafs(pixels, leafs);
 
 
         for (const auto& p : placedPoints) {
-            res.at(p) = heightFunc_(pixels.at(p));
+            res.at(p) = heightFunc_(dists.at(p));
         }
 
         return res;
     }
 
-    void DLABasic::enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs) {
-        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
-        std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
-        glm::ivec2 startingPos{pixels.width()/2, pixels.height()/2};
-        q.push({startingPos, startingPos});
+    HeightMap<int> DLABasic::enumPixelsFromSource(const HeightMap<int>& pixels, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs) {
+        std::queue<glm::ivec2> q{};
+        HeightMap<int> dist(pixels.width(), pixels.height(), 0);
 
-        // Basically bfs until we visit all generated points in cluster
-        while (q.size() > 0) {
-            glm::ivec2 pos = q.front().first;
-            glm::ivec2 prevPos = q.front().second;
-            counted.insert({pos, prevPos});
-            counted.insert({prevPos, pos});
-            q.pop();
+        q.push(startingPos);
+        dist.at(startingPos) = 1;
 
-            if (pos != prevPos) {
-                pixels.at(pos) = std::max(pixels.at(pos), pixels.at(prevPos) + 1);
-            }
+        enumPoints(pixels, dist, q);
 
-            for (const auto& dir : DIRECTIONS) {
-                if (!isInside(pos, dir, pixels.width(), pixels.height()) || pos + dir == startingPos
-                    || !placedPoints.contains(pos + dir)
-                    || counted.contains({pos, pos+dir}) || counted.contains({pos + dir, pos})) {
-                    continue;
-                }
-                if (pos != prevPos && pixels.at(pos) <= pixels.at(pos + dir)) {
-                    continue;
-                }
-                q.push({pos + dir, pos});
-            }
-        }
+        return dist;
     }
 
 
-    void DLABasic::enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs) {
-        std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
-        std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
-        for (const auto& pos : leafs) {
-            q.push({pos, pos});
+    HeightMap<int> DLABasic::enumPixelsFromLeafs(const HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs) {
+        std::queue<glm::ivec2> q{};
+        HeightMap<int> dist(pixels.width(), pixels.height(), 0);
+
+        for (const auto& leaf : leafs) {
+            q.push(leaf);
+            dist.at(leaf) = 1;
         }
-        int maxNum{0};
 
-        // Basically bfs until we visit all generated points in cluster
+        enumPoints(pixels, dist, q);
+
+        return dist;
+    }
+
+    void enumPoints(const HeightMap<int>& pixels, HeightMap<int>& dist, std::queue<glm::ivec2> q) {
         while (q.size() > 0) {
-            glm::ivec2 pos = q.front().first;
-            glm::ivec2 prevPos = q.front().second;
-            counted.insert({pos, prevPos});
-            counted.insert({prevPos, pos});
-            q.pop();
-
-            if (pos != prevPos) {
-                pixels.at(pos) = std::max(pixels.at(pos), pixels.at(prevPos) + 1);
-            }
-            maxNum = std::max(maxNum, pixels.at(pos));
+            glm::ivec2 pos = q.front();q.pop();
 
             for (const auto& dir : DIRECTIONS) {
-                if (!isInside(pos, dir, pixels.width(), pixels.height()) || leafs.contains(pos + dir)
-                    || !placedPoints.contains(pos + dir)
-                    || counted.contains({pos, pos+dir}) || counted.contains({pos + dir, pos})) {
+                if (!isInside(pos, dir, pixels.width(), pixels.height())) {
                     continue;
                 }
-                if (pos != prevPos && pixels.at(pos) <= pixels.at(pos + dir)) {
+                glm::ivec2 nextPos = pos + dir;
+                if (pixels.at(nextPos) == 0 || dist.at(nextPos) != 0) {
                     continue;
                 }
-                q.push({pos + dir, pos});
+                dist.at(nextPos)= dist.at(pos) + 1;
+                q.push(nextPos);
             }
-        }
-        for (const auto& p : placedPoints) {
-            pixels.at(p) = maxNum + 1 - pixels.at(p);
         }
     }
 
@@ -429,7 +403,7 @@ namespace wgen {
         }
         std::cout << "        enuming leafs\n";
 
-        enumPixelsFromLeafs(pixelsTmp, placedPoints, leafs);
+        enumPixelsFromLeafs(pixelsTmp, leafs);
         for (const auto& p : placedPoints) {
             res.at(p) = heightFunc_(pixelsTmp.at(p));
         }

@@ -5,6 +5,7 @@
 
 #include <unordered_set>
 #include <iostream>
+#include <queue>
 
 namespace wgen {
 
@@ -50,13 +51,15 @@ namespace wgen {
 
 
         static glm::ivec2 getRandomDirection(std::mt19937& randomDevice);
-        static void enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
-        static void enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
+        static HeightMap<int> enumPixelsFromLeafs(const HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
+        static HeightMap<int> enumPixelsFromSource(const HeightMap<int>& pixels, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
         static bool isAdjacent(HeightMap<int>& pixels, glm::ivec2 point);
         static bool dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
     private:
         float noise(std::size_t x, std::size_t y) const override;
     };
+
+    void enumPoints(const HeightMap<int>& pixels, HeightMap<int>& dist, std::queue<glm::ivec2> q);
 
 
     template<typename VecType, typename VecHash>

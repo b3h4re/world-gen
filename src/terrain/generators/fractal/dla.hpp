@@ -2,8 +2,8 @@
 
 #include "terrain/generators/generator.hpp"
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <unordered_set>
+#include <iostream>
 
 namespace wgen {
 
@@ -127,8 +127,8 @@ namespace wgen {
             pixelsNew = pixelsOld;
             return;
         }
-        for (std::size_t xNew; xNew < pixelsNew.width(); ++xNew) {
-            for (std::size_t yNew; yNew < pixelsNew.height(); ++yNew) {
+        for (std::size_t xNew = 0; xNew < pixelsNew.width(); ++xNew) {
+            for (std::size_t yNew = 0; yNew < pixelsNew.height(); ++yNew) {
                 float relX = static_cast<float>(xNew) / static_cast<float>(pixelsNew.width() - 1);
                 float relY = static_cast<float>(yNew) / static_cast<float>(pixelsNew.height() - 1);
 
@@ -136,9 +136,9 @@ namespace wgen {
                 float yOld = relY * static_cast<float>(pixelsOld.height() - 1);
 
                 std::size_t x1 = static_cast<std::size_t>(std::floor(xOld));
-                std::size_t x2 = static_cast<std::size_t>(std::ceil(xOld));
+                std::size_t x2 = std::min(std::max(x1+1, static_cast<std::size_t>(std::ceil(xOld))), pixelsOld.width() - 1);
                 std::size_t y1 = static_cast<std::size_t>(std::floor(yOld));
-                std::size_t y2 = static_cast<std::size_t>(std::ceil(yOld));
+                std::size_t y2 = std::min(std::max(y1+1, static_cast<std::size_t>(std::ceil(yOld))), pixelsOld.height() - 1);
                 // So now we have 4 pixels in between which lies our new one (x1, y1), (x1, y2), (x2, y1), (x2, y2)
                 glm::ivec2 p1{x1, y1}, p2{x1, y2}, p3{x2, y1}, p4{x2, y2};
                 std::vector<glm::ivec2> nearestPixels{p1, p2, p3, p4};

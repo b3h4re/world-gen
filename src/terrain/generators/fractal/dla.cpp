@@ -393,7 +393,6 @@ namespace wgen {
         HeightMap<int> pixelsTmp{pixels};
         auto leafs = getLeafs(pixels);
         std::unordered_set<glm::ivec2, Ivec2Hash> placedPoints{};
-        std::cout << "        counting placed points\n";
         for (std::size_t x = 0; x < pixels.width(); ++x) {
             for (std::size_t y = 0; y < pixels.height(); ++y) {
                 if (pixels.at(x, y) == 1) {
@@ -401,7 +400,6 @@ namespace wgen {
                 }
             }
         }
-        std::cout << "        enuming leafs\n";
 
         enumPixelsFromLeafs(pixelsTmp, leafs);
         for (const auto& p : placedPoints) {
@@ -529,7 +527,6 @@ namespace wgen {
         }
 
         for (std::size_t step = 1; step < numSteps_ + 1; ++step) {
-            std::cout << "Current DLA stage: " << step << "/" << numSteps_ << "\n";
             std::size_t newWidth = width + step * deltaW;
             std::size_t newHeight = height + step * deltaH;
             if (step == numSteps_) {
@@ -540,26 +537,20 @@ namespace wgen {
             // Making a crisp upscale and its heightmap
             HeightMap<int> crispUpscale{newWidth, newHeight};
             auto crispLeafs = constructCrispUpscaledPixels(graph, crispUpscale);
-            std::cout << "    constructed crisp upscale\n";
             fillPixels(crispUpscale, crispLeafs, random);
-            std::cout << "    filled in crisp upscale\n";
             HeightMap<float> crispHeightMap = heightMapFromPixels(crispUpscale);
-            std::cout << "    created crisp heightmap\n";
 
 
             HeightMap<float> upscaledInitialHeightMap{newWidth, newHeight};
             upscaleHeightmapWeightedLerp(initialHeightMap, upscaledInitialHeightMap);
             upscaledInitialHeightMap = conv(upscaledInitialHeightMap, wgen::SMALL_BLUR);
-            std::cout << "    upscaled initial heightmap\n";
 
             upscaledInitialHeightMap += crispHeightMap;
 
             initialHeightMap = upscaledInitialHeightMap;
             pixelsStart = crispUpscale;
             graph = getRelativeCoordinates(pixelsStart);
-            std::cout << "    added new heightmap to old one\n";
             jigglePoints(graph, jiggle_, random);
-            std::cout << "    jiggled points\n";
         }
         return initialHeightMap;
     }

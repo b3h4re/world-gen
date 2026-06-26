@@ -21,6 +21,18 @@ glm::vec3 terrainColor(float height);
 glm::vec3 terrainBlackAndWhite(float height);
 
 template<class T>
+class HeightMap;
+
+template<class T>
+struct IsHeightMap : std::false_type {};
+
+template<class T>
+struct IsHeightMap<HeightMap<T>> : std::true_type {};
+
+template<class T>
+concept NotHeightMap = !IsHeightMap<std::remove_cvref_t<T>>::value;
+
+template<class T>
 class HeightMap {
 public:
     HeightMap() : width_{0}, height_{0}, samples_{0} {}
@@ -42,27 +54,46 @@ public:
     Then this will add othe heightmap values to a sub heightmap with corners (x, y) and (x + w, y + h).
     This will also crop the result if it goes out of bounds
     */
-    void add_at(const HeightMap& other, std::size_t x = 0, std::size_t y = 0) {
+    // void add_at(const HeightMap& other, std::size_t x = 0, std::size_t y = 0) {
+    //     for (std::size_t j = y; j < std::min(height_, y + other.height()); ++j) {
+    //         for (std::size_t i = x; i < std::min(width_, x + other.width()); ++i) {
+    //             this->at(i, j) += other.at(i - x, j - y);
+    //         }
+    //     }
+    // }
+    template<typename N>
+    requires requires (const N& n, T& t) {
+        t += static_cast<T>(n);
+    }
+    void add_at(const HeightMap<N>& other, std::size_t x = 0, std::size_t y = 0) {
         for (std::size_t j = y; j < std::min(height_, y + other.height()); ++j) {
             for (std::size_t i = x; i < std::min(width_, x + other.width()); ++i) {
-                this->at(i, j) += other.at(i - x, j - y);
+                this->at(i, j) += static_cast<T>(other.at(i - x, j - y));
             }
         }
     }
 
     // uses add_at method
-    void operator+=(const HeightMap& other) {
+    template<typename N>
+    requires requires (const N& n, T& t) {
+        t += static_cast<T>(n);
+    }
+    void operator+=(const HeightMap<N>& other) {
         this->add_at(other, 0, 0);
     }
 
-    HeightMap<T> operator+(const HeightMap& other) const {
+    template<typename N>
+    requires requires (const N& n, T& t) {
+        t += static_cast<T>(n);
+    }
+    HeightMap<T> operator+(const HeightMap<N>& other) const {
         HeightMap<T> res(*this);
         res += other;
         return res;
     }
 
     template<typename N>
-        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+        requires NotHeightMap<N>
             && requires(T& t, const N& n) { t += n; }
     void operator+=(const N& rhs) {
         for (std::size_t y = 0; y < height_; ++y) {
@@ -72,7 +103,7 @@ public:
         }
     }
     template<typename N>
-        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+        requires NotHeightMap<N>
             && requires(const T& t, const N& n) { t + n; }
     HeightMap<T> operator+(const N& rhs) const {
         HeightMap<T> res(*this);
@@ -84,7 +115,8 @@ public:
         return res;
     }
 
-    template<typename N> requires requires(const T& t, const N& n) { t -= n; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const T& t, const N& n) { t -= n; }
     void operator-=(const N& rhs) {
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
@@ -92,7 +124,8 @@ public:
             }
         }
     }
-    template<typename N> requires requires(const T& t, const N& n) { t - n; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const T& t, const N& n) { t - n; }
     HeightMap<T> operator-(const N& rhs) {
         HeightMap<T> res(*this);
         for (std::size_t y = 0; y < height_; ++y) {
@@ -103,7 +136,8 @@ public:
         return res;
     }
 
-    template<typename N> requires requires(const T& t, const N& n) { t *= n; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const T& t, const N& n) { t *= n; }
     void operator*=(const N& rhs) {
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
@@ -112,14 +146,16 @@ public:
         }
     }
 
-    template<typename N> requires requires(const T& t, const N& n) { t * n; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const T& t, const N& n) { t * n; }
     HeightMap<T> operator*(const N& rhs) const {
         HeightMap<T> res(*this);
         res *= rhs;
         return res;
     }
 
-    template<typename N> requires requires(const N& n, const T& t) { n * t; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const N& n, const T& t) { n * t; }
     friend HeightMap<T> operator*(const N& lhs, const HeightMap<T>& rhs) {
         HeightMap<T> res(rhs);
         for (std::size_t y = 0; y < res.height(); ++y) {
@@ -131,7 +167,7 @@ public:
     }
 
     template<typename N>
-        requires (!std::same_as<std::remove_cvref_t<N>, HeightMap>)
+        requires NotHeightMap<N>
             && requires(const N& n, const T& t) { n + t; }
     friend HeightMap<T> operator+(const N& lhs, const HeightMap<T>& rhs) {
         HeightMap<T> res(rhs);
@@ -142,7 +178,8 @@ public:
         }
         return res;
     }
-    template<typename N> requires requires(const N& n, const T& t) { n - t; }
+    template<typename N>
+    requires NotHeightMap<N> && requires(const N& n, const T& t) { n - t; }
     friend HeightMap<T> operator-(const N& lhs, const HeightMap<T>& rhs) {
         HeightMap<T> res(rhs);
         for (std::size_t y = 0; y < res.height(); ++y) {

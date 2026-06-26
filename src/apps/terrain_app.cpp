@@ -25,11 +25,16 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
         std::random_device rd;
         seed = rd();
     }
-    generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
+    generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
         config.terrainConfig.dla.numSteps,
         seed,
         wgen::defaultDLAHeightFunction<0.15F>
     )));
+    // generators.push_back(std::make_unique<wgen::DLABasic>(wgen::DLABasic(
+    //     config.terrainConfig.dla.numSteps,
+    //     seed,
+    //     wgen::defaultDLAHeightFunction<0.15F>
+    // )));
     // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
     //     config.terrainConfig.worley.gridWidth,
     //     config.terrainConfig.worley.gridHeight,
@@ -81,7 +86,7 @@ void TerrainApp::loadTerrain() {
             const float top = -1.0F + 2.0F * static_cast<float>(y) / static_cast<float>(height - 1);
             const float bottom = -1.0F + 2.0F * static_cast<float>(y + 1) / static_cast<float>(height - 1);
             const float sample = heightMap.at(x, y);
-            const glm::vec3 color = wgen::terrainColor(sample);
+            const glm::vec3 color = wgen::terrainBlackAndWhite(sample);
             const auto base = static_cast<std::uint32_t>(vertices.size());
 
             vertices.insert(

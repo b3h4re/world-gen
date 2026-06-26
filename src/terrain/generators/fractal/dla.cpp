@@ -67,7 +67,7 @@ namespace wgen {
         return res;
     }
 
-    void DLABasic::enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const {
+    void DLABasic::enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) {
         std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
         std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
         glm::ivec2 startingPos{pixels.width()/2, pixels.height()/2};
@@ -100,7 +100,7 @@ namespace wgen {
     }
 
 
-    void DLABasic::enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const {
+    void DLABasic::enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) {
         std::unordered_set<std::pair<glm::ivec2, glm::ivec2>, Vec2Vec2Hash> counted{};
         std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
         for (const auto& pos : leafs) {
@@ -142,7 +142,7 @@ namespace wgen {
         return DIRECTIONS[randomDevice() % 4];
     }
 
-    bool DLABasic::isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) const {
+    bool DLABasic::isAdjacent(HeightMap<int>& pixels, glm::ivec2 point) {
         for (int i = 0; i < 4; ++i) {
             glm::ivec2 adjacentPosition = point + DIRECTIONS[i];
             if (!isInside(adjacentPosition, {0,0}, pixels.width(), pixels.height())) {
@@ -160,7 +160,7 @@ namespace wgen {
             RandomGridPoints& points,
             std::mt19937& randomDevice,
             std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints,
-            std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const
+            std::unordered_set<glm::ivec2, Vec2Hash>& leafs)
     {
         std::size_t randomSizeX = std::min(3 + placedPoints.size(), pixels.width());
         std::size_t randomSizeY = std::min(3 + placedPoints.size(), pixels.height());
@@ -264,7 +264,7 @@ namespace wgen {
     DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc)
         : DLADualFilterBlur{numSteps, std::random_device{}(), heightFunc} {}
     DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
-        : DLABasic{numSteps, seed, heightFunc} {
+        : DLABasic{numSteps, seed, heightFunc}, numSteps_{numSteps}, heightFunc_{heightFunc} {
         setSeed(seed);
     }
 
@@ -283,7 +283,8 @@ namespace wgen {
         std::queue<std::pair<glm::ivec2, glm::ivec2>> q{};
 
         intGraph.pointGraph.emplace_back();
-        intGraph.posIndicies.at(startingPos) = 0;
+        intGraph.posIndicies.insert({startingPos, 0});
+        // intGraph.posIndicies.at(startingPos) = 0;
         intGraph.vertexPositions.push_back(startingPos);
 
         q.push({startingPos, startingPos});
@@ -296,7 +297,7 @@ namespace wgen {
 
             if (!intGraph.posIndicies.contains(cur)) {
                 intGraph.pointGraph.emplace_back();
-                intGraph.posIndicies.at(cur) = intGraph.pointGraph.size() - 1;
+                intGraph.posIndicies.insert({cur, intGraph.pointGraph.size() - 1});
                 intGraph.vertexPositions.push_back(cur);
             }
 
@@ -334,7 +335,7 @@ namespace wgen {
                 static_cast<float>(pos.x) / static_cast<float>(pixels.width() - 1)
             };
             relPointGraph.vertexPositions.push_back(relPos);
-            relPointGraph.posIndicies.at(relPos) = i;
+            relPointGraph.posIndicies.insert({relPos, i});
         }
         relPointGraph.pointGraph = std::move(intGraph.pointGraph);
         return relPointGraph;
@@ -398,6 +399,40 @@ namespace wgen {
                 travelled.insert({neighboorId, curId});
             }
         }
+    }
+
+    HeightMap<float> DLADualFilterBlur::generateHeightMap(std::size_t width_, std::size_t height_) const {
+        std::size_t width{width_ / 2}, height{height_ / 2};
+        HeightMap<int> pixels{width, height};
+        glm::ivec2 startingPos{width/2, height/2};
+        pixels.at(startingPos) = 1;
+        RandomGridPoints points{getSeed()};
+
+        std::mt19937 random{getSeed()};
+        std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
+        placedPoints.insert(startingPos);
+        std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
+        leafs.insert(startingPos);
+        for (std::size_t i = 0; i < numSteps_; ++i) {
+            std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
+            if (!dlaStep(pixels, points, random, placedPoints, leafs)) {
+                break;
+            }
+        }
+        std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
+
+        PointGraph<glm::vec2> relCoords = getRelativeCoordinates(pixels, startingPos);
+        std::cout << "Constructed relative coordinates\n";
+        HeightMap<int> upscaled(width_, height_);
+        constructUpscaledPixels(relCoords, upscaled);
+        std::cout << "Constructed upscaled coordinates\n";
+
+        HeightMap<float> res(width_, height_);
+        std::cout << "Start add\n";
+        res += upscaled;
+        std::cout << "End add\n";
+
+        return res;
     }
 
 }

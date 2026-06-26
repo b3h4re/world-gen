@@ -228,36 +228,39 @@ public:
     std::size_t width() const { return width_; }
     std::size_t height() const { return height_; }
 
-    HeightMap& normalize() {
-        float avg{0};
-        float size = width_ * height_;
-
+    HeightMap& project(const T& minVal, const T& maxVal) {
+        T mn = this->at(0, 0);
+        T mx = this->at(0, 0);
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
-                avg += this->at(x, y) / size;
+                mn = std::min<T>(mn, this->at(x, y));
+                mx = std::max<T>(mx, this->at(x, y));
             }
         }
+        auto middlePoint = (mn + mx) / 2.0F;
 
-        float maxAbs{0};
-
+        auto newMiddlePoint = (minVal + maxVal) / 2.0F;
+        auto scale = (maxVal - minVal) / (mx - mn);
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
-                this->at(x, y) -= avg;
-                maxAbs = std::max(maxAbs, glm::abs(this->at(x, y)));
-            }
-        }
-
-        for (std::size_t y = 0; y < height_; ++y) {
-            for (std::size_t x = 0; x < width_; ++x) {
-                this->at(x, y) /= maxAbs;
+                auto newVal = this->at(x, y) - mn;
+                newVal *= scale;
+                newVal += minVal;
+                this->at(x, y) = newVal;
             }
         }
         return *this;
     }
-    HeightMap normal() const {
+    HeightMap& normalize() {
+        return project(-1, 1);
+    }
+    HeightMap projected(const T& minVal, const T& maxVal) const {
         HeightMap newHeightmap{*this};
-        newHeightmap.normalize();
+        newHeightmap.project(minVal, maxVal);
         return newHeightmap;
+    }
+    HeightMap normal() const {
+        return projected(-1, 1);
     }
 
     void clear(const T& defaultVal) {

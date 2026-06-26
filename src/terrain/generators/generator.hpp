@@ -119,7 +119,7 @@ namespace wgen {
 
     template<float k>
     float defaultDLAHeightFunction(int x) {
-        return 1 - 1.0F / (1.0F - k*static_cast<float>(x));
+        return 1 - 1.0F / (1.0F + k*static_cast<float>(x));
     }
 
     class Generator {

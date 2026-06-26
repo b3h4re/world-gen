@@ -122,6 +122,7 @@ namespace wgen {
 
     struct DLAConfig {
         std::size_t numSteps{5};
+        float heightFuncScale{0.15F};
         float fill{0.25F};
         float jiggle{0.021F};
     };

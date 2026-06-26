@@ -38,9 +38,9 @@ namespace wgen {
     */
     class DLABasic : public Generator {
     public:
-        using HeightFunc = float (*)(int); // Function whic receives int of point and returns height
-        DLABasic(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
-        DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        using HeightFunc = std::function<float(float)>; // Function whic receives int of point and returns height
+        DLABasic(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
+        DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
 
         virtual HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
 
@@ -86,8 +86,8 @@ namespace wgen {
 
     class DLADualFilterBlur : public DLABasic {
     public:
-        DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>, float fill = 0.25, float jiggle = 0.021);
-        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>, float fill = 0.25, float jiggle = 0.021);
+        DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F), float fill = 0.25, float jiggle = 0.021);
+        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F), float fill = 0.25, float jiggle = 0.021);
 
         HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
 

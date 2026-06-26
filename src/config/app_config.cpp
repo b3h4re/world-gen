@@ -216,6 +216,12 @@ namespace wgen {
         );
 
         config.fill = checked_float(
+            root["terrain"]["dla"]["height_scale"],
+            config.heightFuncScale,
+            "terrain.dla.height_scale"
+        );
+
+        config.fill = checked_float(
             root["terrain"]["dla"]["fill"],
             config.fill,
             "terrain.dla.fill"

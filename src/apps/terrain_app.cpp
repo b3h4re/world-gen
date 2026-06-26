@@ -105,7 +105,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
         config.terrainConfig.dla.numSteps,
         seed,
-        wgen::defaultDLAHeightFunction<0.15F>,
+        wgen::defaultDLAHeightFunction(config.terrainConfig.dla.heightFuncScale),
         config.terrainConfig.dla.fill,
         config.terrainConfig.dla.jiggle
     )));

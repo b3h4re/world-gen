@@ -117,10 +117,17 @@ namespace wgen {
         throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
     }
 
-    template<float k>
-    float defaultDLAHeightFunction(int x) {
-        return 1 - 1.0F / (1.0F + k*static_cast<float>(x));
+    // template<float k>
+    // float defaultDLAHeightFunction(int x) {
+    //     return 1 - 1.0F / (1.0F + k*static_cast<float>(x));
+    // }
+
+    inline auto defaultDLAHeightFunction(float scale) {
+        return [scale](int value) {
+            return 1 - 1.0F / (1.0F + scale*static_cast<float>(value));
+        };
     }
+
 
     class Generator {
     public:

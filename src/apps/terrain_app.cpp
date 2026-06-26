@@ -117,7 +117,7 @@ void TerrainApp::loadTerrain() {
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
-    appendHeightMapMesh(heightMap, -0.9F, 0.9F, -0.9F, 0.9F, vertices, indices, wgen::terrainColor);
+    appendHeightMapMesh(heightMap, -0.9F, 0.9F, -0.9F, 0.9F, vertices, indices, wgen::terrainBlackAndWhite);
 
     auto mesh = std::make_shared<Mesh2d>(device_, vertices, indices);
     objects_.push_back({std::move(mesh), {}});

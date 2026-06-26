@@ -143,45 +143,25 @@ namespace wgen {
             pixelsNew = pixelsOld;
             return;
         }
-        for (std::size_t xNew = 0; xNew < pixelsNew.width(); ++xNew) {
-            for (std::size_t yNew = 0; yNew < pixelsNew.height(); ++yNew) {
-                float relX = static_cast<float>(xNew) / static_cast<float>(pixelsNew.width() - 1);
-                float relY = static_cast<float>(yNew) / static_cast<float>(pixelsNew.height() - 1);
+        for (std::size_t yNew = 0; yNew < pixelsNew.height(); ++yNew) {
+            for (std::size_t xNew = 0; xNew < pixelsNew.width(); ++xNew) {
+                const float relX = static_cast<float>(xNew) / static_cast<float>(pixelsNew.width() - 1);
+                const float relY = static_cast<float>(yNew) / static_cast<float>(pixelsNew.height() - 1);
 
-                float xOld = relX * static_cast<float>(pixelsOld.width() - 1);
-                float yOld = relY * static_cast<float>(pixelsOld.height() - 1);
+                const float xOld = relX * static_cast<float>(pixelsOld.width() - 1);
+                const float yOld = relY * static_cast<float>(pixelsOld.height() - 1);
 
-                std::size_t x1 = static_cast<std::size_t>(std::floor(xOld));
-                std::size_t x2 = std::min(
-                    std::max(x1+1, static_cast<std::size_t>(std::ceil(xOld))),
-                    pixelsOld.width() - 1
-                );
-                std::size_t y1 = static_cast<std::size_t>(std::floor(yOld));
-                std::size_t y2 = std::min(
-                    std::max(y1+1, static_cast<std::size_t>(std::ceil(yOld))),
-                    pixelsOld.height() - 1
-                );
-                // So now we have 4 pixels in between which lies our new one (x1, y1), (x1, y2), (x2, y1), (x2, y2)
-                glm::ivec2 p1{x1, y1}, p2{x1, y2}, p3{x2, y1}, p4{x2, y2};
-                std::vector<glm::ivec2> nearestPixels{p1, p2, p3, p4};
-                std::vector<std::pair<float, glm::ivec2>> distances{};
-                float totalDist{0};
-                distances.reserve(4);
-                for (int i = 0; i < 4; ++i) {
-                    float dist = minkowskiDistance({xOld, yOld}, nearestPixels[i], 2.0F);
-                    totalDist += dist;
-                    distances.emplace_back(dist, nearestPixels[i]);
-                }
+                const auto x1 = static_cast<std::size_t>(std::floor(xOld));
+                const auto y1 = static_cast<std::size_t>(std::floor(yOld));
+                const std::size_t x2 = std::min(x1 + 1, pixelsOld.width() - 1);
+                const std::size_t y2 = std::min(y1 + 1, pixelsOld.height() - 1);
 
-                float heightVal{0};
-                float totalWeight{0};
-                for (int i = 0; i < 4; ++i) {
-                    float weight = (totalDist - distances[i].first) / totalDist;
-                    totalWeight += weight;
-                    heightVal += weight * pixelsOld.at(distances[i].second);
-                }
-                heightVal /= totalWeight;
-                pixelsNew.at(xNew, yNew) = heightVal;
+                const float tx = xOld - static_cast<float>(x1);
+                const float ty = yOld - static_cast<float>(y1);
+
+                const auto top = lerp(pixelsOld.at(x1, y1), pixelsOld.at(x2, y1), tx);
+                const auto bottom = lerp(pixelsOld.at(x1, y2), pixelsOld.at(x2, y2), tx);
+                pixelsNew.at(xNew, yNew) = lerp(top, bottom, ty);
             }
         }
 

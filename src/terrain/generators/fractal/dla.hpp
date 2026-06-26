@@ -79,7 +79,7 @@ namespace wgen {
     public:
         DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
         DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
-        constexpr static float FILL = 0.31F;
+        constexpr static float FILL = 0.25F;
 
         HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
 

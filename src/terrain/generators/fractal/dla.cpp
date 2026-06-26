@@ -50,12 +50,10 @@ namespace wgen {
         std::unordered_set<glm::ivec2, Ivec2Hash> leafs{};
         leafs.insert(startingPos);
         for (std::size_t i = 0; i < numSteps_; ++i) {
-            std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
             if (!dlaStep(pixels, points, random, placedPoints, leafs)) {
                 break;
             }
         }
-        std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
         // findLeafs(pixels, leafs);
         enumPixelsFromLeafs(pixels, placedPoints, leafs);
 
@@ -519,7 +517,6 @@ namespace wgen {
         leafs.insert(startingPos);
         std::size_t pointToPlace = static_cast<std::size_t>(FILL * static_cast<float>(width * height));
         for (std::size_t i = 0; i < pointToPlace; ++i) {
-            std::cout << "DLA steps: " << i + 1 << "/" << pointToPlace << "\n";
             if (!dlaStep(pixelsStart, points, random, placedPoints, leafs)) {
                 break;
             }
@@ -536,6 +533,7 @@ namespace wgen {
         }
 
         for (std::size_t step = 1; step < numSteps_ + 1; ++step) {
+            std::cout << "Current DLA stage: " << step << "/" << numSteps_ << "\n";
             std::size_t newWidth = width + step * deltaW;
             std::size_t newHeight = height + step * deltaH;
             if (step == numSteps_) {

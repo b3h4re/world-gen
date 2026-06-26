@@ -50,20 +50,20 @@ namespace wgen {
 
 
         static glm::ivec2 getRandomDirection(std::mt19937& randomDevice);
-        static void enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs);
-        static void enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs);
+        static void enumPixelsFromLeafs(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
+        static void enumPixelsFromSource(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
         static bool isAdjacent(HeightMap<int>& pixels, glm::ivec2 point);
-        static bool dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Vec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Vec2Hash>& leafs);
+        static bool dlaStep(HeightMap<int>& pixels, RandomGridPoints& points, std::mt19937& randomDevice, std::unordered_set<glm::ivec2, Ivec2Hash>& placedPoints, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
     private:
         float noise(std::size_t x, std::size_t y) const override;
     };
 
 
-    template<typename VecType>
+    template<typename VecType, typename VecHash>
     struct PointGraph {
     public:
         std::vector<std::unordered_set<std::size_t>> pointGraph{};
-        std::unordered_map<VecType, int, Vec2Hash> posIndicies{};
+        std::unordered_map<VecType, int, VecHash> posIndicies{};
         std::vector<VecType> vertexPositions{};
         std::unordered_set<std::size_t> leafs{};
     };
@@ -83,20 +83,20 @@ namespace wgen {
 
         HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
 
-        HeightMap<float> heightMapFromPixels(HeightMap<int>& pixels) const;
-        HeightMap<float> heightMapFromPointGraph(PointGraph<glm::vec2>& praph, std::size_t width, std::size_t height) const;
-        void fillPixels(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
-        static std::unordered_set<glm::ivec2, Vec2Hash> getLeafs(const HeightMap<int>& pixels);
+        HeightMap<float> heightMapFromPixels(const HeightMap<int>& pixels) const;
+        HeightMap<float> heightMapFromPointGraph(const PointGraph<glm::vec2, Vec2Hash>& praph, std::size_t width, std::size_t height) const;
+        void fillPixels(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs, std::mt19937& randomDevice) const;
+        static std::unordered_set<glm::ivec2, Ivec2Hash> getLeafs(const HeightMap<int>& pixels);
 
     protected:
-        HeightFunc heightFunc_;
-        std::size_t numSteps_;
+        // HeightFunc heightFunc_;
+        // std::size_t numSteps_;
 
-        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld);
-        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
-        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Vec2Hash>& leafs);
+        static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld);
+        static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
+        static PointGraph<glm::vec2, Vec2Hash> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Ivec2Hash>& leafs);
 
-        static std::unordered_set<glm::ivec2, Vec2Hash> constructCrispUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels);
+        static std::unordered_set<glm::ivec2, Ivec2Hash> constructCrispUpscaledPixels(const PointGraph<glm::vec2, Vec2Hash>& relPointGraph, HeightMap<int>& pixels);
 
     private:
 

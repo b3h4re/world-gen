@@ -138,7 +138,7 @@ public:
     }
 
     template<typename N>
-    requires NotHeightMap<N> && requires(const T& t, const N& n) { t -= n; }
+    requires NotHeightMap<N> && requires(T& t, const N& n) { t -= n; }
     void operator-=(const N& rhs) {
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
@@ -159,7 +159,7 @@ public:
     }
 
     template<typename N>
-    requires NotHeightMap<N> && requires(const T& t, const N& n) { t *= n; }
+    requires NotHeightMap<N> && requires(T& t, const N& n) { t *= n; }
     void operator*=(const N& rhs) {
         for (std::size_t y = 0; y < height_; ++y) {
             for (std::size_t x = 0; x < width_; ++x) {
@@ -275,3 +275,51 @@ private:
 };
 
 } // namespace wgen
+
+namespace std {
+
+template<typename T>
+requires requires (const T& lhs, const T& rhs) {
+    lhs < rhs;
+}
+T min(const wgen::HeightMap<T>& heightMap) {
+    if (heightMap.width() == 0 || heightMap.height() == 0) {
+        throw std::invalid_argument("cannot get minimum value of an empty height map");
+    }
+
+    T minValue = heightMap.at(0, 0);
+    for (std::size_t y = 0; y < heightMap.height(); ++y) {
+        for (std::size_t x = 0; x < heightMap.width(); ++x) {
+            const T value = heightMap.at(x, y);
+            if (value < minValue) {
+                minValue = value;
+            }
+        }
+    }
+
+    return minValue;
+}
+
+template<typename T>
+requires requires (const T& lhs, const T& rhs) {
+    lhs < rhs;
+}
+T max(const wgen::HeightMap<T>& heightMap) {
+    if (heightMap.width() == 0 || heightMap.height() == 0) {
+        throw std::invalid_argument("cannot get maximum value of an empty height map");
+    }
+
+    T maxValue = heightMap.at(0, 0);
+    for (std::size_t y = 0; y < heightMap.height(); ++y) {
+        for (std::size_t x = 0; x < heightMap.width(); ++x) {
+            const T value = heightMap.at(x, y);
+            if (maxValue < value) {
+                maxValue = value;
+            }
+        }
+    }
+
+    return maxValue;
+}
+
+} // namespace std

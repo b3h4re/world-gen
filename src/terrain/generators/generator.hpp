@@ -9,8 +9,17 @@
 
 namespace wgen {
 
-    struct Vec2Hash {
+    struct Ivec2Hash {
         std::size_t operator()(const glm::ivec2& v) const noexcept {
+            std::size_t h1 = std::hash<int>{}(v.x);
+            std::size_t h2 = std::hash<int>{}(v.y);
+
+            // hash combine
+            return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        }
+    };
+    struct Vec2Hash {
+        std::size_t operator()(const glm::vec2& v) const noexcept {
             std::size_t h1 = std::hash<int>{}(v.x);
             std::size_t h2 = std::hash<int>{}(v.y);
 
@@ -110,7 +119,7 @@ namespace wgen {
 
     template<float k>
     float defaultDLAHeightFunction(int x) {
-        return 1.0F / (1.0F + k*static_cast<float>(x));
+        return 1 - 1.0F / (1.0F - k*static_cast<float>(x));
     }
 
     class Generator {

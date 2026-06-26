@@ -19,6 +19,12 @@ namespace wgen {
         Kernel(const HeightMap<bool>& shape, const T& defaultVal)
                 : HeightMap<T>{shape.width(), shape.height(), defaultVal}, usedInKernel{shape} {}
 
+        Kernel(const HeightMap<bool>& shape, const HeightMap<T>& values)
+                : HeightMap<T>{values}, usedInKernel{shape} {}
+
+        Kernel(const HeightMap<T>& values)
+                : HeightMap<T>{values}, usedInKernel{values.width(), values.height(), true} {}
+
         const HeightMap<bool>& shape() const {
             return usedInKernel;
         }

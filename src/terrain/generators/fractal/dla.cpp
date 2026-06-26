@@ -271,7 +271,24 @@ namespace wgen {
     /*
     So essantially for each pixel remember its relative coordinate to grid and remember its neighboor
     */
+    PointGraph<glm::vec2> DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixels) {
+        glm::ivec2 startingPos;
+        for (std::size_t x = 0; x < pixels.width(); ++x) {
+            for (std::size_t y = 0; y < pixels.height(); ++y) {
+                if (pixels.at(x, y) == 1) {
+                    startingPos = glm::ivec2{x, y};
+                    return getRelativeCoordinates(pixels, startingPos);
+                }
+            }
+        }
+        return PointGraph<glm::vec2>{};
+    }
     PointGraph<glm::vec2> DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixels, glm::ivec2 startingPos) {
+        auto leafs = getLeafs(pixels);
+        return getRelativeCoordinates(pixels, startingPos, leafs);
+    }
+
+    PointGraph<glm::vec2> DLADualFilterBlur::getRelativeCoordinates(HeightMap<int>& pixels, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) {
         // A vector where at v[i] is a list of neighboors of i
         PointGraph<glm::ivec2> intGraph{};
         // std::vector<std::unordered_set<std::size_t>> pointGraph{};
@@ -337,12 +354,17 @@ namespace wgen {
             relPointGraph.vertexPositions.push_back(relPos);
             relPointGraph.posIndicies.insert({relPos, i});
         }
+
+
+        for (const auto& leaf : leafs) {
+            relPointGraph.leafs.insert(intGraph.posIndicies.at(leaf));
+        }
         relPointGraph.pointGraph = std::move(intGraph.pointGraph);
         return relPointGraph;
     }
 
     // Just do bfs. Get each vertex position on new grid and just connect them
-    void DLADualFilterBlur::constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels) {
+    std::unordered_set<glm::ivec2, Vec2Hash> DLADualFilterBlur::constructCrispUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels) {
         std::queue<std::pair<std::size_t, std::size_t>> q{};
         std::unordered_set<std::pair<std::size_t, std::size_t>, SizeSizeHash> travelled{};
 
@@ -374,13 +396,111 @@ namespace wgen {
                 travelled.insert({neighboorId, curId});
             }
         }
+        std::unordered_set<glm::ivec2, Vec2Hash> newLeafs{};
+        for (const auto& relLeaf : relPointGraph.leafs) {
+            auto relLeafPos = relPointGraph.vertexPositions[relLeaf];
+            glm::ivec2 leafPos = {
+                relLeafPos.x * static_cast<float>(pixels.width() - 1),
+                relLeafPos.y * static_cast<float>(pixels.height() - 1),
+            };
+        }
+        return newLeafs;
     }
 
-    HeightMap<float> DLADualFilterBlur::generateHeightMap(std::size_t width_, std::size_t height_) const {
-        std::size_t width{width_ / 2}, height{height_ / 2};
-        HeightMap<int> pixels{width, height};
+    HeightMap<float> DLADualFilterBlur::heightMapFromPixels(HeightMap<int>& pixels) const {
+        HeightMap<float> res{pixels.width(), pixels.height()};
+        HeightMap<int> pixelsTmp{pixels};
+        auto leafs = getLeafs(pixels);
+        std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
+        for (std::size_t x = 0; x < pixels.width(); ++x) {
+            for (std::size_t y = 0; y < pixels.height(); ++y) {
+                if (pixels.at(x, y) == 1) {
+                    placedPoints.insert(glm::ivec2{x, y});
+                }
+            }
+        }
+
+        enumPixelsFromLeafs(pixelsTmp, placedPoints, leafs);
+        for (const auto& p : placedPoints) {
+            res.at(p) = heightFunc_(pixelsTmp.at(p));
+        }
+
+        return res;
+    }
+
+
+    HeightMap<float> DLADualFilterBlur::heightMapFromPointGraph(PointGraph<glm::vec2>& praph, std::size_t width, std::size_t height) const {
+        HeightMap<int> pixels;
+        constructCrispUpscaledPixels(praph, pixels);
+        return heightMapFromPixels(pixels);
+    }
+
+    std::unordered_set<glm::ivec2, Vec2Hash> DLADualFilterBlur::getLeafs(const HeightMap<int>& pixels) {
+        std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
+
+        for (std::size_t y = 0; y < pixels.height(); ++y) {
+            for (std::size_t x = 0; x < pixels.width(); ++x) {
+                if (pixels.at(x, y) == 0) {
+                    continue;
+                }
+
+                glm::ivec2 pos{
+                    static_cast<int>(x),
+                    static_cast<int>(y)
+                };
+                int numNeighboors{0};
+
+                for (const auto& dir : DIRECTIONS) {
+                    if (!isInside(pos, dir, pixels.width(), pixels.height())) {
+                        continue;
+                    }
+                    if (pixels.at(pos + dir) != 0) {
+                        ++numNeighboors;
+                    }
+                }
+
+                if (numNeighboors <= 1) {
+                    leafs.insert(pos);
+                }
+            }
+        }
+
+        return leafs;
+    }
+
+    void DLADualFilterBlur::fillPixels(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const {
+        std::unordered_set<glm::ivec2, Vec2Hash> placedPoints{};
+        for (std::size_t x = 0; x < pixels.width(); ++x) {
+            for (std::size_t y = 0; y < pixels.height(); ++y) {
+                if (pixels.at(x, y) == 1) {
+                    placedPoints.insert(glm::ivec2{x, y});
+                }
+            }
+        }
+        std::size_t targetSize = static_cast<std::size_t>(
+            FILL * static_cast<float>(pixels.width() * pixels.height())
+        );
+        RandomGridPoints points{getSeed()};
+
+        std::mt19937 random{getSeed()};
+        while (placedPoints.size() < targetSize) {
+            if (!dlaStep(pixels, points, random, placedPoints, leafs)) {
+                break;
+            }
+        }
+    }
+
+    HeightMap<float> DLADualFilterBlur::generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const {
+        std::size_t deltaW = widthTarget / (numSteps_ + 1);
+        std::size_t deltaH = heightTarget / (numSteps_ + 1);
+        assert(
+            deltaW > 0 && deltaH > 0 && "Target image too small to generate with numSteps"
+        );
+        // Generate a starting small image
+        std::size_t width = deltaW, height = deltaH;
+        HeightMap<int> pixelsStart{width, height};
         glm::ivec2 startingPos{width/2, height/2};
-        pixels.at(startingPos) = 1;
+        pixelsStart.at(startingPos) = 1;
         RandomGridPoints points{getSeed()};
 
         std::mt19937 random{getSeed()};
@@ -388,26 +508,46 @@ namespace wgen {
         placedPoints.insert(startingPos);
         std::unordered_set<glm::ivec2, Vec2Hash> leafs{};
         leafs.insert(startingPos);
-        for (std::size_t i = 0; i < numSteps_; ++i) {
-            std::cout << "DLA steps: " << i + 1 << "/" << numSteps_ << "\n";
-            if (!dlaStep(pixels, points, random, placedPoints, leafs)) {
+        std::size_t pointToPlace = static_cast<std::size_t>(FILL * static_cast<float>(width * height));
+        for (std::size_t i = 0; i < pointToPlace; ++i) {
+            std::cout << "DLA steps: " << i + 1 << "/" << pointToPlace << "\n";
+            if (!dlaStep(pixelsStart, points, random, placedPoints, leafs)) {
                 break;
             }
         }
-        std::cout << "DLA steps finished. Placed points: " << placedPoints.size() << "\n";
+        PointGraph<glm::vec2> graph = getRelativeCoordinates(pixelsStart, startingPos, leafs);
 
-        PointGraph<glm::vec2> relCoords = getRelativeCoordinates(pixels, startingPos);
-        std::cout << "Constructed relative coordinates\n";
-        HeightMap<int> upscaled(width_, height_);
-        constructUpscaledPixels(relCoords, upscaled);
-        std::cout << "Constructed upscaled coordinates\n";
 
-        HeightMap<float> res(width_, height_);
-        std::cout << "Start add\n";
-        res += upscaled;
-        std::cout << "End add\n";
 
-        return res;
+        HeightMap<float> initialHeightMap = heightMapFromPixels(pixelsStart);
+
+
+        for (const auto& p : placedPoints) {
+            initialHeightMap.at(p) = heightFunc_(pixelsStart.at(p));
+        }
+
+        for (std::size_t step = 1; step < numSteps_ + 1; ++step) {
+            std::size_t newWidth = width + step * deltaW;
+            std::size_t newHeight = height + step * deltaH;
+
+            // Making a crisp upscale and its heightmap
+            HeightMap<int> crispUpscale{newWidth, newHeight};
+            auto crispLeafs = constructCrispUpscaledPixels(graph, crispUpscale);
+            fillPixels(crispUpscale, crispLeafs);
+            HeightMap<float> crispHeightMap = heightMapFromPixels(crispUpscale);
+
+
+            HeightMap<float> upscaledInitialHeightMap{newWidth, newHeight};
+            upscaleHeightmapWeightedLerp(initialHeightMap, upscaledInitialHeightMap);
+            upscaledInitialHeightMap = conv(upscaledInitialHeightMap, wgen::SMALL_BLUR);
+
+            upscaledInitialHeightMap += crispHeightMap;
+
+            initialHeightMap = upscaledInitialHeightMap;
+            pixelsStart = crispUpscale;
+            graph = getRelativeCoordinates(pixelsStart, startingPos);
+        }
+        return initialHeightMap;
     }
 
 }

@@ -65,6 +65,7 @@ namespace wgen {
         std::vector<std::unordered_set<std::size_t>> pointGraph{};
         std::unordered_map<VecType, int, Vec2Hash> posIndicies{};
         std::vector<VecType> vertexPositions{};
+        std::unordered_set<std::size_t> leafs{};
     };
 
     const static Kernel<float> SMALL_BLUR({
@@ -78,16 +79,24 @@ namespace wgen {
     public:
         DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
         DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction<1.0F>);
+        constexpr static float FILL = 0.31F;
 
-        HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
+        HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
+
+        HeightMap<float> heightMapFromPixels(HeightMap<int>& pixels) const;
+        HeightMap<float> heightMapFromPointGraph(PointGraph<glm::vec2>& praph, std::size_t width, std::size_t height) const;
+        void fillPixels(HeightMap<int>& pixels, std::unordered_set<glm::ivec2, Vec2Hash>& leafs) const;
+        static std::unordered_set<glm::ivec2, Vec2Hash> getLeafs(const HeightMap<int>& pixels);
 
     protected:
         HeightFunc heightFunc_;
         std::size_t numSteps_;
 
+        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld);
         static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos);
+        static PointGraph<glm::vec2> getRelativeCoordinates(HeightMap<int>& pixelsOld, glm::ivec2 startingPos, std::unordered_set<glm::ivec2, Vec2Hash>& leafs);
 
-        static void constructUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels);
+        static std::unordered_set<glm::ivec2, Vec2Hash> constructCrispUpscaledPixels(PointGraph<glm::vec2>& relPointGraph, HeightMap<int>& pixels);
 
     private:
 

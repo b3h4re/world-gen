@@ -2,6 +2,7 @@
 
 #include "device/lve_device.hpp"
 #include "game/2d/objects/game_object_2d.hpp"
+#include "game/3d/objects/game_object_3d.hpp"
 #include "renderer/lve_renderer.hpp"
 #include "window/lve_window.hpp"
 #include "terrain/generators/generator.hpp"
@@ -30,11 +31,13 @@ private:
     void loadTerrain();
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
+    bool render3d_{false};
 
     LveWindow window_{WIDTH, HEIGHT, "World Generator"};
     LveDevice device_{window_};
     LveRenderer renderer_{window_, device_};
-    std::vector<GameObject2d> objects_;
+    std::vector<GameObject2d> objects2d_;
+    std::vector<GameObject3d> objects3d_;
 };
 
 } // namespace lve

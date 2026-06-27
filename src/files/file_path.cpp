@@ -5,19 +5,17 @@
 
 namespace wgen::files {
 
-    namespace {
 
-        std::filesystem::path homeDirectory() {
-            const char* home = std::getenv("HOME");
+    std::filesystem::path Path::homeDirectory() {
+        const char* home = std::getenv("HOME");
 
-            if (home == nullptr || std::string_view{home}.empty()) {
-                return {};
-            }
-
-            return home;
+        if (home == nullptr || std::string_view{home}.empty()) {
+            return {};
         }
 
+        return home;
     }
+
 
     Path::Path(const char* path) : path_{normalize(path)} {}
 

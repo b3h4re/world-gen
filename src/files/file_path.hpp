@@ -23,6 +23,8 @@ namespace wgen::files {
         static std::filesystem::path expandUser(std::filesystem::path path);
         static std::filesystem::path normalize(std::filesystem::path path);
 
+        static std::filesystem::path homeDirectory();
+
     private:
         std::filesystem::path path_;
     };

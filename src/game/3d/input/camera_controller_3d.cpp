@@ -25,7 +25,10 @@ void CameraController3d::update(const AppInputState &input, float frameTime, Cam
         distance_ * std::sin(pitch_),
         distance_ * std::cos(pitch_) * std::cos(yaw_)
     };
-    camera.setViewTarget(position, target);
+    const glm::vec3 up = std::abs(std::cos(pitch_)) < 0.001F
+        ? glm::vec3{0.0F, 0.0F, -1.0F}
+        : glm::vec3{0.0F, 1.0F, 0.0F};
+    camera.setViewTarget(position, target, up);
 }
 
 } // namespace lve

@@ -67,7 +67,7 @@ void appendHeightMapMesh3d(
     for (std::size_t y = 0; y < height; ++y) {
         for (std::size_t x = 0; x < width; ++x) {
             const float xPos = -1.0F + 2.0F * static_cast<float>(x) / static_cast<float>(width - 1);
-            const float zPos = -1.0F + 2.0F * static_cast<float>(y) / static_cast<float>(height - 1);
+            const float zPos = 1.0F - 2.0F * static_cast<float>(y) / static_cast<float>(height - 1);
             const float sample = heightMap.at(x, y);
             vertices.push_back({
                 {xPos, 0.1F * sample, zPos},

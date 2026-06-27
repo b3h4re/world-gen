@@ -25,6 +25,9 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(stb)
 
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+
 
 # Adding source/headers
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
@@ -36,22 +39,12 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 )
 
-add_executable(world_gen ${SOURCES} ${HEADERS})
 
+add_executable(world_gen ${SOURCES} ${HEADERS})
 target_include_directories(world_gen PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
-
-target_compile_features(world_gen PRIVATE cxx_std_20)
-target_link_libraries(world_gen PRIVATE
-    Vulkan::Vulkan
-    glfw
-    tomlplusplus::tomlplusplus
-    stb
-)
 
 # Adding and compiling shaders
 target_compile_definitions(world_gen PRIVATE
@@ -84,7 +77,29 @@ foreach(SHADER ${SHADER_SOURCES})
 endforeach()
 
 add_custom_target(shaders DEPENDS ${SHADER_BINARY_FILES})
+
+# Copying assets
+add_custom_command(TARGET world_gen POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:world_gen>/assets"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:world_gen>/assets"
+)
+
+
+# Dependencies
 add_dependencies(world_gen shaders)
+
+# Linking
+target_compile_features(world_gen PRIVATE cxx_std_20)
+target_link_libraries(world_gen PRIVATE
+    Vulkan::Vulkan
+    glfw
+    tomlplusplus::tomlplusplus
+    stb
+)
 
 # Testing
 include(CTest)

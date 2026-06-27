@@ -1,22 +1,16 @@
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include "font_atlas.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <vector>
 #include <stdexcept>
 
+namespace lve {
 
-struct FontAtlas {
-    int width{};
-    int height{};
-    float pixelHeight{};
-    std::vector<unsigned char> pixels;
-    stbtt_bakedchar chars[96]; // ASCII 32..126
-};
+namespace {
 
-
-std::vector<unsigned char> readFileBytes(const std::filesystem::path& path) {
+std::vector<unsigned char> readFileBytes(const std::filesystem::path &path) {
     std::ifstream file{path, std::ios::binary | std::ios::ate};
     if (!file) {
         throw std::runtime_error("failed to open font file");
@@ -31,8 +25,9 @@ std::vector<unsigned char> readFileBytes(const std::filesystem::path& path) {
     return bytes;
 }
 
+} // namespace
 
-FontAtlas bakeFontAtlas(const std::filesystem::path& fontPath, float pixelHeight) {
+FontAtlas bakeFontAtlas(const std::filesystem::path &fontPath, float pixelHeight) {
     constexpr int atlasWidth = 512;
     constexpr int atlasHeight = 512;
     constexpr int firstChar = 32;
@@ -64,3 +59,5 @@ FontAtlas bakeFontAtlas(const std::filesystem::path& fontPath, float pixelHeight
 
     return atlas;
 }
+
+} // namespace lve

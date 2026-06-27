@@ -8,14 +8,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
 
-# Fetching toml++
 include(FetchContent)
+# Fetching toml++
 fetchcontent_declare(
     tomlplusplus
     GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
     GIT_TAG v3.4.0
 )
 fetchcontent_makeavailable(tomlplusplus)
+
+# stb_truetype
+fetchcontent_declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG 31c1ad37456438565541f4919958214b6e762fb4
+)
+fetchcontent_makeavailable(stb)
 
 
 # Adding source/headers
@@ -34,11 +42,15 @@ target_include_directories(world_gen PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+
 target_compile_features(world_gen PRIVATE cxx_std_20)
 target_link_libraries(world_gen PRIVATE
     Vulkan::Vulkan
     glfw
     tomlplusplus::tomlplusplus
+    stb
 )
 
 # Adding and compiling shaders

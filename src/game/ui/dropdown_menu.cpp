@@ -53,51 +53,37 @@ DropdownMenu::DropdownMenu(LveDevice &device, std::vector<UiButton::Config> butt
     }
 }
 
-bool DropdownMenu::update(GLFWwindow *window, VkExtent2D extent, bool escapePressed) {
-    if (escapePressed && open_) {
+bool DropdownMenu::update(const AppInputState &input) {
+    if (input.escapeJustPressed && open_) {
         open_ = false;
         return true;
     }
 
-    const bool mouseButtonIsPressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-    if (mouseButtonIsPressed && !mouseButtonWasPressed_) {
-        double cursorX{};
-        double cursorY{};
-        glfwGetCursorPos(window, &cursorX, &cursorY);
-
-        const float normalizedX =
-            2.0F * static_cast<float>(cursorX) / static_cast<float>(extent.width) - 1.0F;
-        const float normalizedY =
-            2.0F * static_cast<float>(cursorY) / static_cast<float>(extent.height) - 1.0F;
-
-        if (triggerButton_.click(normalizedX, normalizedY)) {
+    if (input.primaryMouseJustPressed) {
+        if (triggerButton_.click(input.normalizedMouseX, input.normalizedMouseY)) {
             open_ = !open_;
-            mouseButtonWasPressed_ = mouseButtonIsPressed;
             return true;
         }
 
         if (open_) {
             for (auto &button : menuButtons_) {
-                if (button.click(normalizedX, normalizedY)) {
-                    mouseButtonWasPressed_ = mouseButtonIsPressed;
+                if (button.click(input.normalizedMouseX, input.normalizedMouseY)) {
                     return true;
                 }
             }
 
             const bool clickedInsidePanel =
-                normalizedX >= menuPanelRect.left &&
-                normalizedX <= menuPanelRect.right &&
-                normalizedY >= menuPanelRect.top &&
-                normalizedY <= menuPanelRect.bottom;
+                input.normalizedMouseX >= menuPanelRect.left &&
+                input.normalizedMouseX <= menuPanelRect.right &&
+                input.normalizedMouseY >= menuPanelRect.top &&
+                input.normalizedMouseY <= menuPanelRect.bottom;
             if (!clickedInsidePanel) {
                 open_ = false;
             }
-            mouseButtonWasPressed_ = mouseButtonIsPressed;
             return true;
         }
     }
 
-    mouseButtonWasPressed_ = mouseButtonIsPressed;
     return false;
 }
 

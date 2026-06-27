@@ -6,6 +6,7 @@
 #include "game/3d/camera/camera_3d.hpp"
 #include "game/3d/input/camera_controller_3d.hpp"
 #include "game/3d/rendering/render_system_3d.hpp"
+#include "game/input/input_system.hpp"
 #include "terrain/terrain.hpp"
 #include "terrain/generators/generators.hpp"
 
@@ -169,25 +170,22 @@ void TerrainApp::run() {
     Camera3d camera3d{};
     CameraController2d cameraController2d{};
     CameraController3d cameraController3d{};
-    bool escapeWasPressed{false};
-    bool viewToggleWasPressed{false};
+    AppInputSystem appInputSystem{};
+    AppInputState input{};
     auto previousTime = std::chrono::steady_clock::now();
 
     while (!window_.shouldClose()) {
         glfwPollEvents();
-        const bool escapeIsPressed = glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS;
-        const bool escapeJustPressed = escapeIsPressed && !escapeWasPressed;
-        const bool uiHandledInput = dropdownMenu_.update(window_.getGLFWwindow(), window_.getExtent(), escapeJustPressed);
-        if (escapeJustPressed && !uiHandledInput) {
+        appInputSystem.updateInputState(window_.getGLFWwindow(), window_.getExtent(), input);
+
+        const bool uiHandledInput = dropdownMenu_.update(input);
+        if (input.escapeJustPressed && !uiHandledInput) {
             glfwSetWindowShouldClose(window_.getGLFWwindow(), GLFW_TRUE);
         }
-        escapeWasPressed = escapeIsPressed;
 
-        const bool viewToggleIsPressed = glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_V) == GLFW_PRESS;
-        if (viewToggleIsPressed && !viewToggleWasPressed) {
+        if (input.viewToggleJustPressed) {
             render3d_ = !render3d_;
         }
-        viewToggleWasPressed = viewToggleIsPressed;
 
         const auto currentTime = std::chrono::steady_clock::now();
         const float frameTime = std::min(

@@ -2,11 +2,11 @@
 
 #include "game/2d/camera/camera_2d.hpp"
 #include "game/2d/input/camera_controller_2d.hpp"
-#include "game/2d/rendering/render_system_2d.hpp"
 #include "game/3d/camera/camera_3d.hpp"
 #include "game/3d/input/camera_controller_3d.hpp"
-#include "game/3d/rendering/render_system_3d.hpp"
 #include "game/input/input_system.hpp"
+#include "renderer/systems/terrain_render_system.hpp"
+#include "stb/font_atlas.hpp"
 #include "terrain/terrain.hpp"
 #include "terrain/generators/generators.hpp"
 
@@ -203,8 +203,7 @@ void TerrainApp::loadTerrain() {
 }
 
 void TerrainApp::run() {
-    RenderSystem2d renderSystem2d{device_, renderer_.getSwapChainRenderPass()};
-    RenderSystem3d renderSystem3d{device_, renderer_.getSwapChainRenderPass()};
+    TerrainRenderSystem terrainRenderSystem{device_, renderer_.getSwapChainRenderPass()};
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};
@@ -213,6 +212,7 @@ void TerrainApp::run() {
         makeCameraTarget(camera2d, !render3d_),
         makeCameraTarget(camera3d, render3d_),
     };
+
     auto previousTime = std::chrono::steady_clock::now();
 
     while (!window_.shouldClose()) {
@@ -240,12 +240,8 @@ void TerrainApp::run() {
 
         if (const VkCommandBuffer commandBuffer = renderer_.beginFrame()) {
             renderer_.beginSwapChainRenderPass(commandBuffer);
-            if (render3d_) {
-                renderSystem3d.render(commandBuffer, camera3d, objects3d_);
-            } else {
-                renderSystem2d.render(commandBuffer, camera2d, objects2d_);
-            }
-            dropdownMenu_->render(commandBuffer, renderSystem2d);
+            terrainRenderSystem.render(commandBuffer, render3d_, camera2d, camera3d, objects2d_, objects3d_);
+            dropdownMenu_->render(commandBuffer, terrainRenderSystem.renderSystem2d());
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();
         }

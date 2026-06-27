@@ -17,7 +17,7 @@ class LveDevice;
 
 class DropdownMenu {
 public:
-    explicit DropdownMenu(LveDevice &device, std::vector<UiButton::Config> buttonConfigs = {});
+    DropdownMenu(LveDevice &device, const FontAtlas &font, std::vector<UiButton::Config> buttonConfigs = {});
 
     DropdownMenu(const DropdownMenu &) = delete;
     DropdownMenu &operator=(const DropdownMenu &) = delete;

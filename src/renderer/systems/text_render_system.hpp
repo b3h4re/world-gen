@@ -1,6 +1,7 @@
 #pragma once
 
 #include "device/lve_device.hpp"
+#include "game/objects/game_object_text.hpp"
 #include "pipeline/descriptors/lve_descriptors.hpp"
 #include "pipeline/lve_pipeline.hpp"
 #include "renderer/lve_frame_info.hpp"
@@ -9,10 +10,9 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <vector>
 
 namespace lve {
-
-class TextMesh;
 
 class TextRenderSystem {
 public:
@@ -23,11 +23,13 @@ public:
     TextRenderSystem(const TextRenderSystem &) = delete;
     TextRenderSystem &operator=(const TextRenderSystem &) = delete;
 
-    void render(FrameInfo &frameInfo, const TextInfo &textInfo) const;
-    void render(VkCommandBuffer commandBuffer, const Camera2d &camera, const TextInfo &textInfo) const;
+    const FontAtlas &fontAtlas() const { return fontAtlas_; }
+
+    void render(FrameInfo &frameInfo, const std::vector<GameObjectText> &objects) const;
+    void render(VkCommandBuffer commandBuffer, const Camera2d &camera,
+                const std::vector<GameObjectText> &objects) const;
 
 private:
-    void renderMesh(VkCommandBuffer commandBuffer, const Camera2d &camera, const TextMesh &textMesh) const;
     void createPipelineLayout();
     void createPipeline(VkRenderPass renderPass);
     void createFontTexture(const FontAtlas &fontAtlas);

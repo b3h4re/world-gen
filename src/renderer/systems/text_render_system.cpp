@@ -210,28 +210,26 @@ void TextRenderSystem::transitionFontImageLayout(VkImageLayout oldLayout, VkImag
     device_.endSingleTimeCommands(commandBuffer);
 }
 
-void TextRenderSystem::render(FrameInfo &frameInfo, const TextInfo &textInfo) const {
-    render(frameInfo.commandBuffer, frameInfo.camera2d, textInfo);
+void TextRenderSystem::render(FrameInfo &frameInfo, const std::vector<GameObjectText> &objects) const {
+    render(frameInfo.commandBuffer, frameInfo.camera2d, objects);
 }
 
-void TextRenderSystem::render(VkCommandBuffer commandBuffer, const Camera2d &camera, const TextInfo &textInfo) const {
-    TextMesh textMesh{device_, fontAtlas_, textInfo.text, textInfo.position, textInfo.color, textInfo.scale};
-    renderMesh(commandBuffer, camera, textMesh);
-}
-
-void TextRenderSystem::renderMesh(VkCommandBuffer commandBuffer, const Camera2d &camera,
-                                  const TextMesh &textMesh) const {
+void TextRenderSystem::render(VkCommandBuffer commandBuffer, const Camera2d &camera,
+                              const std::vector<GameObjectText> &objects) const {
     pipeline_->bind(commandBuffer);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &fontDescriptorSet_,
                             0, nullptr);
 
-    TextPushConstantData push{};
-    push.projectionView = camera.projectionView();
-    vkCmdPushConstants(commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextPushConstantData),
-                       &push);
+    for (const auto &object : objects) {
+        TextPushConstantData push{};
+        push.projectionView = camera.projectionView();
+        push.model = object.transform.mat4();
+        vkCmdPushConstants(commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextPushConstantData),
+                           &push);
 
-    textMesh.bind(commandBuffer);
-    textMesh.draw(commandBuffer);
+        object.mesh->bind(commandBuffer);
+        object.mesh->draw(commandBuffer);
+    }
 }
 
 } // namespace lve

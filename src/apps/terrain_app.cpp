@@ -134,7 +134,7 @@ void TerrainApp::initDropDownMenu() {
 
     std::vector<UiButton::Config> buttons{regenerateTerrainButton, reloadTerrainButton};
 
-    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, buttons);
+    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontAtlas_, buttons);
 }
 
 void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {

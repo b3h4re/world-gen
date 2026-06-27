@@ -2,6 +2,7 @@
 
 #include "game/camera/camera_2d.hpp"
 #include "game/objects/game_object_2d.hpp"
+#include "game/objects/game_object_text.hpp"
 #include "renderer/systems/render_system_2d.hpp"
 #include "renderer/systems/text_render_system.hpp"
 
@@ -33,8 +34,8 @@ public:
         std::function<void()> onClick{};
     };
 
-    UiButton(LveDevice &device, UiRect rect);
-    UiButton(LveDevice &device, UiRect rect, Config config);
+    UiButton(LveDevice &device, const FontAtlas &font, UiRect rect);
+    UiButton(LveDevice &device, const FontAtlas &font, UiRect rect, Config config);
 
     bool click(float normalizedX, float normalizedY);
     void render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem,
@@ -50,6 +51,7 @@ private:
     float textScale_{0.002F};
     std::function<void()> onClick_{};
     std::vector<GameObject2d> objects_;
+    std::vector<GameObjectText> textObjects_;
 };
 
 } // namespace lve

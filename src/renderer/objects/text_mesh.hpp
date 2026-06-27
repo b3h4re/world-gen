@@ -24,8 +24,8 @@ namespace lve {
 
     class TextMesh {
         public:
-            TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text, glm::vec2 position,
-                    glm::vec3 color = {1.0F, 1.0F, 1.0F}, float scale = 1.0F);
+    TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text,
+             glm::vec3 color = {1.0F, 1.0F, 1.0F}, float scale = 1.0F);
 
             TextMesh(const TextMesh &) = delete;
             TextMesh &operator=(const TextMesh &) = delete;

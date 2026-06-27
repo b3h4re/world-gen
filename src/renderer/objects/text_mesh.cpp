@@ -16,14 +16,14 @@ std::vector<VkVertexInputAttributeDescription> TextVertex::getAttributeDescripti
     };
 }
 
-TextMesh::TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text, glm::vec2 position, glm::vec3 color, float scale) {
+TextMesh::TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text, glm::vec3 color, float scale) {
     std::vector<TextVertex> vertices;
     std::vector<std::uint32_t> indices;
 
-    glm::vec2 pen = position;
+    glm::vec2 pen{};
     for (const char character : text) {
         if (character == '\n') {
-            pen.x = position.x;
+            pen.x = 0.0F;
             pen.y += font.pixelHeight * scale;
             continue;
         }

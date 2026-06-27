@@ -42,13 +42,13 @@ UiRect menuButtonEntryRect(std::size_t index) {
 
 } // namespace
 
-DropdownMenu::DropdownMenu(LveDevice &device, std::vector<UiButton::Config> buttonConfigs)
-    : triggerButton_{device, menuButtonRect, UiButton::Config{.text = "Menu"}} {
+DropdownMenu::DropdownMenu(LveDevice &device, const FontAtlas &font, std::vector<UiButton::Config> buttonConfigs)
+    : triggerButton_{device, font, menuButtonRect, UiButton::Config{.text = "Menu"}} {
     menuObjects_.push_back({makeRectMesh(device, menuPanelRect, {0.18F, 0.18F, 0.20F}), {}});
     menuButtons_.reserve(buttonConfigs.size());
 
     for (std::size_t i = 0; i < buttonConfigs.size(); ++i) {
-        menuButtons_.emplace_back(device, menuButtonEntryRect(i), std::move(buttonConfigs[i]));
+        menuButtons_.emplace_back(device, font, menuButtonEntryRect(i), std::move(buttonConfigs[i]));
     }
 }
 

@@ -25,16 +25,22 @@ std::shared_ptr<Mesh2d> makeRectMesh(LveDevice &device, const UiRect &rect, glm:
 
 } // namespace
 
-UiButton::UiButton(LveDevice &device, UiRect rect)
-    : UiButton{device, rect, Config{}} {}
+UiButton::UiButton(LveDevice &device, const FontAtlas &font, UiRect rect)
+    : UiButton{device, font, rect, Config{}} {}
 
-UiButton::UiButton(LveDevice &device, UiRect rect, Config config)
+UiButton::UiButton(LveDevice &device, const FontAtlas &font, UiRect rect, Config config)
     : rect_{rect}
     , text_{std::move(config.text)}
     , textColor_{config.textColor}
     , textScale_{config.textScale}
     , onClick_{std::move(config.onClick)} {
     objects_.push_back({makeRectMesh(device, rect_, config.color), {}});
+    if (!text_.empty()) {
+        auto mesh = std::make_shared<TextMesh>(device, font, text_, textColor_, textScale_);
+        GameObjectText textObject{std::move(mesh), {}};
+        textObject.transform.translation = {rect_.left + 0.01F, rect_.top + 0.02F};
+        textObjects_.push_back(std::move(textObject));
+    }
 }
 
 bool UiButton::click(float normalizedX, float normalizedY) {
@@ -49,17 +55,9 @@ bool UiButton::click(float normalizedX, float normalizedY) {
 }
 
 void UiButton::render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem,
-                      const TextRenderSystem &textRenderSystem, const Camera2d &camera) const {
+    const TextRenderSystem &textRenderSystem, const Camera2d &camera) const {
     renderSystem.render(commandBuffer, camera, objects_);
-    if (!text_.empty()) {
-        const TextInfo textInfo{
-            text_,
-            {rect_.left + 0.01F, rect_.top + 0.02F},
-            textColor_,
-            textScale_,
-        };
-        textRenderSystem.render(commandBuffer, camera, textInfo);
-    }
+    textRenderSystem.render(commandBuffer, camera, textObjects_);
 }
 
 bool UiButton::contains(float normalizedX, float normalizedY) const {

@@ -1,12 +1,13 @@
 #pragma once
 
+#include "config/app_config.hpp"
 #include "device/lve_device.hpp"
 #include "game/ui/dropdown_menu.hpp"
-#include "renderer/lve_renderer.hpp"
-#include "window/lve_window.hpp"
-#include "terrain/generators/generator.hpp"
-#include "config/app_config.hpp"
 #include "pipeline/descriptors/lve_descriptors.hpp"
+#include "renderer/lve_renderer.hpp"
+#include "stb/font_atlas.hpp"
+#include "terrain/generators/generator.hpp"
+#include "window/lve_window.hpp"
 
 #include <vector>
 
@@ -42,6 +43,7 @@ private:
     LveDevice device_{window_};
     LveRenderer renderer_{window_, device_};
     std::vector<GameObject2d> objects2d_;
+    FontAtlas fontAtlas_{};
     std::unique_ptr<DropdownMenu> dropdownMenu_;
     std::vector<GameObject3d> objects3d_;
 

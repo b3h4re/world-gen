@@ -29,7 +29,11 @@ UiButton::UiButton(LveDevice &device, UiRect rect)
     : UiButton{device, rect, Config{}} {}
 
 UiButton::UiButton(LveDevice &device, UiRect rect, Config config)
-    : rect_{rect}, onClick_{std::move(config.onClick)} {
+    : rect_{rect}
+    , text_{std::move(config.text)}
+    , textColor_{config.textColor}
+    , textScale_{config.textScale}
+    , onClick_{std::move(config.onClick)} {
     objects_.push_back({makeRectMesh(device, rect_, config.color), {}});
 }
 
@@ -44,18 +48,23 @@ bool UiButton::click(float normalizedX, float normalizedY) {
     return true;
 }
 
-void UiButton::render(
-    VkCommandBuffer commandBuffer,
-    const RenderSystem2d &renderSystem,
-    const Camera2d &camera) const {
+void UiButton::render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem,
+                      const TextRenderSystem &textRenderSystem, const Camera2d &camera) const {
     renderSystem.render(commandBuffer, camera, objects_);
+    if (!text_.empty()) {
+        const TextInfo textInfo{
+            text_,
+            {rect_.left + 0.01F, rect_.top + 0.02F},
+            textColor_,
+            textScale_,
+        };
+        textRenderSystem.render(commandBuffer, camera, textInfo);
+    }
 }
 
 bool UiButton::contains(float normalizedX, float normalizedY) const {
-    return normalizedX >= rect_.left &&
-        normalizedX <= rect_.right &&
-        normalizedY >= rect_.top &&
-        normalizedY <= rect_.bottom;
+    return normalizedX >= rect_.left && normalizedX <= rect_.right && normalizedY >= rect_.top &&
+           normalizedY <= rect_.bottom;
 }
 
 } // namespace lve

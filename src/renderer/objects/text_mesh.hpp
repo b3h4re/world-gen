@@ -1,8 +1,8 @@
 #pragma once
 
-#include "stb/font_atlas.hpp"
 #include "device/lve_device.hpp"
 #include "model/buffer/lve_buffer.hpp"
+#include "stb/font_atlas.hpp"
 
 #include <glm/glm.hpp>
 
@@ -10,7 +10,6 @@
 #include <memory>
 #include <string_view>
 #include <vector>
-
 
 namespace lve {
 
@@ -25,13 +24,15 @@ namespace lve {
 
     class TextMesh {
         public:
-            TextMesh(LveDevice& device, FontAtlas& font, std::string_view text, glm::vec2 position);
+            TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text, glm::vec2 position,
+                    glm::vec3 color = {1.0F, 1.0F, 1.0F}, float scale = 1.0F);
 
             TextMesh(const TextMesh &) = delete;
             TextMesh &operator=(const TextMesh &) = delete;
 
             void bind(VkCommandBuffer commandBuffer) const;
             void draw(VkCommandBuffer commandBuffer) const;
+
         private:
             std::unique_ptr<LveBuffer> vertexBuffer_;
             std::unique_ptr<LveBuffer> indexBuffer_;

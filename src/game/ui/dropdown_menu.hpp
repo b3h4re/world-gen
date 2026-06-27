@@ -1,10 +1,11 @@
 #pragma once
 
 #include "game/camera/camera_2d.hpp"
-#include "game/objects/game_object_2d.hpp"
-#include "renderer/systems/render_system_2d.hpp"
 #include "game/input/input_state.hpp"
+#include "game/objects/game_object_2d.hpp"
 #include "game/ui/ui_button.hpp"
+#include "renderer/systems/render_system_2d.hpp"
+#include "renderer/systems/text_render_system.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -22,7 +23,7 @@ public:
     DropdownMenu &operator=(const DropdownMenu &) = delete;
 
     bool update(const AppInputState &input);
-    void render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem) const;
+    void render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem, const TextRenderSystem &textRenderSystem) const;
 
     bool isOpen() const { return open_; }
 

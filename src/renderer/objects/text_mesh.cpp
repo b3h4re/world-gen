@@ -16,8 +16,7 @@ std::vector<VkVertexInputAttributeDescription> TextVertex::getAttributeDescripti
     };
 }
 
-TextMesh::TextMesh(LveDevice &device, FontAtlas &font, std::string_view text, glm::vec2 position) {
-    constexpr glm::vec3 textColor{1.0F, 1.0F, 1.0F};
+TextMesh::TextMesh(LveDevice &device, const FontAtlas &font, std::string_view text, glm::vec2 position, glm::vec3 color, float scale) {
     std::vector<TextVertex> vertices;
     std::vector<std::uint32_t> indices;
 
@@ -25,7 +24,7 @@ TextMesh::TextMesh(LveDevice &device, FontAtlas &font, std::string_view text, gl
     for (const char character : text) {
         if (character == '\n') {
             pen.x = position.x;
-            pen.y += font.pixelHeight;
+            pen.y += font.pixelHeight * scale;
             continue;
         }
 
@@ -34,17 +33,17 @@ TextMesh::TextMesh(LveDevice &device, FontAtlas &font, std::string_view text, gl
             continue;
         }
 
-        const glm::vec2 min = pen + glyph->bearing;
-        const glm::vec2 max = min + glyph->size;
+        const glm::vec2 min = pen + glyph->bearing * scale;
+        const glm::vec2 max = min + glyph->size * scale;
         const auto base = static_cast<std::uint32_t>(vertices.size());
 
-        vertices.push_back({{min.x, min.y}, {glyph->uvMin.x, glyph->uvMin.y}, textColor});
-        vertices.push_back({{max.x, min.y}, {glyph->uvMax.x, glyph->uvMin.y}, textColor});
-        vertices.push_back({{max.x, max.y}, {glyph->uvMax.x, glyph->uvMax.y}, textColor});
-        vertices.push_back({{min.x, max.y}, {glyph->uvMin.x, glyph->uvMax.y}, textColor});
+        vertices.push_back({{min.x, min.y}, {glyph->uvMin.x, glyph->uvMin.y}, color});
+        vertices.push_back({{max.x, min.y}, {glyph->uvMax.x, glyph->uvMin.y}, color});
+        vertices.push_back({{max.x, max.y}, {glyph->uvMax.x, glyph->uvMax.y}, color});
+        vertices.push_back({{min.x, max.y}, {glyph->uvMin.x, glyph->uvMax.y}, color});
         indices.insert(indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
 
-        pen.x += glyph->advance;
+        pen.x += glyph->advance * scale;
     }
 
     indexCount_ = static_cast<std::uint32_t>(indices.size());
@@ -52,38 +51,25 @@ TextMesh::TextMesh(LveDevice &device, FontAtlas &font, std::string_view text, gl
         return;
     }
 
-    LveBuffer vertexStaging{
-        device,
-        sizeof(TextVertex),
-        static_cast<std::uint32_t>(vertices.size()),
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+    LveBuffer vertexStaging{device, sizeof(TextVertex), static_cast<std::uint32_t>(vertices.size()),
+                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
     vertexStaging.map();
     vertexStaging.writeToBuffer(vertices.data());
 
-    vertexBuffer_ = std::make_unique<LveBuffer>(
-        device,
-        sizeof(TextVertex),
-        static_cast<std::uint32_t>(vertices.size()),
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vertexBuffer_ = std::make_unique<LveBuffer>(device, sizeof(TextVertex), static_cast<std::uint32_t>(vertices.size()),
+                                                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     device.copyBuffer(vertexStaging.getBuffer(), vertexBuffer_->getBuffer(), sizeof(TextVertex) * vertices.size());
 
-    LveBuffer indexStaging{
-        device,
-        sizeof(std::uint32_t),
-        indexCount_,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+    LveBuffer indexStaging{device, sizeof(std::uint32_t), indexCount_, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
     indexStaging.map();
     indexStaging.writeToBuffer(indices.data());
 
-    indexBuffer_ = std::make_unique<LveBuffer>(
-        device,
-        sizeof(std::uint32_t),
-        indexCount_,
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    indexBuffer_ = std::make_unique<LveBuffer>(device, sizeof(std::uint32_t), indexCount_,
+                                               VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     device.copyBuffer(indexStaging.getBuffer(), indexBuffer_->getBuffer(), sizeof(std::uint32_t) * indices.size());
 }
 

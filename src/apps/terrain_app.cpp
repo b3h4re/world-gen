@@ -3,17 +3,18 @@
 #include "game/input/input_system.hpp"
 #include "model/buffer/lve_buffer.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
+#include "renderer/systems/text_render_system.hpp"
 #include "stb/font_atlas.hpp"
-#include "terrain/terrain.hpp"
 #include "terrain/generators/generators.hpp"
+#include "terrain/terrain.hpp"
 
-#include <GLFW/glfw3.h>
 #include <algorithm>
 #include <chrono>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <iostream>
 #include <memory>
 #include <random>
-#include <iostream>
 #include <vector>
 
 namespace lve {
@@ -106,40 +107,37 @@ void TerrainApp::initDescriptorPool() {
     globalPool_ = LveDescriptorPool::Builder(device_)
             .setMaxSets(100)
             .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
+            .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16)
             .build();
-
 }
 
 void TerrainApp::initFontAtlas() {
-    auto atlas = bakeFontAtlas("assets/fonts/Inter-Regular.ttf", 32.0F);
+    fontAtlas_ = bakeFontAtlas("assets/fonts/Inter-Regular.ttf", 32.0F);
 }
 
 void TerrainApp::initDropDownMenu() {
     UiButton::Config regenerateTerrainButton = {
         .color = {0.25F, 0.25F, 0.30F},
-        .onClick = [this] {
-            std::random_device rd;
-            regenerateTerrain(rd());
-        },
+        .text = "Regenerate",
+        .onClick =
+            [this] {
+                std::random_device rd;
+                regenerateTerrain(rd());
+            },
     };
 
     UiButton::Config reloadTerrainButton = {
         .color = {0.25F, 0.25F, 0.30F},
-        .onClick = [this] {
-            regenerateTerrain(this->config.terrainConfig.seed);
-        },
+        .text = "Reload seed",
+        .onClick = [this] { regenerateTerrain(this->config.terrainConfig.seed); },
     };
 
-    std::vector<UiButton::Config> buttons{
-        regenerateTerrainButton
-    };
+    std::vector<UiButton::Config> buttons{regenerateTerrainButton, reloadTerrainButton};
 
     dropdownMenu_ = std::make_unique<DropdownMenu>(device_, buttons);
-
 }
 
-
-void TerrainApp::initGenerators(const wgen::TerrainConfig& terrainConfig) {
+void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
     generators.clear();
     std::uint32_t seed;
     if (terrainConfig.setSeed) {
@@ -149,12 +147,8 @@ void TerrainApp::initGenerators(const wgen::TerrainConfig& terrainConfig) {
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        terrainConfig.dla.numSteps,
-        seed,
-        wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
-        terrainConfig.dla.fill,
-        terrainConfig.dla.jiggle
-    )));
+        terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
+        terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
     // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
     //     terrainConfig.worley.gridWidth,
     //     terrainConfig.worley.gridHeight,
@@ -239,6 +233,7 @@ void TerrainApp::run() {
     }
 
     TerrainRenderSystem terrainRenderSystem{device_, renderer_.getSwapChainRenderPass()};
+    TextRenderSystem textRenderSystem{device_, renderer_.getSwapChainRenderPass(), *globalPool_, fontAtlas_};
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};
@@ -296,10 +291,9 @@ void TerrainApp::run() {
             uboBuffers[frameIndex]->writeToBuffer(&ubo);
             uboBuffers[frameIndex]->flush();
 
-
             renderer_.beginSwapChainRenderPass(commandBuffer);
             terrainRenderSystem.render(frameInfo);
-            dropdownMenu_->render(commandBuffer, terrainRenderSystem.renderSystem2d());
+            dropdownMenu_->render(commandBuffer, terrainRenderSystem.renderSystem2d(), textRenderSystem);
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();
         }

@@ -31,8 +31,7 @@ std::shared_ptr<Mesh2d> makeRectMesh(LveDevice &device, const UiRect &rect, glm:
 }
 
 UiRect menuButtonEntryRect(std::size_t index) {
-    const float top = menuPanelRect.top + menuButtonMargin +
-        static_cast<float>(index) * (menuButtonHeight + menuButtonMargin);
+    const float top = menuPanelRect.top + menuButtonMargin + static_cast<float>(index) * (menuButtonHeight + menuButtonMargin);
     return {
         menuPanelRect.left + menuButtonMargin,
         top,
@@ -44,7 +43,7 @@ UiRect menuButtonEntryRect(std::size_t index) {
 } // namespace
 
 DropdownMenu::DropdownMenu(LveDevice &device, std::vector<UiButton::Config> buttonConfigs)
-    : triggerButton_{device, menuButtonRect} {
+    : triggerButton_{device, menuButtonRect, UiButton::Config{.text = "Menu"}} {
     menuObjects_.push_back({makeRectMesh(device, menuPanelRect, {0.18F, 0.18F, 0.20F}), {}});
     menuButtons_.reserve(buttonConfigs.size());
 
@@ -73,10 +72,8 @@ bool DropdownMenu::update(const AppInputState &input) {
             }
 
             const bool clickedInsidePanel =
-                input.normalizedMouseX >= menuPanelRect.left &&
-                input.normalizedMouseX <= menuPanelRect.right &&
-                input.normalizedMouseY >= menuPanelRect.top &&
-                input.normalizedMouseY <= menuPanelRect.bottom;
+                input.normalizedMouseX >= menuPanelRect.left && input.normalizedMouseX <= menuPanelRect.right &&
+                input.normalizedMouseY >= menuPanelRect.top && input.normalizedMouseY <= menuPanelRect.bottom;
             if (!clickedInsidePanel) {
                 open_ = false;
             }
@@ -87,12 +84,12 @@ bool DropdownMenu::update(const AppInputState &input) {
     return false;
 }
 
-void DropdownMenu::render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem) const {
-    triggerButton_.render(commandBuffer, renderSystem, camera_);
+void DropdownMenu::render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem, const TextRenderSystem &textRenderSystem) const {
+    triggerButton_.render(commandBuffer, renderSystem, textRenderSystem, camera_);
     if (open_) {
         renderSystem.render(commandBuffer, camera_, menuObjects_);
         for (const auto &button : menuButtons_) {
-            button.render(commandBuffer, renderSystem, camera_);
+            button.render(commandBuffer, renderSystem, textRenderSystem, camera_);
         }
     }
 }

@@ -73,4 +73,8 @@ void RenderSystem3d::render(
     }
 }
 
+void RenderSystem3d::render(FrameInfo &frameInfo) const {
+    render(frameInfo.commandBuffer, frameInfo.camera3d, frameInfo.objects3d);
+}
+
 } // namespace lve

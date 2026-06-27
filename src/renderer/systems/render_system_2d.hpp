@@ -4,6 +4,7 @@
 #include "game/2d/camera/camera_2d.hpp"
 #include "game/2d/objects/game_object_2d.hpp"
 #include "pipeline/lve_pipeline.hpp"
+#include "renderer/lve_frame_info.hpp"
 
 #include <memory>
 #include <vector>
@@ -22,6 +23,7 @@ public:
         VkCommandBuffer commandBuffer,
         const Camera2d &camera,
         const std::vector<GameObject2d> &objects) const;
+    void render(FrameInfo &frameInfo) const;
 
 private:
     void createPipelineLayout();

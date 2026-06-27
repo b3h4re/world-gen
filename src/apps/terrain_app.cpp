@@ -5,6 +5,7 @@
 #include "game/3d/camera/camera_3d.hpp"
 #include "game/3d/input/camera_controller_3d.hpp"
 #include "game/input/input_system.hpp"
+#include "model/buffer/lve_buffer.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
 #include "stb/font_atlas.hpp"
 #include "terrain/terrain.hpp"
@@ -13,6 +14,7 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <chrono>
+#include <glm/glm.hpp>
 #include <memory>
 #include <random>
 #include <iostream>
@@ -97,9 +99,23 @@ void appendHeightMapMesh3d(
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
+    initDescriptorPool();
+    initFontAtlas();
     initGenerators(config.terrainConfig);
     loadTerrain();
     initDropDownMenu();
+}
+
+void TerrainApp::initDescriptorPool() {
+    globalPool_ = LveDescriptorPool::Builder(device_)
+            .setMaxSets(100)
+            .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
+            .build();
+
+}
+
+void TerrainApp::initFontAtlas() {
+    auto atlas = bakeFontAtlas("assets/fonts/Inter-Regular.ttf", 32.0F);
 }
 
 void TerrainApp::initDropDownMenu() {
@@ -203,6 +219,29 @@ void TerrainApp::loadTerrain() {
 }
 
 void TerrainApp::run() {
+    std::vector<std::unique_ptr<LveBuffer>> uboBuffers(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
+    for (std::size_t i = 0; i < uboBuffers.size(); ++i) {
+        uboBuffers[i] = std::make_unique<LveBuffer>(
+            device_,
+            sizeof(GlobalUbo),
+            1,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        uboBuffers[i]->map();
+    }
+
+    auto globalSetLayout = LveDescriptorSetLayout::Builder(device_)
+                               .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               .build();
+
+    std::vector<VkDescriptorSet> globalDescriptorSets(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
+    for (std::size_t i = 0; i < globalDescriptorSets.size(); ++i) {
+        auto bufferInfo = uboBuffers[i]->descriptorInfo();
+        LveDescriptorWriter(*globalSetLayout, *globalPool_)
+            .writeBuffer(0, &bufferInfo)
+            .build(globalDescriptorSets[i]);
+    }
+
     TerrainRenderSystem terrainRenderSystem{device_, renderer_.getSwapChainRenderPass()};
     Camera2d camera2d{};
     Camera3d camera3d{};
@@ -229,9 +268,7 @@ void TerrainApp::run() {
         }
 
         const auto currentTime = std::chrono::steady_clock::now();
-        const float frameTime = std::min(
-            std::chrono::duration<float>(currentTime - previousTime).count(),
-            0.1F);
+        const float frameTime = std::min(std::chrono::duration<float>(currentTime - previousTime).count(), 0.1F);
         previousTime = currentTime;
 
         cameraTargets[0].active = !render3d_;
@@ -239,8 +276,33 @@ void TerrainApp::run() {
         appInputSystem.updateCameras(input, frameTime, renderer_.getAspectRatio(), cameraTargets);
 
         if (const VkCommandBuffer commandBuffer = renderer_.beginFrame()) {
+            const int frameIndex = renderer_.getFrameIndex();
+            FrameInfo frameInfo{
+                frameIndex,
+                frameTime,
+                commandBuffer,
+                camera2d,
+                camera3d,
+                globalDescriptorSets[frameIndex],
+                render3d_,
+                objects2d_,
+                objects3d_,
+            };
+
+            GlobalUbo ubo{};
+            if (render3d_) {
+                ubo.projection = camera3d.projection();
+                ubo.view = camera3d.view();
+                ubo.inverseView = glm::inverse(camera3d.view());
+            } else {
+                ubo.projection = camera2d.projectionView();
+            }
+            uboBuffers[frameIndex]->writeToBuffer(&ubo);
+            uboBuffers[frameIndex]->flush();
+
+
             renderer_.beginSwapChainRenderPass(commandBuffer);
-            terrainRenderSystem.render(commandBuffer, render3d_, camera2d, camera3d, objects2d_, objects3d_);
+            terrainRenderSystem.render(frameInfo);
             dropdownMenu_->render(commandBuffer, terrainRenderSystem.renderSystem2d());
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();

@@ -97,54 +97,92 @@ void appendHeightMapMesh3d(
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
+    initGenerators(config.terrainConfig);
+    loadTerrain();
+    initDropDownMenu();
+}
+
+void TerrainApp::initDropDownMenu() {
+    UiButton::Config regenerateTerrainButton = {
+        .color = {0.25F, 0.25F, 0.30F},
+        .onClick = [this] {
+            std::random_device rd;
+            regenerateTerrain(rd());
+        },
+    };
+
+    UiButton::Config reloadTerrainButton = {
+        .color = {0.25F, 0.25F, 0.30F},
+        .onClick = [this] {
+            regenerateTerrain(this->config.terrainConfig.seed);
+        },
+    };
+
+    std::vector<UiButton::Config> buttons{
+        regenerateTerrainButton
+    };
+
+    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, buttons);
+
+}
+
+
+void TerrainApp::initGenerators(const wgen::TerrainConfig& terrainConfig) {
+    generators.clear();
     std::uint32_t seed;
-    if (config.terrainConfig.setSeed) {
-        seed = config.terrainConfig.seed;
+    if (terrainConfig.setSeed) {
+        seed = terrainConfig.seed;
     } else {
         std::random_device rd;
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        config.terrainConfig.dla.numSteps,
+        terrainConfig.dla.numSteps,
         seed,
-        wgen::defaultDLAHeightFunction(config.terrainConfig.dla.heightFuncScale),
-        config.terrainConfig.dla.fill,
-        config.terrainConfig.dla.jiggle
+        wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
+        terrainConfig.dla.fill,
+        terrainConfig.dla.jiggle
     )));
     // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-    //     config.terrainConfig.worley.gridWidth,
-    //     config.terrainConfig.worley.gridHeight,
-    //     config.terrainConfig.worley.dotsPerCell,
+    //     terrainConfig.worley.gridWidth,
+    //     terrainConfig.worley.gridHeight,
+    //     terrainConfig.worley.dotsPerCell,
     //     seed,
-    //     config.terrainConfig.worley.p,
-    //     config.terrainConfig.worley.numPoints
+    //     terrainConfig.worley.p,
+    //     terrainConfig.worley.numPoints
     // )));
     // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-    //     config.terrainConfig.wavelet.gridWidth,
-    //     config.terrainConfig.wavelet.gridHeight,
+    //     terrainConfig.wavelet.gridWidth,
+    //     terrainConfig.wavelet.gridHeight,
     //     seed,
     //     wgen::defaultReconstructionKernel
     // )));
     // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-    //     config.terrainConfig.simplex.gridWidth,
-    //     config.terrainConfig.simplex.gridHeight,
-    //     config.terrainConfig.simplex.dotsPerCell,
+    //     terrainConfig.simplex.gridWidth,
+    //     terrainConfig.simplex.gridHeight,
+    //     terrainConfig.simplex.dotsPerCell,
     //     seed
     // )));
     // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-    //     config.terrainConfig.perlin.gridWidth,
-    //     config.terrainConfig.perlin.gridHeight,
-    //     config.terrainConfig.perlin.dotsPerCell,
+    //     terrainConfig.perlin.gridWidth,
+    //     terrainConfig.perlin.gridHeight,
+    //     terrainConfig.perlin.dotsPerCell,
     //     seed,
     //     wgen::defaultPerlinInterp
     // )));
     // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
     // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+}
 
+void TerrainApp::regenerateTerrain(std::uint32_t seed) {
+    config.terrainConfig.seed = seed;
+    initGenerators(config.terrainConfig);
     loadTerrain();
 }
 
 void TerrainApp::loadTerrain() {
+    objects2d_.clear();
+    objects3d_.clear();
     std::size_t width = config.terrainConfig.width;
     std::size_t height = config.terrainConfig.height;
     auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
@@ -181,7 +219,7 @@ void TerrainApp::run() {
         glfwPollEvents();
         appInputSystem.updateInputState(window_.getGLFWwindow(), window_.getExtent(), input);
 
-        const bool uiHandledInput = dropdownMenu_.update(input);
+        const bool uiHandledInput = dropdownMenu_->update(input);
         if (input.escapeJustPressed && !uiHandledInput) {
             glfwSetWindowShouldClose(window_.getGLFWwindow(), GLFW_TRUE);
         }
@@ -207,7 +245,7 @@ void TerrainApp::run() {
             } else {
                 renderSystem2d.render(commandBuffer, camera2d, objects2d_);
             }
-            dropdownMenu_.render(commandBuffer, renderSystem2d);
+            dropdownMenu_->render(commandBuffer, renderSystem2d);
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();
         }

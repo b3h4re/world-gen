@@ -2,7 +2,7 @@
 
 #include "game/2d/camera/camera_2d.hpp"
 #include "game/2d/objects/game_object_2d.hpp"
-#include "game/2d/rendering/render_system_2d.hpp"
+#include "renderer/systems/render_system_2d.hpp"
 #include "game/input/input_state.hpp"
 #include "game/ui/ui_button.hpp"
 

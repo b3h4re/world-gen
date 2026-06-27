@@ -136,9 +136,22 @@ bool UiButton::click(float normalizedX, float normalizedY) {
 }
 
 void UiButton::render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem,
-    const TextRenderSystem &textRenderSystem, const Camera2d &camera) const {
-    renderSystem.render(commandBuffer, camera, objects_);
-    textRenderSystem.render(commandBuffer, camera, textObjects_);
+    const TextRenderSystem &textRenderSystem, const Camera2d &camera,
+    float layoutScale, glm::vec2 layoutTranslation) const {
+    std::vector<GameObject2d> objects = objects_;
+    for (auto &object : objects) {
+        object.transform.translation = layoutTranslation + layoutScale * object.transform.translation;
+        object.transform.scale *= layoutScale;
+    }
+
+    std::vector<GameObjectText> textObjects = textObjects_;
+    for (auto &object : textObjects) {
+        object.transform.translation = layoutTranslation + layoutScale * object.transform.translation;
+        object.transform.scale *= layoutScale;
+    }
+
+    renderSystem.render(commandBuffer, camera, objects);
+    textRenderSystem.render(commandBuffer, camera, textObjects);
 }
 
 bool UiButton::contains(float normalizedX, float normalizedY) const {

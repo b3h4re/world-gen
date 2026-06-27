@@ -9,6 +9,8 @@ namespace lve {
 class Camera2d {
 public:
     void setAspectRatio(float aspectRatio);
+    void setPosition(glm::vec2 position);
+    void setZoom(float zoom);
     void move(glm::vec2 offset);
     void zoom(float factor);
 

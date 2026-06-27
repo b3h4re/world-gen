@@ -255,7 +255,9 @@ void TerrainApp::run() {
 
     while (!window_.shouldClose()) {
         glfwPollEvents();
-        appInputSystem.updateInputState(window_.getGLFWwindow(), window_.getExtent(), input);
+        const VkExtent2D windowExtent = window_.getExtent();
+        dropdownMenu_->setViewportExtent(windowExtent);
+        appInputSystem.updateInputState(window_.getGLFWwindow(), windowExtent, input);
 
         const bool uiHandledInput = dropdownMenu_->update(input);
         if (input.escapeJustPressed && !uiHandledInput) {

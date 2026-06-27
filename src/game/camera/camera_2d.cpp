@@ -10,6 +10,16 @@ void Camera2d::setAspectRatio(float aspectRatio) {
     updateProjection();
 }
 
+void Camera2d::setPosition(glm::vec2 position) {
+    position_ = position;
+    updateProjection();
+}
+
+void Camera2d::setZoom(float zoom) {
+    zoom_ = std::clamp(zoom, 0.2F, 8.0F);
+    updateProjection();
+}
+
 void Camera2d::move(glm::vec2 offset) {
     position_ += offset;
     updateProjection();

@@ -39,7 +39,8 @@ public:
 
     bool click(float normalizedX, float normalizedY);
     void render(VkCommandBuffer commandBuffer, const RenderSystem2d &renderSystem,
-                const TextRenderSystem &textRenderSystem, const Camera2d &camera) const;
+                const TextRenderSystem &textRenderSystem, const Camera2d &camera,
+                float layoutScale = 1.0F, glm::vec2 layoutTranslation = {}) const;
 
     bool contains(float normalizedX, float normalizedY) const;
     const UiRect &rect() const { return rect_; }

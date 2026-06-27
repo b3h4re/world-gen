@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/3d/camera/camera_3d.hpp"
+#include "game/camera/camera_3d.hpp"
 #include "game/input/input_state.hpp"
 
 #include <glm/gtc/constants.hpp>

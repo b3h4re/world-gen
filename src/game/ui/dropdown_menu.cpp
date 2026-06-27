@@ -1,7 +1,7 @@
 #include "dropdown_menu.hpp"
 
 #include "device/lve_device.hpp"
-#include "game/2d/rendering/mesh_2d.hpp"
+#include "renderer/objects/mesh_2d.hpp"
 
 #include <glm/glm.hpp>
 

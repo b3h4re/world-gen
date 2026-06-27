@@ -1,9 +1,9 @@
 #pragma once
 
-#include "game/2d/camera/camera_2d.hpp"
-#include "game/2d/objects/game_object_2d.hpp"
-#include "game/3d/camera/camera_3d.hpp"
-#include "game/3d/objects/game_object_3d.hpp"
+#include "game/camera/camera_2d.hpp"
+#include "game/objects/game_object_2d.hpp"
+#include "game/camera/camera_3d.hpp"
+#include "game/objects/game_object_3d.hpp"
 
 
 #include <vulkan/vulkan.h>

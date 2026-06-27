@@ -1,7 +1,7 @@
 #include "ui_button.hpp"
 
 #include "device/lve_device.hpp"
-#include "game/2d/rendering/mesh_2d.hpp"
+#include "renderer/objects/mesh_2d.hpp"
 
 #include <cstdint>
 #include <memory>

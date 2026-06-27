@@ -1,8 +1,6 @@
 #pragma once
 
 #include "device/lve_device.hpp"
-#include "game/2d/objects/game_object_2d.hpp"
-#include "game/3d/objects/game_object_3d.hpp"
 #include "game/ui/dropdown_menu.hpp"
 #include "renderer/lve_renderer.hpp"
 #include "window/lve_window.hpp"

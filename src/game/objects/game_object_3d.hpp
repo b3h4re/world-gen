@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/3d/rendering/mesh_3d.hpp"
+#include "renderer/objects/mesh_3d.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>

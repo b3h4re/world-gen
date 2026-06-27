@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/2d/rendering/mesh_2d.hpp"
+#include "renderer/objects/mesh_2d.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>

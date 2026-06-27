@@ -1,9 +1,9 @@
 #pragma once
 
-#include "game/2d/camera/camera_2d.hpp"
-#include "game/2d/input/camera_controller_2d.hpp"
-#include "game/3d/camera/camera_3d.hpp"
-#include "game/3d/input/camera_controller_3d.hpp"
+#include "game/camera/camera_2d.hpp"
+#include "game/input/camera_controller_2d.hpp"
+#include "game/camera/camera_3d.hpp"
+#include "game/input/camera_controller_3d.hpp"
 #include "game/input/input_state.hpp"
 
 #include <GLFW/glfw3.h>

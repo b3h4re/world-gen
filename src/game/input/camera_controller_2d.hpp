@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/2d/camera/camera_2d.hpp"
+#include "game/camera/camera_2d.hpp"
 #include "game/input/input_state.hpp"
 
 namespace lve {

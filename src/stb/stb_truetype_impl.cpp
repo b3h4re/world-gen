@@ -3,10 +3,13 @@
 
 #include "font_atlas.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
-#include <vector>
+#include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace lve {
 
@@ -98,6 +101,39 @@ FontAtlas bakeFontAtlas(const std::filesystem::path &fontPath, float pixelHeight
     }
 
     return atlas;
+}
+
+FontFamily::FontFamily(const std::filesystem::path &fontPath, std::span<const float> pixelHeights) {
+    if (pixelHeights.empty()) {
+        throw std::runtime_error("font family requires at least one atlas size");
+    }
+
+    atlases_.reserve(pixelHeights.size());
+    for (float pixelHeight : pixelHeights) {
+        atlases_.push_back(bakeFontAtlas(fontPath, pixelHeight));
+    }
+
+    std::sort(atlases_.begin(), atlases_.end(), [](const FontAtlas &left, const FontAtlas &right) {
+        return left.pixelHeight < right.pixelHeight;
+    });
+}
+
+const FontAtlas &FontFamily::atlasForPixelHeight(float pixelHeight) const {
+    if (atlases_.empty()) {
+        throw std::runtime_error("font family has no atlases");
+    }
+
+    const FontAtlas *best = &atlases_.front();
+    float bestDistance = std::numeric_limits<float>::max();
+    for (const auto &atlas : atlases_) {
+        const float distance = std::abs(atlas.pixelHeight - pixelHeight);
+        if (distance < bestDistance) {
+            best = &atlas;
+            bestDistance = distance;
+        }
+    }
+
+    return *best;
 }
 
 } // namespace lve

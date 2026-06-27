@@ -33,7 +33,7 @@ private:
     void regenerateTerrain(std::uint32_t seed);
     void initGenerators(const wgen::TerrainConfig& terrainConfig);
     void initDropDownMenu();
-    void initFontAtlas();
+    void initFontFamily();
     void initDescriptorPool();
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
@@ -43,7 +43,7 @@ private:
     LveDevice device_{window_};
     LveRenderer renderer_{window_, device_};
     std::vector<GameObject2d> objects2d_;
-    FontAtlas fontAtlas_{};
+    FontFamily fontFamily_{};
     std::unique_ptr<DropdownMenu> dropdownMenu_;
     std::vector<GameObject3d> objects3d_;
 

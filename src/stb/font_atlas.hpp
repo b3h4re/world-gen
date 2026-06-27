@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <vector>
 
 namespace lve {
@@ -28,5 +29,18 @@ struct FontAtlas {
 };
 
 FontAtlas bakeFontAtlas(const std::filesystem::path &fontPath, float pixelHeight);
+
+class FontFamily {
+public:
+    FontFamily() = default;
+    FontFamily(const std::filesystem::path &fontPath, std::span<const float> pixelHeights);
+
+    const FontAtlas &atlasForPixelHeight(float pixelHeight) const;
+    const std::vector<FontAtlas> &atlases() const { return atlases_; }
+    bool empty() const { return atlases_.empty(); }
+
+private:
+    std::vector<FontAtlas> atlases_{};
+};
 
 } // namespace lve

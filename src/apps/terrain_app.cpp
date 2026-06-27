@@ -97,7 +97,7 @@ TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     initDescriptorPool();
-    initFontAtlas();
+    initFontFamily();
     initGenerators(config.terrainConfig);
     loadTerrain();
     initDropDownMenu();
@@ -111,8 +111,9 @@ void TerrainApp::initDescriptorPool() {
             .build();
 }
 
-void TerrainApp::initFontAtlas() {
-    fontAtlas_ = bakeFontAtlas("assets/fonts/Inter-Regular.ttf", 32.0F);
+void TerrainApp::initFontFamily() {
+    constexpr float atlasSizes[] = {16.0F, 24.0F, 32.0F, 48.0F};
+    fontFamily_ = FontFamily{"assets/fonts/Inter-Regular.ttf", atlasSizes};
 }
 
 void TerrainApp::initDropDownMenu() {
@@ -134,7 +135,7 @@ void TerrainApp::initDropDownMenu() {
 
     std::vector<UiButton::Config> buttons{regenerateTerrainButton, reloadTerrainButton};
 
-    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontAtlas_, buttons);
+    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontFamily_.atlasForPixelHeight(32.0F), buttons);
 }
 
 void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
@@ -233,7 +234,8 @@ void TerrainApp::run() {
     }
 
     TerrainRenderSystem terrainRenderSystem{device_, renderer_.getSwapChainRenderPass()};
-    TextRenderSystem textRenderSystem{device_, renderer_.getSwapChainRenderPass(), *globalPool_, fontAtlas_};
+    TextRenderSystem textRenderSystem{
+        device_, renderer_.getSwapChainRenderPass(), *globalPool_, fontFamily_.atlasForPixelHeight(32.0F)};
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};

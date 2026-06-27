@@ -1,14 +1,13 @@
 #pragma once
 
 #include "game/2d/camera/camera_2d.hpp"
-
-struct GLFWwindow;
+#include "game/input/input_state.hpp"
 
 namespace lve {
 
 class CameraController2d {
 public:
-    void update(GLFWwindow *window, float frameTime, Camera2d &camera) const;
+    void update(const AppInputState &input, float frameTime, Camera2d &camera) const;
 };
 
 } // namespace lve

@@ -1,14 +1,13 @@
 #pragma once
 
 #include "game/3d/camera/camera_3d.hpp"
-
-struct GLFWwindow;
+#include "game/input/input_state.hpp"
 
 namespace lve {
 
 class CameraController3d {
 public:
-    void update(GLFWwindow *window, float frameTime, Camera3d &camera);
+    void update(const AppInputState &input, float frameTime, Camera3d &camera);
 
 private:
     float yaw_{0.0F};

@@ -16,6 +16,7 @@
 #include <memory>
 #include <random>
 #include <iostream>
+#include <vector>
 
 namespace lve {
 
@@ -168,10 +169,12 @@ void TerrainApp::run() {
     RenderSystem3d renderSystem3d{device_, renderer_.getSwapChainRenderPass()};
     Camera2d camera2d{};
     Camera3d camera3d{};
-    CameraController2d cameraController2d{};
-    CameraController3d cameraController3d{};
     AppInputSystem appInputSystem{};
     AppInputState input{};
+    std::vector<CameraUpdateTarget> cameraTargets{
+        makeCameraTarget(camera2d, !render3d_),
+        makeCameraTarget(camera3d, render3d_),
+    };
     auto previousTime = std::chrono::steady_clock::now();
 
     while (!window_.shouldClose()) {
@@ -193,13 +196,9 @@ void TerrainApp::run() {
             0.1F);
         previousTime = currentTime;
 
-        if (render3d_) {
-            camera3d.setPerspectiveProjection(glm::radians(50.0F), renderer_.getAspectRatio(), 0.1F, 20.0F);
-            cameraController3d.update(window_.getGLFWwindow(), frameTime, camera3d);
-        } else {
-            camera2d.setAspectRatio(renderer_.getAspectRatio());
-            cameraController2d.update(window_.getGLFWwindow(), frameTime, camera2d);
-        }
+        cameraTargets[0].active = !render3d_;
+        cameraTargets[1].active = render3d_;
+        appInputSystem.updateCameras(input, frameTime, renderer_.getAspectRatio(), cameraTargets);
 
         if (const VkCommandBuffer commandBuffer = renderer_.beginFrame()) {
             renderer_.beginSwapChainRenderPass(commandBuffer);

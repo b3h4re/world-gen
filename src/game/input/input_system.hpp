@@ -1,9 +1,15 @@
 #pragma once
 
+#include "game/2d/camera/camera_2d.hpp"
+#include "game/2d/input/camera_controller_2d.hpp"
+#include "game/3d/camera/camera_3d.hpp"
+#include "game/3d/input/camera_controller_3d.hpp"
 #include "game/input/input_state.hpp"
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
+
+#include <vector>
 
 struct GLFWwindow;
 
@@ -12,7 +18,28 @@ namespace lve {
 struct AppKeyMappings {
     int close = GLFW_KEY_ESCAPE;
     int toggleView = GLFW_KEY_V;
+    int cameraMoveLeft = GLFW_KEY_A;
+    int cameraMoveRight = GLFW_KEY_D;
+    int cameraMoveUp = GLFW_KEY_W;
+    int cameraMoveDown = GLFW_KEY_S;
+    int cameraZoomIn = GLFW_KEY_E;
+    int cameraZoomOut = GLFW_KEY_Q;
 };
+
+struct CameraUpdateTarget {
+    enum class Type {
+        Camera2d,
+        Camera3d
+    };
+
+    Type type;
+    bool active{false};
+    Camera2d *camera2d{nullptr};
+    Camera3d *camera3d{nullptr};
+};
+
+CameraUpdateTarget makeCameraTarget(Camera2d &camera, bool active);
+CameraUpdateTarget makeCameraTarget(Camera3d &camera, bool active);
 
 class KeyboardControlSystem {
 public:
@@ -36,10 +63,17 @@ private:
 class AppInputSystem {
 public:
     void updateInputState(GLFWwindow *window, VkExtent2D extent, AppInputState &input);
+    void updateCameras(
+        const AppInputState &input,
+        float frameTime,
+        float aspectRatio,
+        std::vector<CameraUpdateTarget> &targets);
 
 private:
     KeyboardControlSystem keyboardControl_{};
     MouseControlSystem mouseControl_{};
+    CameraController2d cameraController2d_{};
+    CameraController3d cameraController3d_{};
 };
 
 } // namespace lve

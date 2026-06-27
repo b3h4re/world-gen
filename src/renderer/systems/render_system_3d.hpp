@@ -1,9 +1,10 @@
 #pragma once
 
 #include "device/lve_device.hpp"
-#include "game/3d/camera/camera_3d.hpp"
-#include "game/3d/objects/game_object_3d.hpp"
+#include "game/camera/camera_3d.hpp"
+#include "game/objects/game_object_3d.hpp"
 #include "pipeline/lve_pipeline.hpp"
+#include "renderer/lve_frame_info.hpp"
 
 #include <memory>
 #include <vector>
@@ -22,6 +23,7 @@ public:
         VkCommandBuffer commandBuffer,
         const Camera3d &camera,
         const std::vector<GameObject3d> &objects) const;
+    void render(FrameInfo &frameInfo) const;
 
 private:
     void createPipelineLayout();

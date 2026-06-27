@@ -1,20 +1,21 @@
 #include "terrain_app.hpp"
 
-#include "game/2d/camera/camera_2d.hpp"
-#include "game/2d/input/camera_controller_2d.hpp"
-#include "game/2d/rendering/render_system_2d.hpp"
-#include "game/3d/camera/camera_3d.hpp"
-#include "game/3d/input/camera_controller_3d.hpp"
-#include "game/3d/rendering/render_system_3d.hpp"
-#include "terrain/terrain.hpp"
+#include "game/input/input_system.hpp"
+#include "model/buffer/lve_buffer.hpp"
+#include "renderer/systems/terrain_render_system.hpp"
+#include "renderer/systems/text_render_system.hpp"
+#include "stb/font_atlas.hpp"
 #include "terrain/generators/generators.hpp"
+#include "terrain/terrain.hpp"
 
-#include <GLFW/glfw3.h>
 #include <algorithm>
 #include <chrono>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <iostream>
 #include <memory>
 #include <random>
-#include <iostream>
+#include <vector>
 
 namespace lve {
 
@@ -95,61 +96,113 @@ void appendHeightMapMesh3d(
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
+    initDescriptorPool();
+    initFontFamily();
+    initGenerators(config.terrainConfig);
+    loadTerrain();
+    initDropDownMenu();
+}
+
+void TerrainApp::initDescriptorPool() {
+    globalPool_ = LveDescriptorPool::Builder(device_)
+            .setMaxSets(100)
+            .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
+            .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16)
+            .build();
+}
+
+void TerrainApp::initFontFamily() {
+    constexpr float atlasSizes[] = {
+        10.0F,
+        16.0F,
+        24.0F,
+        32.0F,
+        48.0F
+    };
+    fontFamily_ = FontFamily{"assets/fonts/Inter-Regular.ttf", atlasSizes};
+}
+
+void TerrainApp::initDropDownMenu() {
+    UiButton::Config regenerateTerrainButton = {
+        .color = {0.25F, 0.25F, 0.30F},
+        .text = "Regenerate",
+        .onClick =
+            [this] {
+                std::random_device rd;
+                regenerateTerrain(rd());
+            },
+    };
+
+    UiButton::Config reloadTerrainButton = {
+        .color = {0.25F, 0.25F, 0.30F},
+        .text = "Reload seed",
+        .onClick = [this] { regenerateTerrain(this->config.terrainConfig.seed); },
+    };
+
+    std::vector<UiButton::Config> buttons{regenerateTerrainButton, reloadTerrainButton};
+
+    dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontFamily_.atlasForPixelHeight(32.0F), buttons);
+}
+
+void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
+    generators.clear();
     std::uint32_t seed;
-    if (config.terrainConfig.setSeed) {
-        seed = config.terrainConfig.seed;
+    if (terrainConfig.setSeed) {
+        seed = terrainConfig.seed;
     } else {
         std::random_device rd;
         seed = rd();
     }
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        config.terrainConfig.dla.numSteps,
-        seed,
-        wgen::defaultDLAHeightFunction(config.terrainConfig.dla.heightFuncScale),
-        config.terrainConfig.dla.fill,
-        config.terrainConfig.dla.jiggle
-    )));
+        terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
+        terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
     // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-    //     config.terrainConfig.worley.gridWidth,
-    //     config.terrainConfig.worley.gridHeight,
-    //     config.terrainConfig.worley.dotsPerCell,
+    //     terrainConfig.worley.gridWidth,
+    //     terrainConfig.worley.gridHeight,
+    //     terrainConfig.worley.dotsPerCell,
     //     seed,
-    //     config.terrainConfig.worley.p,
-    //     config.terrainConfig.worley.numPoints
+    //     terrainConfig.worley.p,
+    //     terrainConfig.worley.numPoints
     // )));
     // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-    //     config.terrainConfig.wavelet.gridWidth,
-    //     config.terrainConfig.wavelet.gridHeight,
+    //     terrainConfig.wavelet.gridWidth,
+    //     terrainConfig.wavelet.gridHeight,
     //     seed,
     //     wgen::defaultReconstructionKernel
     // )));
     // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-    //     config.terrainConfig.simplex.gridWidth,
-    //     config.terrainConfig.simplex.gridHeight,
-    //     config.terrainConfig.simplex.dotsPerCell,
+    //     terrainConfig.simplex.gridWidth,
+    //     terrainConfig.simplex.gridHeight,
+    //     terrainConfig.simplex.dotsPerCell,
     //     seed
     // )));
     // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-    //     config.terrainConfig.perlin.gridWidth,
-    //     config.terrainConfig.perlin.gridHeight,
-    //     config.terrainConfig.perlin.dotsPerCell,
+    //     terrainConfig.perlin.gridWidth,
+    //     terrainConfig.perlin.gridHeight,
+    //     terrainConfig.perlin.dotsPerCell,
     //     seed,
     //     wgen::defaultPerlinInterp
     // )));
     // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
     // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+}
 
+void TerrainApp::regenerateTerrain(std::uint32_t seed) {
+    config.terrainConfig.seed = seed;
+    initGenerators(config.terrainConfig);
     loadTerrain();
 }
 
 void TerrainApp::loadTerrain() {
+    objects2d_.clear();
+    objects3d_.clear();
     std::size_t width = config.terrainConfig.width;
     std::size_t height = config.terrainConfig.height;
     auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
-    appendHeightMapMesh(heightMap, -0.9F, 0.9F, -0.9F, 0.9F, vertices, indices, wgen::terrainBlackAndWhite);
+    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, vertices, indices, wgen::terrainBlackAndWhite);
 
     auto mesh = std::make_shared<Mesh2d>(device_, vertices, indices);
     objects2d_.push_back({std::move(mesh), {}});
@@ -163,47 +216,92 @@ void TerrainApp::loadTerrain() {
 }
 
 void TerrainApp::run() {
-    RenderSystem2d renderSystem2d{device_, renderer_.getSwapChainRenderPass()};
-    RenderSystem3d renderSystem3d{device_, renderer_.getSwapChainRenderPass()};
+    std::vector<std::unique_ptr<LveBuffer>> uboBuffers(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
+    for (std::size_t i = 0; i < uboBuffers.size(); ++i) {
+        uboBuffers[i] = std::make_unique<LveBuffer>(
+            device_,
+            sizeof(GlobalUbo),
+            1,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        uboBuffers[i]->map();
+    }
+
+    auto globalSetLayout = LveDescriptorSetLayout::Builder(device_)
+                               .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               .build();
+
+    std::vector<VkDescriptorSet> globalDescriptorSets(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
+    for (std::size_t i = 0; i < globalDescriptorSets.size(); ++i) {
+        auto bufferInfo = uboBuffers[i]->descriptorInfo();
+        LveDescriptorWriter(*globalSetLayout, *globalPool_)
+            .writeBuffer(0, &bufferInfo)
+            .build(globalDescriptorSets[i]);
+    }
+
+    TerrainRenderSystem terrainRenderSystem{device_, renderer_.getSwapChainRenderPass()};
+    TextRenderSystem textRenderSystem{
+        device_, renderer_.getSwapChainRenderPass(), *globalPool_, fontFamily_.atlasForPixelHeight(32.0F)};
     Camera2d camera2d{};
     Camera3d camera3d{};
-    CameraController2d cameraController2d{};
-    CameraController3d cameraController3d{};
-    bool viewToggleWasPressed{false};
+    AppInputSystem appInputSystem{};
+    AppInputState input{};
+    std::vector<CameraUpdateTarget> cameraTargets{
+        makeCameraTarget(camera2d, !render3d_),
+        makeCameraTarget(camera3d, render3d_),
+    };
+
     auto previousTime = std::chrono::steady_clock::now();
 
     while (!window_.shouldClose()) {
         glfwPollEvents();
-        if (glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        appInputSystem.updateInputState(window_.getGLFWwindow(), window_.getExtent(), input);
+
+        const bool uiHandledInput = dropdownMenu_->update(input);
+        if (input.escapeJustPressed && !uiHandledInput) {
             glfwSetWindowShouldClose(window_.getGLFWwindow(), GLFW_TRUE);
         }
-        const bool viewToggleIsPressed = glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_V) == GLFW_PRESS;
-        if (viewToggleIsPressed && !viewToggleWasPressed) {
+
+        if (input.viewToggleJustPressed) {
             render3d_ = !render3d_;
         }
-        viewToggleWasPressed = viewToggleIsPressed;
 
         const auto currentTime = std::chrono::steady_clock::now();
-        const float frameTime = std::min(
-            std::chrono::duration<float>(currentTime - previousTime).count(),
-            0.1F);
+        const float frameTime = std::min(std::chrono::duration<float>(currentTime - previousTime).count(), 0.1F);
         previousTime = currentTime;
 
-        if (render3d_) {
-            camera3d.setPerspectiveProjection(glm::radians(50.0F), renderer_.getAspectRatio(), 0.1F, 20.0F);
-            cameraController3d.update(window_.getGLFWwindow(), frameTime, camera3d);
-        } else {
-            camera2d.setAspectRatio(renderer_.getAspectRatio());
-            cameraController2d.update(window_.getGLFWwindow(), frameTime, camera2d);
-        }
+        cameraTargets[0].active = !render3d_;
+        cameraTargets[1].active = render3d_;
+        appInputSystem.updateCameras(input, frameTime, renderer_.getAspectRatio(), cameraTargets);
 
         if (const VkCommandBuffer commandBuffer = renderer_.beginFrame()) {
-            renderer_.beginSwapChainRenderPass(commandBuffer);
+            const int frameIndex = renderer_.getFrameIndex();
+            FrameInfo frameInfo{
+                frameIndex,
+                frameTime,
+                commandBuffer,
+                camera2d,
+                camera3d,
+                globalDescriptorSets[frameIndex],
+                render3d_,
+                objects2d_,
+                objects3d_,
+            };
+
+            GlobalUbo ubo{};
             if (render3d_) {
-                renderSystem3d.render(commandBuffer, camera3d, objects3d_);
+                ubo.projection = camera3d.projection();
+                ubo.view = camera3d.view();
+                ubo.inverseView = glm::inverse(camera3d.view());
             } else {
-                renderSystem2d.render(commandBuffer, camera2d, objects2d_);
+                ubo.projection = camera2d.projectionView();
             }
+            uboBuffers[frameIndex]->writeToBuffer(&ubo);
+            uboBuffers[frameIndex]->flush();
+
+            renderer_.beginSwapChainRenderPass(commandBuffer);
+            terrainRenderSystem.render(frameInfo);
+            dropdownMenu_->render(commandBuffer, terrainRenderSystem.renderSystem2d(), textRenderSystem);
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();
         }

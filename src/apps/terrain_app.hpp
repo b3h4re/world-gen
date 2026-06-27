@@ -1,12 +1,13 @@
 #pragma once
 
-#include "device/lve_device.hpp"
-#include "game/2d/objects/game_object_2d.hpp"
-#include "game/3d/objects/game_object_3d.hpp"
-#include "renderer/lve_renderer.hpp"
-#include "window/lve_window.hpp"
-#include "terrain/generators/generator.hpp"
 #include "config/app_config.hpp"
+#include "device/lve_device.hpp"
+#include "game/ui/dropdown_menu.hpp"
+#include "pipeline/descriptors/lve_descriptors.hpp"
+#include "renderer/lve_renderer.hpp"
+#include "stb/font_atlas.hpp"
+#include "terrain/generators/generator.hpp"
+#include "window/lve_window.hpp"
 
 #include <vector>
 
@@ -29,6 +30,11 @@ private:
     wgen::AppConfig config;
 
     void loadTerrain();
+    void regenerateTerrain(std::uint32_t seed);
+    void initGenerators(const wgen::TerrainConfig& terrainConfig);
+    void initDropDownMenu();
+    void initFontFamily();
+    void initDescriptorPool();
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
     bool render3d_{false};
@@ -37,7 +43,11 @@ private:
     LveDevice device_{window_};
     LveRenderer renderer_{window_, device_};
     std::vector<GameObject2d> objects2d_;
+    FontFamily fontFamily_{};
+    std::unique_ptr<DropdownMenu> dropdownMenu_;
     std::vector<GameObject3d> objects3d_;
+
+    std::unique_ptr<LveDescriptorPool> globalPool_{};
 };
 
 } // namespace lve

@@ -70,4 +70,8 @@ void RenderSystem2d::render(
     }
 }
 
+void RenderSystem2d::render(FrameInfo &frameInfo) const {
+    render(frameInfo.commandBuffer, frameInfo.camera2d, frameInfo.objects2d);
+}
+
 } // namespace lve

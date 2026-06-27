@@ -169,14 +169,20 @@ void TerrainApp::run() {
     Camera3d camera3d{};
     CameraController2d cameraController2d{};
     CameraController3d cameraController3d{};
+    bool escapeWasPressed{false};
     bool viewToggleWasPressed{false};
     auto previousTime = std::chrono::steady_clock::now();
 
     while (!window_.shouldClose()) {
         glfwPollEvents();
-        if (glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        const bool escapeIsPressed = glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS;
+        const bool escapeJustPressed = escapeIsPressed && !escapeWasPressed;
+        const bool uiHandledInput = dropdownMenu_.update(window_.getGLFWwindow(), window_.getExtent(), escapeJustPressed);
+        if (escapeJustPressed && !uiHandledInput) {
             glfwSetWindowShouldClose(window_.getGLFWwindow(), GLFW_TRUE);
         }
+        escapeWasPressed = escapeIsPressed;
+
         const bool viewToggleIsPressed = glfwGetKey(window_.getGLFWwindow(), GLFW_KEY_V) == GLFW_PRESS;
         if (viewToggleIsPressed && !viewToggleWasPressed) {
             render3d_ = !render3d_;
@@ -204,6 +210,7 @@ void TerrainApp::run() {
             } else {
                 renderSystem2d.render(commandBuffer, camera2d, objects2d_);
             }
+            dropdownMenu_.render(commandBuffer, renderSystem2d);
             renderer_.endSwapChainRenderPass(commandBuffer);
             renderer_.endFrame();
         }

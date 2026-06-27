@@ -112,7 +112,13 @@ void TerrainApp::initDescriptorPool() {
 }
 
 void TerrainApp::initFontFamily() {
-    constexpr float atlasSizes[] = {16.0F, 24.0F, 32.0F, 48.0F};
+    constexpr float atlasSizes[] = {
+        10.0F,
+        16.0F,
+        24.0F,
+        32.0F,
+        48.0F
+    };
     fontFamily_ = FontFamily{"assets/fonts/Inter-Regular.ttf", atlasSizes};
 }
 

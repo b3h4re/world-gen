@@ -3,13 +3,27 @@
 #include "device/lve_device.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <utility>
 
 namespace lve {
 
 namespace {
+
+constexpr float textPaddingX{0.01F};
+constexpr float textPaddingY{0.01F};
+
+struct TextBounds {
+    glm::vec2 min{};
+    glm::vec2 max{};
+    bool hasVisibleGlyph{};
+
+    glm::vec2 size() const { return max - min; }
+    glm::vec2 center() const { return (min + max) * 0.5F; }
+};
 
 std::shared_ptr<Mesh2d> makeRectMesh(LveDevice &device, const UiRect &rect, glm::vec3 color) {
     const std::vector<Vertex2d> vertices{
@@ -21,6 +35,43 @@ std::shared_ptr<Mesh2d> makeRectMesh(LveDevice &device, const UiRect &rect, glm:
     const std::vector<std::uint32_t> indices{0, 1, 2, 0, 2, 3};
 
     return std::make_shared<Mesh2d>(device, vertices, indices);
+}
+
+TextBounds measureText(const FontAtlas &font, std::string_view text, float scale) {
+    TextBounds bounds{};
+    bounds.min = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+    bounds.max = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+
+    glm::vec2 pen{};
+    for (const char character : text) {
+        if (character == '\n') {
+            pen.x = 0.0F;
+            pen.y += font.pixelHeight * scale;
+            continue;
+        }
+
+        const auto *glyph = font.glyph(static_cast<unsigned char>(character));
+        if (glyph == nullptr) {
+            continue;
+        }
+
+        const glm::vec2 glyphMin = pen + glyph->bearing * scale;
+        const glm::vec2 glyphMax = glyphMin + glyph->size * scale;
+        if (glyph->size.x > 0.0F && glyph->size.y > 0.0F) {
+            bounds.min = glm::min(bounds.min, glyphMin);
+            bounds.max = glm::max(bounds.max, glyphMax);
+            bounds.hasVisibleGlyph = true;
+        }
+
+        pen.x += glyph->advance * scale;
+    }
+
+    if (!bounds.hasVisibleGlyph) {
+        bounds.min = {};
+        bounds.max = {};
+    }
+
+    return bounds;
 }
 
 } // namespace
@@ -36,9 +87,25 @@ UiButton::UiButton(LveDevice &device, const FontAtlas &font, UiRect rect, Config
     , onClick_{std::move(config.onClick)} {
     objects_.push_back({makeRectMesh(device, rect_, config.color), {}});
     if (!text_.empty()) {
-        auto mesh = std::make_shared<TextMesh>(device, font, text_, textColor_, textScale_);
+        const TextBounds unscaledBounds = measureText(font, text_, 1.0F);
+        float fittedScale = textScale_;
+        if (unscaledBounds.hasVisibleGlyph) {
+            const glm::vec2 unscaledSize = unscaledBounds.size();
+            const float availableWidth = std::max(0.0F, rect_.right - rect_.left - 2.0F * textPaddingX);
+            const float availableHeight = std::max(0.0F, rect_.bottom - rect_.top - 2.0F * textPaddingY);
+            if (unscaledSize.x > 0.0F) {
+                fittedScale = std::min(fittedScale, availableWidth / unscaledSize.x);
+            }
+            if (unscaledSize.y > 0.0F) {
+                fittedScale = std::min(fittedScale, availableHeight / unscaledSize.y);
+            }
+        }
+
+        auto mesh = std::make_shared<TextMesh>(device, font, text_, textColor_, fittedScale);
         GameObjectText textObject{std::move(mesh), {}};
-        textObject.transform.translation = {rect_.left + 0.01F, rect_.top + 0.02F};
+        const TextBounds fittedBounds = measureText(font, text_, fittedScale);
+        const glm::vec2 buttonCenter{(rect_.left + rect_.right) * 0.5F, (rect_.top + rect_.bottom) * 0.5F};
+        textObject.transform.translation = buttonCenter - fittedBounds.center();
         textObjects_.push_back(std::move(textObject));
     }
 }

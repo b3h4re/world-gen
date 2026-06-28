@@ -128,4 +128,17 @@ if(BUILD_TESTING)
     )
     target_compile_features(heightmap_tests PRIVATE cxx_std_20)
     add_test(NAME heightmap_tests COMMAND heightmap_tests)
+
+    add_executable(interpreter_tests
+        tests/interpreter_tests.cpp
+        src/scripts/intepreter.cpp
+        src/scripts/interpreter.hpp
+        src/files/file_path.cpp
+        src/files/file_path.hpp
+    )
+    target_include_directories(interpreter_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_compile_features(interpreter_tests PRIVATE cxx_std_20)
+    add_test(NAME interpreter_tests COMMAND interpreter_tests)
 endif()

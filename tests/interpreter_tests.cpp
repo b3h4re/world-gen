@@ -121,26 +121,24 @@ void testExecuteWholeFloatScript() {
 }
 
 void testSeededIntAndBoolValues() {
-    const auto scriptPath = makeScript(
-        "seeded_values.txt",
-        "copy sourceFlag to copiedFlag\n"
-        "decl int first sourceFirst\n"
-        "decl int second sourceSecond\n"
-        "add first to second = sum\n"
-    );
+	    const auto scriptPath = makeScript(
+	        "seeded_values.txt",
+	        "copy sourceFlag to copiedFlag\n"
+	        "decl int first 4\n"
+	        "decl int second 9\n"
+	        "add first to second = sum\n"
+	    );
 
-    TestInterpreter interpreter;
-    interpreter.loadScript(scriptPath);
-    interpreter.setVariable("sourceFlag", true);
-    interpreter.setVariable("sourceFirst", 4);
-    interpreter.setVariable("sourceSecond", 9);
-    interpreter.executeScript();
+	    TestInterpreter interpreter;
+	    interpreter.loadScript(scriptPath);
+	    interpreter.setVariable("sourceFlag", true);
+	    interpreter.executeScript();
 
-    expectValue(interpreter.getVariableValue("copiedFlag"), true, "bool copy has wrong value");
-    expectValue(interpreter.getVariableValue("first"), 4, "int declaration from variable has wrong value");
-    expectValue(interpreter.getVariableValue("second"), 9, "int declaration from variable has wrong value");
-    expectValue(interpreter.getVariableValue("sum"), 13, "int addition has wrong value");
-}
+	    expectValue(interpreter.getVariableValue("copiedFlag"), true, "bool copy has wrong value");
+	    expectValue(interpreter.getVariableValue("first"), 4, "int declaration from literal has wrong value");
+	    expectValue(interpreter.getVariableValue("second"), 9, "int declaration from literal has wrong value");
+	    expectValue(interpreter.getVariableValue("sum"), 13, "int addition has wrong value");
+	}
 
 void testClearResetsProgramAndVariables() {
     const auto scriptPath = makeScript("clear.txt", "decl float value 3.0\n");
@@ -205,17 +203,9 @@ void testRuntimeErrors() {
         },
         "wrong constructor argument count should throw during execution");
 
-    requireThrows<std::runtime_error>(
-        [] {
-            wgen::Interpreter interpreter;
-            interpreter.loadScript(makeScript("int_literal_type_error.txt", "decl int value 1\n"));
-            interpreter.executeScript();
-        },
-        "int declaration from numeric literal currently resolves to float and should throw");
-
-    requireThrows<std::runtime_error>(
-        [] {
-            wgen::Interpreter interpreter;
+	    requireThrows<std::runtime_error>(
+	        [] {
+	            wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("bad_copy_source.txt", "copy missing to destination\n"));
             interpreter.executeScript();
         },

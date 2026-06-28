@@ -24,13 +24,13 @@ namespace wgen {
             float p = 2,
             std::size_t numPoints = 1
         );
+        float noise(std::size_t x, std::size_t y) const override;
 
     private:
         float p_;
         std::size_t numPoints_;
         HeightMap<std::vector<glm::vec2>> featurePoints_;
 
-        float noise(std::size_t x, std::size_t y) const override;
         // here gradients are feature points
         void generateGradients() override;
         std::vector<glm::vec2> featurePointsAt(std::size_t i, std::size_t j) const;

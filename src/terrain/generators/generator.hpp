@@ -147,7 +147,6 @@ namespace wgen {
 
         virtual void setSeed(std::uint32_t newSeed) { seed_ = newSeed; }
         std::uint32_t getSeed() const { return seed_; }
-    protected:
         virtual float noise(std::size_t x, std::size_t y) const = 0;
 
     private:

@@ -12,8 +12,6 @@ namespace wgen {
 
         SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, std::uint32_t seed);
         SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell);
-
-    private:
         float noise(std::size_t x, std::size_t y) const override;
     };
 

@@ -32,6 +32,8 @@ namespace wgen {
         std::size_t getKernelWidth() const;
         std::size_t getKernelHeight() const;
 
+        float noise(std::size_t x, std::size_t y) const override;
+
 
     private:
         FloatFunction reconstructionKernel_;
@@ -51,7 +53,6 @@ namespace wgen {
         float smoothedGridAt(std::ptrdiff_t i, std::ptrdiff_t j) const;
         float waveletNoiseTile(std::ptrdiff_t i, std::ptrdiff_t j) const;
 
-        float noise(std::size_t x, std::size_t y) const override;
     };
 
 }

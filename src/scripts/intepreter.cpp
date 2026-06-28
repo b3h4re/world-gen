@@ -3,7 +3,7 @@
 
 namespace wgen {
 
-    Interpreter::Interpreter() {
+    Interpreter::Interpreter() : currentLine{0} {
         registerConstructors();
         registerMutatingOperators();
         registerBinaryOperators();
@@ -49,6 +49,7 @@ namespace wgen {
 
 
     void Interpreter::clear() {
+        currentLine = 0;
         variables.clear();
         program.clear();
     }
@@ -182,18 +183,34 @@ namespace wgen {
     }
 
     void Interpreter::executeScript() {
-        for (const Command& command : program) {
-            try {
-                executeCommand(command);
-            } catch (const std::exception& e) {
-                throw std::runtime_error(
-                    "Runtime error on line " +
-                    std::to_string(command.lineNumber) +
-                    ":\n    " + command.sourceLine +
-                    "\n" + e.what()
-                );
-            }
+        while (currentLine < program.size()) {
+            executeCurrentLine();
         }
+    }
+
+    void Interpreter::executeCurrentLine() {
+        if (currentLine >= program.size()) {
+            return;
+        }
+        const Command& cmd = program[currentLine];
+        try {
+            executeCommand(cmd);
+            ++currentLine;
+        } catch (const std::exception& e) {
+            throw std::runtime_error(
+                "Runtime error on line " +
+                std::to_string(cmd.lineNumber) +
+                ":\n    " + cmd.sourceLine +
+                "\n" + e.what()
+            );
+        }
+    }
+
+    typename std::vector<Command>::const_reference Interpreter::getCurrentCommand() const {
+        if (currentLine >= program.size()) {
+            return EMPTY_COMMAND;
+        }
+        return program.at(currentLine);
     }
 
     std::string Interpreter::typeNameOf(const Value& value) {
@@ -249,10 +266,18 @@ namespace wgen {
                 },
                 [this](const CopyCommand& cmd) {
                     executeCopy(cmd);
-                }
+                },
+                [this](const EmptyCommand& cmd) {}
             },
             command.payload
         );
+    }
+
+    const Value& Interpreter::getVariableValue(const std::string& varName) {
+        if (!variables.contains(varName)) {
+            return Interpreter::UNDEFINDED;
+        }
+        return variables.at(varName);
     }
 
     void Interpreter::executeDeclaration(const DeclCommand& command) {

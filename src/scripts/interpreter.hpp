@@ -13,7 +13,9 @@
 
 
 namespace wgen {
+    struct UndefinedVariable{};
     using Value = std::variant<
+        UndefinedVariable,
         float,
         int,
         bool
@@ -48,6 +50,8 @@ namespace wgen {
     template <typename... Ts>
     Overloaded(Ts...) -> Overloaded<Ts...>;
 
+    struct EmptyCommand {};
+
     struct DeclCommand {
         std::string typeName;
         std::string variableName;
@@ -68,7 +72,8 @@ namespace wgen {
     using CommandPayload = std::variant<
         DeclCommand,
         AddCommand,
-        CopyCommand
+        CopyCommand,
+        EmptyCommand
     >;
 
     struct Command {
@@ -77,6 +82,7 @@ namespace wgen {
         CommandPayload payload;
     };
 
+    constexpr Command EMPTY_COMMAND{0, "", EmptyCommand{}};
 
 
     /*
@@ -96,12 +102,18 @@ namespace wgen {
         public:
             Interpreter();
 
+            constexpr static UndefinedVariable UNDEFINDED{};
+
             void clear();
             void loadScript(const std::filesystem::path& scriptPath);
             void executeScript();
+            void executeCurrentLine();
+            typename std::vector<Command>::const_reference getCurrentCommand() const;
 
-        private:
+            const Value& getVariableValue(const std::string& varName);
 
+        protected:
+            std::size_t currentLine;
             std::unordered_map<std::string, Value> variables{};
             std::unordered_map<std::string, Constructor> constructors{};
             std::unordered_map<std::string, MutatingOperator> mutatingOperators{};

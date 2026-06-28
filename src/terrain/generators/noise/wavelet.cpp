@@ -1,16 +1,23 @@
 #include "wavelet.hpp"
 
+#include <stdexcept>
+
 
 namespace wgen {
 
-    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, FloatFunction reconstructionKernel)
-    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel} {}
+	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, FloatFunction reconstructionKernel,
+	                                   float frequency)
+	    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel, frequency} {}
 
-    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed, FloatFunction reconstructionKernel)
-    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, reconstructionKernel_{reconstructionKernel},
-        kernelWidth_{1}, kernelHeight_{1}, randomValues{gridWidth, gridHeight} {
-        setSeed(seed);
-    }
+	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed,
+	                                   FloatFunction reconstructionKernel, float frequency)
+	    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, frequency_{frequency}, reconstructionKernel_{reconstructionKernel},
+	        kernelWidth_{1}, kernelHeight_{1}, randomValues{gridWidth, gridHeight} {
+	        if (frequency_ <= 0.0F) {
+	            throw std::invalid_argument("Wavelet frequency must be positive");
+	        }
+	        setSeed(seed);
+	    }
 
     void WaveletNoise2d::setKernelSize(std::size_t kernelWidth, std::size_t kernelHeight) {
         setKernelHeight(kernelHeight);
@@ -74,8 +81,8 @@ namespace wgen {
     }
 
     float WaveletNoise2d::noise(std::size_t x, std::size_t y) const {
-        const float u = static_cast<float>(x) * FREQUENCY_SCALE;
-        const float v = static_cast<float>(y) * FREQUENCY_SCALE;
+        const float u = static_cast<float>(x) * frequency_;
+        const float v = static_cast<float>(y) * frequency_;
 
         const float u_T = glm::mod<float>(u, gridWidth_);
         const float v_T = glm::mod<float>(v, gridHeight_);

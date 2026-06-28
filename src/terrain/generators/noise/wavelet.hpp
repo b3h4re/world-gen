@@ -13,12 +13,14 @@ namespace wgen {
         constexpr static float C = 0.25F;
 
 
-        constexpr static float FREQUENCY_SCALE = 32.14231234;
+        constexpr static float DEFAULT_FREQUENCY = 0.014231234F;
 
         WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed,
-                      FloatFunction reconstructionKernel = defaultReconstructionKernel);
+                        FloatFunction reconstructionKernel = defaultReconstructionKernel,
+                        float frequency = DEFAULT_FREQUENCY);
         WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight,
-                      FloatFunction reconstructionKernel = defaultReconstructionKernel);
+                        FloatFunction reconstructionKernel = defaultReconstructionKernel,
+                        float frequency = DEFAULT_FREQUENCY);
 
         void setSeed(std::uint32_t newSeed) override {
             Generator::setSeed(newSeed);
@@ -41,9 +43,10 @@ namespace wgen {
         std::size_t kernelWidth_;
         std::size_t kernelHeight_;
 
-        std::size_t gridWidth_;
-        std::size_t gridHeight_;
-        HeightMap<float> randomValues;
+	        std::size_t gridWidth_;
+	        std::size_t gridHeight_;
+	        float frequency_;
+	        HeightMap<float> randomValues;
 
         void generateRandomValues();
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);

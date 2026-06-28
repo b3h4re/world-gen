@@ -95,7 +95,7 @@ TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 TerrainApp::TerrainApp(const wgen::AppConfig &config) : config{config} {
     initDescriptorPool();
     initFontFamily();
-    initGenerators(config.terrainConfig);
+    initGenerators(generators, config.terrainConfig);
     loadTerrain();
     initDropDownMenu();
 }
@@ -153,15 +153,89 @@ void TerrainApp::initDropDownMenu() {
 
 
 void TerrainApp::rotateColorFunction() {
+    if (terrainJobRunning_) {
+        return;
+    }
     activeColorFuncId = (activeColorFuncId + 1) % NUM_COLOR_FUNCTIONS;
-    pendingObjectReload_ = true;
+
+    const auto colorFunc = getActiveColorFunc();
+    const auto heightMap = activeHeghtMap;
+    const std::uint64_t version = ++terrainJobVersion_;
+    terrainJobRunning_ = true;
+
+    terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc, version] {
+        TerrainMeshData data;
+
+        appendHeightMapMesh(
+            heightMap,
+            -1.0F,
+            1.0F,
+            -1.0F,
+            1.0F,
+            data.vertices2d,
+            data.indices2d,
+            colorFunc
+        );
+
+        appendHeightMapMesh3d(
+            heightMap,
+            data.vertices3d,
+            data.indices3d,
+            colorFunc
+        );
+
+        return data;
+    });
+
 }
+
+void TerrainApp::tryApplyFinishedTerrainJob(int frameIndex) {
+    if (!terrainJobRunning_) {
+        return;
+    }
+    TerrainJobResult result;
+    bool change_data = false;
+    bool change_heightmap = false;
+    bool change_generators = false;
+    if (terrainReappendJob_.valid() && terrainReappendJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+        result.data = terrainReappendJob_.get();
+        terrainJobRunning_ = false;
+
+        change_data = true;
+    }
+    if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+        result = terrainGenerationJob_.get();
+        terrainJobRunning_ = false;
+
+        change_data = true;
+        change_generators = true;
+        change_heightmap = true;
+    }
+
+    if (change_data) {
+        retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
+        retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
+
+        auto mesh2d = std::make_shared<Mesh2d>(device_, result.data.vertices2d, result.data.indices2d);
+        objects2d_.push_back({std::move(mesh2d), {}});
+
+        auto mesh3d = std::make_shared<Mesh3d>(device_, result.data.vertices3d, result.data.indices3d);
+        objects3d_.push_back({std::move(mesh3d), {}});
+    }
+    if (change_heightmap) {
+        activeHeghtMap = std::move(result.heightMap);
+    }
+    if (change_generators) {
+        generators = std::move(generators);
+    }
+}
+
 
 wgen::colorFromHeightFunc TerrainApp::getActiveColorFunc() {
     return COLOR_FUNCTIONS[activeColorFuncId];
 }
 
-void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
+void TerrainApp::initGenerators(std::vector<std::unique_ptr<wgen::Generator>>& generators, const wgen::TerrainConfig &terrainConfig) {
     generators.clear();
     std::uint32_t seed;
     if (terrainConfig.setSeed) {
@@ -213,9 +287,48 @@ void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
 }
 
 void TerrainApp::regenerateTerrain(std::uint32_t seed) {
+    if (terrainJobRunning_) {
+        return;
+    }
     config.terrainConfig.seed = seed;
-    initGenerators(config.terrainConfig);
-    loadTerrain();
+    const auto terrainConfig = config.terrainConfig;
+    const auto colorFunc = getActiveColorFunc();
+    const auto version = ++terrainBuildVersion_;
+
+    terrainJobRunning_ = true;
+    const std::size_t genToUse = used_generator;
+
+    terrainGenerationJob_ = std::async(std::launch::async, [terrainConfig, colorFunc, genToUse, version] {
+        std::vector<std::unique_ptr<wgen::Generator>> localGenerators;
+        TerrainApp::initGenerators(localGenerators, terrainConfig);
+        std::size_t width = terrainConfig.width;
+        std::size_t height = terrainConfig.height;
+
+        auto heightMap = localGenerators[genToUse]->generateHeightMap(width, height).normal();
+        TerrainJobResult result;
+        result.generators = std::move(localGenerators);
+        result.heightMap = std::move(heightMap);
+
+        appendHeightMapMesh(
+            result.heightMap,
+            -1.0F,
+            1.0F,
+            -1.0F,
+            1.0F,
+            result.data.vertices2d,
+            result.data.indices2d,
+            colorFunc
+        );
+
+        appendHeightMapMesh3d(
+            result.heightMap,
+            result.data.vertices3d,
+            result.data.indices3d,
+            colorFunc
+        );
+
+        return result;
+    });
 }
 
 void TerrainApp::loadTerrain() {
@@ -310,14 +423,7 @@ void TerrainApp::run() {
             const int frameIndex = renderer_.getFrameIndex();
 
             retiredObjects_[frameIndex].clear();
-            if (pendingObjectReload_) {
-                retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
-                retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
-
-                reloadObjects();
-
-                pendingObjectReload_ = false;
-            }
+            tryApplyFinishedTerrainJob(frameIndex);
 
 
             FrameInfo frameInfo{

@@ -10,6 +10,8 @@
 #include "window/lve_window.hpp"
 
 #include <vector>
+#include <mutex>
+#include <future>
 
 namespace lve {
 
@@ -40,6 +42,19 @@ struct RetiredFrameObjects {
     }
 };
 
+struct TerrainMeshData {
+    std::vector<Vertex2d> vertices2d;
+    std::vector<std::uint32_t> indices2d;
+    std::vector<Vertex3d> vertices3d;
+    std::vector<std::uint32_t> indices3d;
+};
+
+struct TerrainJobResult {
+    std::vector<std::unique_ptr<wgen::Generator>> generators;
+    wgen::HeightMap<float> heightMap;
+    TerrainMeshData data;
+};
+
 
 class TerrainApp {
 public:
@@ -60,7 +75,7 @@ private:
     void loadTerrain();
     void reloadObjects();
     void regenerateTerrain(std::uint32_t seed);
-    void initGenerators(const wgen::TerrainConfig& terrainConfig);
+    static void initGenerators(std::vector<std::unique_ptr<wgen::Generator>>& generators, const wgen::TerrainConfig& terrainConfig);
     void initDropDownMenu();
     void initFontFamily();
     void initDescriptorPool();
@@ -93,6 +108,19 @@ private:
     std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
 
     std::unique_ptr<LveDescriptorPool> globalPool_{};
+
+    std::mutex terrainJobMutex_;
+    std::future<TerrainMeshData> terrainReappendJob_;;
+    std::uint64_t terrainJobVersion_{0};
+    std::uint64_t latestAcceptedTerrainJobVersion_{0};
+    bool terrainJobRunning_{false};
+    void tryApplyFinishedTerrainJob(int frameIndex);
+
+    std::future<TerrainJobResult> terrainGenerationJob_;
+    std::uint64_t terrainBuildVersion_{0};
+
+
+
 };
 
 } // namespace lve

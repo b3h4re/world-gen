@@ -50,7 +50,6 @@ struct TerrainMeshData {
 };
 
 struct TerrainJobResult {
-    std::vector<std::unique_ptr<wgen::Generator>> generators;
     wgen::HeightMap<float> heightMap;
     TerrainMeshData data;
 };
@@ -89,7 +88,7 @@ private:
         wgen::terrainBlackAndWhite
     };
 
-    std::size_t used_generator = 0;
+    std::size_t used_generator = 2;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
     bool render3d_{false};
 
@@ -116,6 +115,7 @@ private:
     bool terrainJobRunning_{false};
     void tryApplyFinishedTerrainJob(int frameIndex);
 
+    std::mutex generatorsMutex_;
     std::future<TerrainJobResult> terrainGenerationJob_;
     std::uint64_t terrainBuildVersion_{0};
 

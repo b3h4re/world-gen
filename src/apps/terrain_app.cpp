@@ -149,6 +149,9 @@ void TerrainApp::initDropDownMenu() {
     };
 
     dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontFamily_.atlasForPixelHeight(32.0F), buttons);
+
+
+
 }
 
 
@@ -163,7 +166,7 @@ void TerrainApp::rotateColorFunction() {
     const std::uint64_t version = ++terrainJobVersion_;
     terrainJobRunning_ = true;
 
-    terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc, version] {
+    terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc] {
         TerrainMeshData data;
 
         appendHeightMapMesh(
@@ -215,6 +218,9 @@ void TerrainApp::tryApplyFinishedTerrainJob(int frameIndex) {
     if (change_data) {
         retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
         retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
+        objects2d_ = {};
+        objects3d_ = {};
+
 
         auto mesh2d = std::make_shared<Mesh2d>(device_, result.data.vertices2d, result.data.indices2d);
         objects2d_.push_back({std::move(mesh2d), {}});
@@ -224,9 +230,6 @@ void TerrainApp::tryApplyFinishedTerrainJob(int frameIndex) {
     }
     if (change_heightmap) {
         activeHeghtMap = std::move(result.heightMap);
-    }
-    if (change_generators) {
-        generators = std::move(generators);
     }
 }
 
@@ -255,35 +258,35 @@ void TerrainApp::initGenerators(std::vector<std::unique_ptr<wgen::Generator>>& g
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
         terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
         terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
-    // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-    //     terrainConfig.worley.gridWidth,
-    //     terrainConfig.worley.gridHeight,
-    //     terrainConfig.worley.dotsPerCell,
-    //     seed,
-    //     terrainConfig.worley.p,
-    //     terrainConfig.worley.numPoints
-    // )));
-    // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-    //     terrainConfig.wavelet.gridWidth,
-    //     terrainConfig.wavelet.gridHeight,
-    //     seed,
-    //     wgen::defaultReconstructionKernel
-    // )));
-    // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-    //     terrainConfig.simplex.gridWidth,
-    //     terrainConfig.simplex.gridHeight,
-    //     terrainConfig.simplex.dotsPerCell,
-    //     seed
-    // )));
-    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-    //     terrainConfig.perlin.gridWidth,
-    //     terrainConfig.perlin.gridHeight,
-    //     terrainConfig.perlin.dotsPerCell,
-    //     seed,
-    //     wgen::defaultPerlinInterp
-    // )));
-    // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
-    // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+    generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
+        terrainConfig.worley.gridWidth,
+        terrainConfig.worley.gridHeight,
+        terrainConfig.worley.dotsPerCell,
+        seed,
+        terrainConfig.worley.p,
+        terrainConfig.worley.numPoints
+    )));
+    generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
+        terrainConfig.wavelet.gridWidth,
+        terrainConfig.wavelet.gridHeight,
+        seed,
+        wgen::defaultReconstructionKernel
+    )));
+    generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
+        terrainConfig.simplex.gridWidth,
+        terrainConfig.simplex.gridHeight,
+        terrainConfig.simplex.dotsPerCell,
+        seed
+    )));
+    generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
+        terrainConfig.perlin.gridWidth,
+        terrainConfig.perlin.gridHeight,
+        terrainConfig.perlin.dotsPerCell,
+        seed,
+        wgen::defaultPerlinInterp
+    )));
+    generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
+    generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
 }
 
 void TerrainApp::regenerateTerrain(std::uint32_t seed) {
@@ -298,15 +301,19 @@ void TerrainApp::regenerateTerrain(std::uint32_t seed) {
     terrainJobRunning_ = true;
     const std::size_t genToUse = used_generator;
 
-    terrainGenerationJob_ = std::async(std::launch::async, [terrainConfig, colorFunc, genToUse, version] {
-        std::vector<std::unique_ptr<wgen::Generator>> localGenerators;
-        TerrainApp::initGenerators(localGenerators, terrainConfig);
-        std::size_t width = terrainConfig.width;
-        std::size_t height = terrainConfig.height;
+    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, colorFunc, genToUse] {
+        wgen::HeightMap<float> heightMap;
 
-        auto heightMap = localGenerators[genToUse]->generateHeightMap(width, height).normal();
+        {
+            std::lock_guard lock{generatorsMutex_};
+
+            generators[genToUse]->setSeed(terrainConfig.seed);
+            heightMap = generators[genToUse]
+                ->generateHeightMap(terrainConfig.width, terrainConfig.height)
+                .normal();
+        }
+
         TerrainJobResult result;
-        result.generators = std::move(localGenerators);
         result.heightMap = std::move(heightMap);
 
         appendHeightMapMesh(

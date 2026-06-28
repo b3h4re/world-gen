@@ -154,7 +154,7 @@ void TerrainApp::initDropDownMenu() {
 
 void TerrainApp::rotateColorFunction() {
     activeColorFuncId = (activeColorFuncId + 1) % NUM_COLOR_FUNCTIONS;
-    reloadObjects();
+    pendingObjectReload_ = true;
 }
 
 wgen::colorFromHeightFunc TerrainApp::getActiveColorFunc() {
@@ -308,6 +308,18 @@ void TerrainApp::run() {
 
         if (const VkCommandBuffer commandBuffer = renderer_.beginFrame()) {
             const int frameIndex = renderer_.getFrameIndex();
+
+            retiredObjects_[frameIndex].clear();
+            if (pendingObjectReload_) {
+                retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
+                retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
+
+                reloadObjects();
+
+                pendingObjectReload_ = false;
+            }
+
+
             FrameInfo frameInfo{
                 frameIndex,
                 frameTime,

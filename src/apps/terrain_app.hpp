@@ -29,6 +29,18 @@ void appendHeightMapMesh3d(
     std::vector<std::uint32_t>& indices,
     wgen::colorFromHeightFunc colorFunc);
 
+
+struct RetiredFrameObjects {
+    std::vector<GameObject2d> objects2d;
+    std::vector<GameObject3d> objects3d;
+
+    void clear() {
+        objects2d.clear();
+        objects3d.clear();
+    }
+};
+
+
 class TerrainApp {
 public:
     static constexpr int WIDTH = 1280;
@@ -71,10 +83,14 @@ private:
     LveWindow window_{WIDTH, HEIGHT, "World Generator"};
     LveDevice device_{window_};
     LveRenderer renderer_{window_, device_};
-    std::vector<GameObject2d> objects2d_;
     FontFamily fontFamily_{};
     std::unique_ptr<DropdownMenu> dropdownMenu_;
+
+    std::vector<GameObject2d> objects2d_;
     std::vector<GameObject3d> objects3d_;
+    bool pendingObjectReload_{false};
+
+    std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
 
     std::unique_ptr<LveDescriptorPool> globalPool_{};
 };

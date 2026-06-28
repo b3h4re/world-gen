@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -153,6 +154,7 @@ void TerrainApp::initDropDownMenu() {
 
 void TerrainApp::rotateColorFunction() {
     activeColorFuncId = (activeColorFuncId + 1) % NUM_COLOR_FUNCTIONS;
+    reloadObjects();
 }
 
 wgen::colorFromHeightFunc TerrainApp::getActiveColorFunc() {
@@ -217,22 +219,27 @@ void TerrainApp::regenerateTerrain(std::uint32_t seed) {
 }
 
 void TerrainApp::loadTerrain() {
-    objects2d_.clear();
-    objects3d_.clear();
     std::size_t width = config.terrainConfig.width;
     std::size_t height = config.terrainConfig.height;
-    auto heightMap = generators[used_generator]->generateHeightMap(width, height).normal();
+    activeHeghtMap = generators[used_generator]->generateHeightMap(width, height).normal();
+    reloadObjects();
+}
 
+
+void TerrainApp::reloadObjects() {
+    vkDeviceWaitIdle(device_.device());
+    objects2d_.clear();
+    objects3d_.clear();
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
-    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, vertices, indices, getActiveColorFunc());
+    appendHeightMapMesh(activeHeghtMap, -1.0F, 1.0F, -1.0F, 1.0F, vertices, indices, getActiveColorFunc());
 
     auto mesh = std::make_shared<Mesh2d>(device_, vertices, indices);
     objects2d_.push_back({std::move(mesh), {}});
 
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
-    appendHeightMapMesh3d(heightMap, vertices3d, indices3d, getActiveColorFunc());
+    appendHeightMapMesh3d(activeHeghtMap, vertices3d, indices3d, getActiveColorFunc());
 
     auto mesh3d = std::make_shared<Mesh3d>(device_, vertices3d, indices3d);
     objects3d_.push_back({std::move(mesh3d), {}});

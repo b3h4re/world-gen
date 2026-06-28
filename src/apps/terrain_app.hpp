@@ -46,6 +46,7 @@ private:
     wgen::AppConfig config;
 
     void loadTerrain();
+    void reloadObjects();
     void regenerateTerrain(std::uint32_t seed);
     void initGenerators(const wgen::TerrainConfig& terrainConfig);
     void initDropDownMenu();
@@ -64,6 +65,8 @@ private:
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
     bool render3d_{false};
+
+    wgen::HeightMap<float> activeHeghtMap;
 
     LveWindow window_{WIDTH, HEIGHT, "World Generator"};
     LveDevice device_{window_};

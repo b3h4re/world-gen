@@ -31,6 +31,20 @@ namespace wgen {
 
             return as<bool>(args[0]);
         };
+        constructors["heightmap"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() != 2 && args.size() != 3) {
+                throw std::runtime_error("heightmap expects width, height, and optional default value");
+            }
+
+            const auto width = static_cast<std::size_t>(as<int>(args[0]));
+            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+
+            if (args.size() == 2) {
+                return HeightMap<float>{width, height};
+            }
+
+            return HeightMap<float>{width, height, as<float>(args[2])};
+        };
     }
     void Interpreter::registerMutatingOperators() {
 
@@ -39,6 +53,16 @@ namespace wgen {
         binaryOperators["float + float"] =
             [](const Value& lhs, const Value& rhs) -> Value {
                 return std::get<float>(lhs) + std::get<float>(rhs);
+            };
+
+        binaryOperators["heightmap + float"] =
+            [](const Value& lhs, const Value& rhs) -> Value {
+                return std::get<HeightMap<float>>(lhs) + std::get<float>(rhs);
+            };
+
+        binaryOperators["float + heightmap"] =
+            [](const Value& lhs, const Value& rhs) -> Value {
+                return std::get<float>(lhs) + std::get<HeightMap<float>>(rhs);
             };
 
         binaryOperators["int + int"] =
@@ -226,27 +250,44 @@ namespace wgen {
             return "bool";
         }
 
-
+        if (std::holds_alternative<HeightMap<float>>(value)) {
+            return "heightmap";
+        }
 
         return "<unknown>";
     }
 
-    Value Interpreter::resolveArgument(const std::string& token) {
-        if (auto number = tryParseFloat(token)) {
-            return *number;
-        }
+	    Value Interpreter::resolveArgument(const std::string& token) {
+	        if (auto integer = tryParseInt(token)) {
+	            return *integer;
+	        }
+
+	        if (auto number = tryParseFloat(token)) {
+	            return *number;
+	        }
 
         auto it = variables.find(token);
         if (it != variables.end()) {
             return it->second;
         }
 
-        throw std::runtime_error("Unknown argument: " + token);
-    }
+	        throw std::runtime_error("Unknown argument: " + token);
+	    }
 
-    std::optional<float> Interpreter::tryParseFloat(const std::string& text) {
-        char* end = nullptr;
-        float value = std::strtof(text.c_str(), &end);
+	    std::optional<int> Interpreter::tryParseInt(const std::string& text) {
+	        char* end = nullptr;
+	        long value = std::strtol(text.c_str(), &end, 10);
+
+	        if (end != text.c_str() && *end == '\0') {
+	            return static_cast<int>(value);
+	        }
+
+	        return std::nullopt;
+	    }
+
+	    std::optional<float> Interpreter::tryParseFloat(const std::string& text) {
+	        char* end = nullptr;
+	        float value = std::strtof(text.c_str(), &end);
 
         if (end != text.c_str() && *end == '\0') {
             return value;

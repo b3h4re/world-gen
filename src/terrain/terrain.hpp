@@ -33,7 +33,7 @@ template<class T>
 struct IsHeightMap<HeightMap<T>> : std::true_type {};
 
 template<class T>
-concept NotHeightMap = !IsHeightMap<std::remove_cvref_t<T>>::value;
+concept NotHeightMap = !IsHeightMap<std::remove_cvref_t<T>>::value && std::is_arithmetic_v<std::remove_cvref_t<T>>;
 
 template<class T>
 class HeightMap {

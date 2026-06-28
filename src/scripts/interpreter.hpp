@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include "files/file_path.hpp"
+#include "terrain/terrain.hpp"
 
 
 namespace wgen {
@@ -18,7 +19,8 @@ namespace wgen {
         UndefinedVariable,
         float,
         int,
-        bool
+        bool,
+        wgen::HeightMap<float>
     >;
     using Constructor = std::function<Value(const std::vector<Value>&)>;
     using MutatingOperator = std::function<void(Value&, const std::vector<Value>&)>;
@@ -132,8 +134,9 @@ namespace wgen {
 
             void executeCommand(const Command& command);
 
-            std::optional<float> tryParseFloat(const std::string& text);
-            Value resolveArgument(const std::string& token);
+	            std::optional<int> tryParseInt(const std::string& text);
+	            std::optional<float> tryParseFloat(const std::string& text);
+	            Value resolveArgument(const std::string& token);
 
             void executeDeclaration(const DeclCommand& command);
             void executeAdd(const AddCommand& command);

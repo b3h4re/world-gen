@@ -88,7 +88,7 @@ private:
         wgen::terrainBlackAndWhite
     };
 
-    std::size_t used_generator = 2;
+    std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
     bool render3d_{false};
 

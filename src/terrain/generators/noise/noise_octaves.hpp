@@ -31,26 +31,63 @@ namespace wgen {
         );
 
 
-    template <typename GenClass, std::size_t numOctaves, float lacunarity, float persistance>
-    requires valid_generator<GenClass> && (numOctaves > 0)
+    template <typename GenClass>
+    requires valid_generator<GenClass>
     class OctaveGenerator : public Generator  {
     public:
+        static constexpr std::size_t DEFAULT_NUM_OCTAVES = 3;
+        static constexpr float DEFAULT_LACUNARITY = 2.5F;
+        static constexpr float DEFAULT_PERSISTANCE = 0.5F;
 
-        explicit OctaveGenerator(std::uint32_t seed)
+        explicit OctaveGenerator(
+            std::uint32_t seed,
+            std::size_t numOctaves = DEFAULT_NUM_OCTAVES,
+            float lacunarity = DEFAULT_LACUNARITY,
+            float persistance = DEFAULT_PERSISTANCE)
         requires std::constructible_from<GenClass, std::uint32_t>
-            : constructorKind_{ConstructorKind::SeedOnly} {
+            : constructorKind_{ConstructorKind::SeedOnly},
+              numOctaves_{numOctaves},
+              lacunarity_{lacunarity},
+              persistance_{persistance} {
+            validateConfig();
             setSeed(seed);
         }
 
-        OctaveGenerator(std::size_t width, std::size_t height, std::uint32_t seed)
+        OctaveGenerator(
+            std::size_t width,
+            std::size_t height,
+            std::uint32_t seed,
+            std::size_t numOctaves = DEFAULT_NUM_OCTAVES,
+            float lacunarity = DEFAULT_LACUNARITY,
+            float persistance = DEFAULT_PERSISTANCE)
         requires std::constructible_from<GenClass, std::size_t, std::size_t, std::uint32_t>
-            : constructorKind_{ConstructorKind::Grid}, width_{width}, height_{height} {
+            : constructorKind_{ConstructorKind::Grid},
+              width_{width},
+              height_{height},
+              numOctaves_{numOctaves},
+              lacunarity_{lacunarity},
+              persistance_{persistance} {
+            validateConfig();
             setSeed(seed);
         }
 
-        OctaveGenerator(std::size_t width, std::size_t height, std::size_t dots, std::uint32_t seed)
+        OctaveGenerator(
+            std::size_t width,
+            std::size_t height,
+            std::size_t dots,
+            std::uint32_t seed,
+            std::size_t numOctaves = DEFAULT_NUM_OCTAVES,
+            float lacunarity = DEFAULT_LACUNARITY,
+            float persistance = DEFAULT_PERSISTANCE)
         requires std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, std::uint32_t>
-            : constructorKind_{ConstructorKind::GridWithDots}, width_{width}, height_{height}, dots_{dots} {
+            : constructorKind_{ConstructorKind::GridWithDots},
+              width_{width},
+              height_{height},
+              dots_{dots},
+              numOctaves_{numOctaves},
+              lacunarity_{lacunarity},
+              persistance_{persistance} {
+            validateConfig();
             setSeed(seed);
         }
 
@@ -61,7 +98,7 @@ namespace wgen {
 
         float noise(std::size_t x, std::size_t y) const override {
             float resNoise{0};
-            for (std::size_t i = 0; i < numOctaves; ++i) {
+            for (std::size_t i = 0; i < octaves.size(); ++i) {
                 resNoise += amplitude(i) * octaves[i]->noise(sampleCoordinate(x, i), sampleCoordinate(y, i));
             }
             return resNoise;
@@ -79,22 +116,25 @@ namespace wgen {
         std::size_t width_{};
         std::size_t height_{};
         std::size_t dots_{};
+        std::size_t numOctaves_{};
+        float lacunarity_{};
+        float persistance_{};
         std::vector<std::unique_ptr<Generator>> octaves;
 
-        static float frequency(std::size_t octave) {
-            return std::pow(lacunarity, static_cast<float>(octave));
+        float frequency(std::size_t octave) const {
+            return std::pow(lacunarity_, static_cast<float>(octave));
         }
 
-        static float amplitude(std::size_t octave) {
-            return std::pow(persistance, static_cast<float>(octave));
+        float amplitude(std::size_t octave) const {
+            return std::pow(persistance_, static_cast<float>(octave));
         }
 
-        static std::size_t octaveScale(std::size_t value, std::size_t octave) {
+        std::size_t octaveScale(std::size_t value, std::size_t octave) const {
             float scaled = static_cast<float>(value) * frequency(octave);
             return static_cast<std::size_t>(scaled);
         }
 
-        static std::size_t sampleCoordinate(std::size_t coordinate, std::size_t octave) {
+        std::size_t sampleCoordinate(std::size_t coordinate, std::size_t octave) const {
             return octaveScale(coordinate, octave);
         }
 
@@ -103,12 +143,24 @@ namespace wgen {
             return static_cast<std::uint32_t>(hashed ^ (hashed >> 32));
         }
 
+        void validateConfig() const {
+            if (numOctaves_ == 0) {
+                throw std::invalid_argument("octave count must be at least one");
+            }
+            if (lacunarity_ <= 0.0F) {
+                throw std::invalid_argument("octave lacunarity must be positive");
+            }
+            if (persistance_ < 0.0F) {
+                throw std::invalid_argument("octave persistance must be non-negative");
+            }
+        }
+
         void rebuildOctaves(std::uint32_t seed) {
             octaves.clear();
-            octaves.reserve(numOctaves);
+            octaves.reserve(numOctaves_);
 
             std::uint32_t octaveSeed = seed;
-            for (std::size_t octave = 0; octave < numOctaves; ++octave) {
+            for (std::size_t octave = 0; octave < numOctaves_; ++octave) {
                 makeOctave(octave, octaveSeed);
                 octaveSeed = hashSeed(octaveSeed);
             }

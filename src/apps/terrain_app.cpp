@@ -247,14 +247,17 @@ void TerrainApp::initGenerators(std::vector<std::unique_ptr<wgen::Generator>>& g
         std::random_device rd;
         seed = rd();
     }
-    generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d, 3, 2.5F, 0.5F>>(
-        wgen::OctaveGenerator<wgen::PerlinNoise2d, 3, 2.5F, 0.5F>(
-            terrainConfig.perlin.gridWidth,
-            terrainConfig.perlin.gridHeight,
-            terrainConfig.perlin.dotsPerCell,
-            seed
-        )
-    ));
+	    generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(
+	        wgen::OctaveGenerator<wgen::PerlinNoise2d>(
+	            terrainConfig.perlin.gridWidth,
+	            terrainConfig.perlin.gridHeight,
+	            terrainConfig.perlin.dotsPerCell,
+	            seed,
+	            3,
+	            2.5F,
+	            0.5F
+	        )
+	    ));
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
         terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
         terrainConfig.dla.fill, terrainConfig.dla.jiggle)));

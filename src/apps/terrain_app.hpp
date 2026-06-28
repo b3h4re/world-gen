@@ -13,6 +13,22 @@
 
 namespace lve {
 
+void appendHeightMapMesh(
+    const wgen::HeightMap<float>& heightMap,
+    float minX,
+    float maxX,
+    float minY,
+    float maxY,
+    std::vector<Vertex2d>& vertices,
+    std::vector<std::uint32_t>& indices,
+    wgen::colorFromHeightFunc colorFunc);
+
+void appendHeightMapMesh3d(
+    const wgen::HeightMap<float>& heightMap,
+    std::vector<Vertex3d>& vertices,
+    std::vector<std::uint32_t>& indices,
+    wgen::colorFromHeightFunc colorFunc);
+
 class TerrainApp {
 public:
     static constexpr int WIDTH = 1280;
@@ -35,6 +51,16 @@ private:
     void initDropDownMenu();
     void initFontFamily();
     void initDescriptorPool();
+    void rotateColorFunction();
+
+    wgen::colorFromHeightFunc getActiveColorFunc();
+    std::size_t activeColorFuncId{0};
+    constexpr static std::size_t NUM_COLOR_FUNCTIONS = 2;
+    constexpr static wgen::colorFromHeightFunc COLOR_FUNCTIONS[NUM_COLOR_FUNCTIONS] = {
+        wgen::terrainColor,
+        wgen::terrainBlackAndWhite
+    };
+
     std::size_t used_generator = 0;
     std::vector<std::unique_ptr<wgen::Generator>> generators;
     bool render3d_{false};

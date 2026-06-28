@@ -19,8 +19,6 @@
 
 namespace lve {
 
-namespace {
-
 void appendHeightMapMesh(
         const wgen::HeightMap<float>& heightMap,
         float minX,
@@ -29,7 +27,7 @@ void appendHeightMapMesh(
         float maxY,
         std::vector<Vertex2d>& vertices,
         std::vector<std::uint32_t>& indices,
-        wgen::colorFromHeightFunc colorFunc = wgen::terrainColor) {
+        wgen::colorFromHeightFunc colorFunc) {
     const std::size_t width = heightMap.width();
     const std::size_t height = heightMap.height();
 
@@ -58,7 +56,7 @@ void appendHeightMapMesh3d(
         const wgen::HeightMap<float>& heightMap,
         std::vector<Vertex3d>& vertices,
         std::vector<std::uint32_t>& indices,
-        wgen::colorFromHeightFunc colorFunc = wgen::terrainBlackAndWhite) {
+        wgen::colorFromHeightFunc colorFunc) {
     const std::size_t width = heightMap.width();
     const std::size_t height = heightMap.height();
 
@@ -89,8 +87,6 @@ void appendHeightMapMesh3d(
                 {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
         }
     }
-}
-
 }
 
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
@@ -139,9 +135,28 @@ void TerrainApp::initDropDownMenu() {
         .onClick = [this] { regenerateTerrain(this->config.terrainConfig.seed); },
     };
 
-    std::vector<UiButton::Config> buttons{regenerateTerrainButton, reloadTerrainButton};
+    UiButton::Config switchColorButton = {
+        .color = {0.25F, 0.25F, 0.30F},
+        .text = "Switch Color",
+        .onClick = [this] { rotateColorFunction(); },
+    };
+
+    std::vector<UiButton::Config> buttons{
+        regenerateTerrainButton,
+        reloadTerrainButton,
+        switchColorButton
+    };
 
     dropdownMenu_ = std::make_unique<DropdownMenu>(device_, fontFamily_.atlasForPixelHeight(32.0F), buttons);
+}
+
+
+void TerrainApp::rotateColorFunction() {
+    activeColorFuncId = (activeColorFuncId + 1) % NUM_COLOR_FUNCTIONS;
+}
+
+wgen::colorFromHeightFunc TerrainApp::getActiveColorFunc() {
+    return COLOR_FUNCTIONS[activeColorFuncId];
 }
 
 void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
@@ -153,6 +168,14 @@ void TerrainApp::initGenerators(const wgen::TerrainConfig &terrainConfig) {
         std::random_device rd;
         seed = rd();
     }
+    generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d, 3, 2.5F, 0.5F>>(
+        wgen::OctaveGenerator<wgen::PerlinNoise2d, 3, 2.5F, 0.5F>(
+            terrainConfig.perlin.gridWidth,
+            terrainConfig.perlin.gridHeight,
+            terrainConfig.perlin.dotsPerCell,
+            seed
+        )
+    ));
     generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
         terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
         terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
@@ -202,14 +225,14 @@ void TerrainApp::loadTerrain() {
 
     std::vector<Vertex2d> vertices;
     std::vector<std::uint32_t> indices;
-    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, vertices, indices, wgen::terrainBlackAndWhite);
+    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, vertices, indices, getActiveColorFunc());
 
     auto mesh = std::make_shared<Mesh2d>(device_, vertices, indices);
     objects2d_.push_back({std::move(mesh), {}});
 
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
-    appendHeightMapMesh3d(heightMap, vertices3d, indices3d);
+    appendHeightMapMesh3d(heightMap, vertices3d, indices3d, getActiveColorFunc());
 
     auto mesh3d = std::make_shared<Mesh3d>(device_, vertices3d, indices3d);
     objects3d_.push_back({std::move(mesh3d), {}});

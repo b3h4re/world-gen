@@ -1,0 +1,61 @@
+#include "terrain_app_renderer.hpp"
+
+#include "renderer/objects/mesh_2d.hpp"
+#include "renderer/objects/mesh_3d.hpp"
+
+#include <utility>
+#include <vulkan/vulkan.h>
+
+namespace lve {
+
+TerrainAppRenderer::TerrainAppRenderer() : TerrainAppRenderer(wgen::WindowConfig{}) {}
+
+TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig&)
+    : window_{WIDTH, HEIGHT, "World Generator"}, device_{window_}, renderer_{window_, device_} {
+    initDescriptorPool();
+}
+
+void TerrainAppRenderer::setTerrainMesh(TerrainMeshData data) {
+    vkDeviceWaitIdle(device_.device());
+    objects2d_ = makeObjects2d(data);
+    objects3d_ = makeObjects3d(data);
+}
+
+void TerrainAppRenderer::applyTerrainMesh(int frameIndex, TerrainMeshData data) {
+    retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
+    retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
+    objects2d_ = makeObjects2d(data);
+    objects3d_ = makeObjects3d(data);
+}
+
+void TerrainAppRenderer::clearRetiredObjects(int frameIndex) {
+    retiredObjects_[frameIndex].clear();
+}
+
+void TerrainAppRenderer::waitIdle() {
+    vkDeviceWaitIdle(device_.device());
+}
+
+void TerrainAppRenderer::initDescriptorPool() {
+    globalPool_ = LveDescriptorPool::Builder(device_)
+        .setMaxSets(100)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16)
+        .build();
+}
+
+std::vector<GameObject2d> TerrainAppRenderer::makeObjects2d(const TerrainMeshData& data) {
+    std::vector<GameObject2d> objects;
+    auto mesh = std::make_shared<Mesh2d>(device_, data.vertices2d, data.indices2d);
+    objects.push_back({std::move(mesh), {}});
+    return objects;
+}
+
+std::vector<GameObject3d> TerrainAppRenderer::makeObjects3d(const TerrainMeshData& data) {
+    std::vector<GameObject3d> objects;
+    auto mesh = std::make_shared<Mesh3d>(device_, data.vertices3d, data.indices3d);
+    objects.push_back({std::move(mesh), {}});
+    return objects;
+}
+
+} // namespace lve

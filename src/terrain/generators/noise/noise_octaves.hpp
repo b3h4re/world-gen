@@ -138,11 +138,6 @@ namespace wgen {
             return octaveScale(coordinate, octave);
         }
 
-        static std::uint32_t hashSeed(std::uint32_t seed) {
-            const std::uint64_t hashed = splitmix64(seed);
-            return static_cast<std::uint32_t>(hashed ^ (hashed >> 32));
-        }
-
         void validateConfig() const {
             if (numOctaves_ == 0) {
                 throw std::invalid_argument("octave count must be at least one");

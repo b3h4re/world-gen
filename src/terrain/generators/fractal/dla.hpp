@@ -38,7 +38,7 @@ namespace wgen {
     */
     class DLABasic : public Generator {
     public:
-        using HeightFunc = std::function<float(float)>; // Function whic receives int of point and returns height
+
         DLABasic(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
         DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
 

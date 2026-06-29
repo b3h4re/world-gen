@@ -211,6 +211,10 @@ void TerrainAppCore::initGenerators(
         seed = rd();
     }
 
+    generators.push_back(std::make_unique<wgen::DLACombiner>(
+        3,
+        seed
+    ));
     generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(
         wgen::OctaveGenerator<wgen::PerlinNoise2d>(
             terrainConfig.perlin.gridWidth,

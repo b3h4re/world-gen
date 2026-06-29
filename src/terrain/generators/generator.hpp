@@ -9,6 +9,8 @@
 
 namespace wgen {
 
+    using HeightFunc = std::function<float(float)>; // Function whic receives int of point and returns height
+
     struct Ivec2Hash {
         std::size_t operator()(const glm::ivec2& v) const noexcept {
             std::size_t h1 = std::hash<int>{}(v.x);
@@ -59,6 +61,7 @@ namespace wgen {
         x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
         return x ^ (x >> 31);
     }
+    std::uint32_t hashSeed(std::uint32_t seed);
 
     constexpr std::uint64_t makeKey(int i, int j) noexcept {
         auto ui = static_cast<std::uint32_t>(i);

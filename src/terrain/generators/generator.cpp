@@ -47,4 +47,9 @@ namespace wgen {
         return corner1.x <= newPos.x && newPos.x <= corner2.x && corner1.y <= newPos.y && newPos.y <= corner2.y;
     }
 
+    std::uint32_t hashSeed(std::uint32_t seed) {
+        const std::uint64_t hashed = splitmix64(seed);
+        return static_cast<std::uint32_t>(hashed ^ (hashed >> 32));
+    }
+
 }

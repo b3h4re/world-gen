@@ -147,6 +147,16 @@ if(BUILD_TESTING)
         src/terrain/generators/generator.cpp
         src/terrain/generators/noise/worley.cpp
         src/terrain/generators/noise/worley.hpp
+        src/terrain/generators/noise/wavelet.cpp
+        src/terrain/generators/noise/wavelet.hpp
+        src/terrain/generators/noise/value_noise.cpp
+        src/terrain/generators/noise/value_noise.hpp
+        src/terrain/generators/noise/simplex.cpp
+        src/terrain/generators/noise/simplex.hpp
+        src/terrain/generators/noise/perlin.cpp
+        src/terrain/generators/noise/perlin.hpp
+        src/terrain/generators/noise/layered_sin_noise.cpp
+        src/terrain/generators/noise/layered_sin_noise.hpp
     )
     target_include_directories(interpreter_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"

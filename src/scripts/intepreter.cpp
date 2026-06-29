@@ -32,7 +32,11 @@ namespace wgen {
         }
 
         if (typeName == "worley") {
-            return {"width", "height", "dots", "seed", "p"};
+            return {"width", "height", "dots", "seed", "p", "num_points"};
+        }
+
+        if (typeName == "wavelet") {
+            return {"width", "height", "seed", "frequency"};
         }
 
         return {};
@@ -121,6 +125,108 @@ namespace wgen {
             }
 
             throw std::runtime_error("Worley expects width, height, dots, optional seed, and optional p");
+        };
+
+        constructors["wavelet"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() < 2) {
+                throw std::runtime_error("Wavelet must have at least three arguments: width, height");
+            }
+
+            const auto width = static_cast<std::size_t>(as<int>(args[0]));
+            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+
+            if (args.size() == 2) {
+                return std::make_unique<wgen::WaveletNoise2d>(width, height);
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+
+            if (args.size() == 3) {
+                return std::make_unique<wgen::WaveletNoise2d>(width, height, seed);
+            }
+
+            const auto frequency = static_cast<float>(as<float>(args[4]));
+
+            if (args.size() == 4) {
+                return std::make_unique<wgen::WaveletNoise2d>(
+                    width,
+                    height,
+                    seed,
+                    wgen::defaultReconstructionKernel,
+                    frequency
+                );
+            }
+
+            throw std::runtime_error("Wavelet expects width, height, optional seed, and optional frequency");
+        };
+
+        constructors["value_noise"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() == 0) {
+                return std::make_unique<wgen::ValueNoiseGenerator>();
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[0]));
+
+            if (args.size() == 1) {
+                return std::make_unique<wgen::ValueNoiseGenerator>(seed);
+            }
+            throw std::runtime_error("Value noise expects only optional seed argument");
+        };
+        constructors["layered_sin"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() == 0) {
+                return std::make_unique<wgen::LayeredSinNoiseGenerator>();
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[0]));
+
+            if (args.size() == 1) {
+                return std::make_unique<wgen::LayeredSinNoiseGenerator>(seed);
+            }
+            throw std::runtime_error("Layered sin noise expects only optional seed argument");
+        };
+
+        constructors["simplex"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() < 3) {
+                throw std::runtime_error("Simplex must have at least three arguments: width, height and dots per cell");
+            }
+
+            const auto width = static_cast<std::size_t>(as<int>(args[0]));
+            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+            const auto dots = static_cast<std::size_t>(as<int>(args[2]));
+
+            if (args.size() == 3) {
+                return std::make_unique<wgen::SimplexNoise2d>(width, height, dots);
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+
+            if (args.size() == 4) {
+                return std::make_unique<wgen::SimplexNoise2d>(width, height, dots, seed);
+            }
+
+            throw std::runtime_error("Worley expects width, height, dots, optional seed, and optional p");
+        };
+
+        constructors["perlin"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() < 3) {
+                throw std::runtime_error("Perlin must have at least three arguments: width, height and dots per cell");
+            }
+
+            const auto width = static_cast<std::size_t>(as<int>(args[0]));
+            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+            const auto dots = static_cast<std::size_t>(as<int>(args[2]));
+
+            if (args.size() == 3) {
+                return std::make_unique<wgen::PerlinNoise2d>(width, height, dots);
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+
+            if (args.size() == 4) {
+                return std::make_unique<wgen::PerlinNoise2d>(width, height, dots, seed);
+            }
+
+            throw std::runtime_error("Perlin expects width, height, dots, optional seed");
         };
     }
     void Interpreter::registerMutatingOperators() {

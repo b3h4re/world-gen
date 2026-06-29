@@ -32,6 +32,7 @@ public:
 
     TerrainAppRenderer();
     explicit TerrainAppRenderer(const wgen::WindowConfig& config);
+    ~TerrainAppRenderer();
 
     TerrainAppRenderer(const TerrainAppRenderer&) = delete;
     TerrainAppRenderer& operator=(const TerrainAppRenderer&) = delete;

@@ -15,6 +15,15 @@ TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig&)
     initDescriptorPool();
 }
 
+TerrainAppRenderer::~TerrainAppRenderer() {
+    waitIdle();
+    retiredObjects_ = {};
+    objects3d_.clear();
+    objects2d_.clear();
+    globalPool_.reset();
+    renderer_.destroySwapChain();
+}
+
 void TerrainAppRenderer::setTerrainMesh(TerrainMeshData data) {
     vkDeviceWaitIdle(device_.device());
     objects2d_ = makeObjects2d(data);

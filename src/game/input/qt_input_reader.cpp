@@ -1,18 +1,42 @@
 #include "qt_input_reader.hpp"
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QEvent>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QMouseEvent>
 #include <QtGui/QWindow>
+#include <QtWidgets/QWidget>
 
 namespace lve {
 
 QtInputReader::QtInputReader(QWindow& window) : window_{window} {
-    window_.installEventFilter(this);
+    installOn(*QCoreApplication::instance());
+    installOn(window_);
+}
+
+QtInputReader::QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderWidget)
+    : window_{window}, rootWidget_{&rootWidget}, renderWidget_{&renderWidget} {
+    installOn(*QCoreApplication::instance());
+    installOn(window_);
+    installOn(*rootWidget_);
+    installOn(*renderWidget_);
+    rootWidget_->setFocusPolicy(Qt::StrongFocus);
+    renderWidget_->setFocusPolicy(Qt::StrongFocus);
+    renderWidget_->setMouseTracking(true);
+    renderWidget_->setFocus(Qt::OtherFocusReason);
 }
 
 QtInputReader::~QtInputReader() {
-    window_.removeEventFilter(this);
+    if (QCoreApplication::instance() != nullptr) {
+        removeFrom(*QCoreApplication::instance());
+    }
+    removeFrom(window_);
+    if (rootWidget_ != nullptr) {
+        removeFrom(*rootWidget_);
+    }
+    if (renderWidget_ != nullptr) {
+        removeFrom(*renderWidget_);
+    }
 }
 
 AppInputState QtInputReader::readInputState(VkExtent2D extent) {
@@ -40,10 +64,6 @@ AppInputState QtInputReader::readInputState(VkExtent2D extent) {
 }
 
 bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
-    if (watched != &window_) {
-        return QObject::eventFilter(watched, event);
-    }
-
     switch (event->type()) {
         case QEvent::KeyPress: {
             auto* keyEvent = static_cast<QKeyEvent*>(event);
@@ -57,12 +77,12 @@ bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
         }
         case QEvent::MouseMove: {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            mousePosition_ = mouseEvent->position();
+            mousePosition_ = window_.mapFromGlobal(mouseEvent->globalPosition().toPoint());
             break;
         }
         case QEvent::MouseButtonPress: {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            mousePosition_ = mouseEvent->position();
+            mousePosition_ = window_.mapFromGlobal(mouseEvent->globalPosition().toPoint());
             if (mouseEvent->button() == Qt::LeftButton) {
                 primaryMouseJustPressed_ = true;
             }
@@ -70,7 +90,7 @@ bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
         }
         case QEvent::MouseButtonRelease: {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            mousePosition_ = mouseEvent->position();
+            mousePosition_ = window_.mapFromGlobal(mouseEvent->globalPosition().toPoint());
             break;
         }
         default:
@@ -78,6 +98,14 @@ bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
     }
 
     return QObject::eventFilter(watched, event);
+}
+
+void QtInputReader::installOn(QObject& object) {
+    object.installEventFilter(this);
+}
+
+void QtInputReader::removeFrom(QObject& object) {
+    object.removeEventFilter(this);
 }
 
 void QtInputReader::handleKeyPress(int key, bool autoRepeat) {

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Gui)
+find_package(Qt6 REQUIRED COMPONENTS Gui Widgets)
 
 include(FetchContent)
 # Fetching toml++
@@ -97,6 +97,7 @@ target_compile_features(world_gen PRIVATE cxx_std_20)
 target_link_libraries(world_gen PRIVATE
     Vulkan::Vulkan
     Qt6::Gui
+    Qt6::Widgets
     tomlplusplus::tomlplusplus
     stb
 )

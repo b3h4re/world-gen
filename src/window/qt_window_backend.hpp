@@ -11,6 +11,7 @@
 
 class QEvent;
 class QWindow;
+class QWidget;
 
 namespace lve {
 
@@ -33,6 +34,9 @@ public:
     std::vector<const char*> getRequiredInstanceExtensions() const override;
 
     QWindow& qWindow();
+    QWidget& rootWidget();
+    QWidget& controlsWidget();
+    QWidget& renderWidget();
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -44,7 +48,10 @@ private:
     static std::vector<const char*> platformSurfaceExtensions();
 
     std::unique_ptr<OwnedGuiApplication> ownedApplication_;
+    std::unique_ptr<QWidget> rootWidget_;
+    QWidget* controlsWidget_{nullptr};
     std::unique_ptr<QWindow> window_;
+    QWidget* windowContainer_{nullptr};
     QVulkanInstance vulkanInstance_{};
     bool closeRequested_{false};
     bool frameBufferResized_{false};

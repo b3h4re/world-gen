@@ -4,7 +4,6 @@
 #include "game/input/qt_input_reader.hpp"
 #include "model/buffer/lve_buffer.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
-#include "renderer/systems/text_render_system.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -19,7 +18,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
     : core_{config},
       renderer_{config.windowConfig},
       gui_{
-          renderer_.device(),
+          renderer_.window().controlsWidget(),
           TerrainAppGui::Callbacks{
               .regenerateTerrain = [this] { regenerateWithRandomSeed(); },
               .reloadTerrain = [this] { reloadConfiguredSeed(); },
@@ -58,12 +57,10 @@ void TerrainApp::run() {
     }
 
     TerrainRenderSystem terrainRenderSystem{device, lveRenderer.getSwapChainRenderPass()};
-    TextRenderSystem textRenderSystem{
-        device, lveRenderer.getSwapChainRenderPass(), renderer_.descriptorPool(), gui_.fontAtlasForPixelHeight(32.0F)};
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};
-    QtInputReader inputReader{window.qWindow()};
+    QtInputReader inputReader{window.qWindow(), window.rootWidget(), window.renderWidget()};
     std::vector<CameraUpdateTarget> cameraTargets{
         makeCameraTarget(camera2d, !render3d_),
         makeCameraTarget(camera3d, render3d_),
@@ -73,13 +70,16 @@ void TerrainApp::run() {
 
     while (!window.shouldClose()) {
         window.pollEvents();
+        if (window.shouldClose()) {
+            break;
+        }
+
         const VkExtent2D windowExtent = window.getExtent();
-        gui_.setViewportExtent(windowExtent);
         const AppInputState input = inputReader.readInputState(windowExtent);
 
-        const bool uiHandledInput = gui_.update(input);
-        if (input.escapeJustPressed && !uiHandledInput) {
+        if (input.escapeJustPressed) {
             window.requestClose();
+            break;
         }
 
         if (input.viewToggleJustPressed) {
@@ -125,7 +125,6 @@ void TerrainApp::run() {
 
             lveRenderer.beginSwapChainRenderPass(commandBuffer);
             terrainRenderSystem.render(frameInfo);
-            gui_.render(commandBuffer, terrainRenderSystem.renderSystem2d(), textRenderSystem);
             lveRenderer.endSwapChainRenderPass(commandBuffer);
             lveRenderer.endFrame();
         }

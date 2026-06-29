@@ -7,6 +7,7 @@
 #include <QtCore/Qt>
 
 class QEvent;
+class QWidget;
 class QWindow;
 
 namespace lve {
@@ -25,6 +26,7 @@ struct QtKeyMappings {
 class QtInputReader : public QObject, public InputReader {
 public:
     explicit QtInputReader(QWindow& window);
+    QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderWidget);
     ~QtInputReader() override;
 
     QtInputReader(const QtInputReader&) = delete;
@@ -36,11 +38,15 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
+    void installOn(QObject& object);
+    void removeFrom(QObject& object);
     void handleKeyPress(int key, bool autoRepeat);
     void handleKeyRelease(int key, bool autoRepeat);
     void setKeyDown(int key, bool down);
 
     QWindow& window_;
+    QWidget* rootWidget_{nullptr};
+    QWidget* renderWidget_{nullptr};
     QtKeyMappings keyMapping_{};
     QPointF mousePosition_{};
     bool closeDown_{false};

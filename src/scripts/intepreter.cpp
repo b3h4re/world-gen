@@ -39,6 +39,22 @@ namespace wgen {
             return {"width", "height", "seed", "frequency"};
         }
 
+        if (typeName == "value_noise") {
+            return {"seed"};
+        }
+
+        if (typeName == "layered_sin") {
+            return {"seed"};
+        }
+
+        if (typeName == "simplex") {
+            return {"width", "height", "dots", "seed"};
+        }
+
+        if (typeName == "perlin") {
+            return {"width", "height", "dots", "seed"};
+        }
+
         return {};
     }
 
@@ -204,7 +220,7 @@ namespace wgen {
                 return std::make_unique<wgen::SimplexNoise2d>(width, height, dots, seed);
             }
 
-            throw std::runtime_error("Worley expects width, height, dots, optional seed, and optional p");
+            throw std::runtime_error("Worley expects width, height, dots, optional seed");
         };
 
         constructors["perlin"] = [](const std::vector<Value>& args) -> Value {

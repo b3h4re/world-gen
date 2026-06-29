@@ -69,6 +69,14 @@ namespace wgen {
         std::string result;
     };
 
+    struct AddAtCommand {
+        std::size_t x;
+        std::size_t y;
+        std::string lhs;
+        std::string rhs;
+        std::string result;
+    };
+
     struct CopyCommand {
         std::string source;
         std::string destination;
@@ -77,6 +85,7 @@ namespace wgen {
     using CommandPayload = std::variant<
         DeclCommand,
         AddCommand,
+        AddAtCommand,
         CopyCommand,
         EmptyCommand
     >;
@@ -97,6 +106,9 @@ namespace wgen {
 
         add - perform addition between var1 and var2 and assign result to var3 (var3 = var1 + var2;)
             add {var1} to {var2} = {var3}
+
+        addat - perform addition between heightmaps h1 and h2 at pos x and y and assign result to h3 (h3 = h1; h3.add_at(x, y))
+            addat {x} {y} {var1} to {var2} = {var3}
 
         copy - assigns var1 to var2 (var2 = var1;)
             copy {var1} to {var2}
@@ -155,6 +167,7 @@ namespace wgen {
 
             void executeDeclaration(const DeclCommand& command);
             void executeAdd(const AddCommand& command);
+            void executeAddAt(const AddAtCommand& command);
             void executeCopy(const CopyCommand& command);
 
             std::string typeNameOf(const Value& value);

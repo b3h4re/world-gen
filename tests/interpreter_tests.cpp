@@ -182,6 +182,47 @@ void testHeightMapDeclarationArguments() {
     require(mixed.height() == 7, "mixed heightmap height is wrong");
 }
 
+void testAddAtCommand() {
+    const auto scriptPath = makeScript(
+        "addat.txt",
+        "decl heightmap base width=4 height=3 default=1.0\n"
+        "decl heightmap patch width=2 height=2 default=2.0\n"
+        "addat 1 1 base to patch = result\n"
+    );
+
+    wgen::Interpreter interpreter;
+    interpreter.loadScript(scriptPath);
+    interpreter.executeScript();
+
+    const auto& base = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("base"));
+    for (std::size_t y = 0; y < base.height(); ++y) {
+        for (std::size_t x = 0; x < base.width(); ++x) {
+            expectNear(base.at(x, y), 1.0F, 0.00001F, "addat should not mutate the source heightmap");
+        }
+    }
+
+    const auto& result = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("result"));
+    require(result.width() == 4, "addat result width is wrong");
+    require(result.height() == 3, "addat result height is wrong");
+
+    const std::vector<float> expected{
+        1.0F, 1.0F, 1.0F, 1.0F,
+        1.0F, 3.0F, 3.0F, 1.0F,
+        1.0F, 3.0F, 3.0F, 1.0F,
+    };
+
+    for (std::size_t y = 0; y < result.height(); ++y) {
+        for (std::size_t x = 0; x < result.width(); ++x) {
+            expectNear(
+                result.at(x, y),
+                expected[y * result.width() + x],
+                0.00001F,
+                "addat result value is wrong"
+            );
+        }
+    }
+}
+
 void testClearResetsProgramAndVariables() {
     const auto scriptPath = makeScript("clear.txt", "decl float value 3.0\n");
 
@@ -215,6 +256,15 @@ void testLoadErrors() {
     requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_add.txt", "add a b = c\n")); },
         "malformed add should throw during load");
+    requireThrows<std::runtime_error>(
+        [&] { interpreter.loadScript(makeScript("bad_addat.txt", "addat 1 base to patch = result\n")); },
+        "malformed addat should throw during load");
+    requireThrows<std::runtime_error>(
+        [&] { interpreter.loadScript(makeScript("bad_addat_x.txt", "addat left 1 base to patch = result\n")); },
+        "non-integer addat x coordinate should throw during load");
+    requireThrows<std::runtime_error>(
+        [&] { interpreter.loadScript(makeScript("bad_addat_y.txt", "addat 1 -1 base to patch = result\n")); },
+        "negative addat y coordinate should throw during load");
     requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_copy.txt", "copy a b\n")); },
         "malformed copy should throw during load");
@@ -295,6 +345,19 @@ void testRuntimeErrors() {
             interpreter.executeScript();
         },
         "copying a generator should throw during execution");
+
+    requireThrows<std::runtime_error>(
+        [] {
+            wgen::Interpreter interpreter;
+            interpreter.loadScript(makeScript(
+                "bad_addat_type.txt",
+                "decl float value 1.0\n"
+                "decl heightmap patch 2 2\n"
+                "addat 0 0 value to patch = result\n"
+            ));
+            interpreter.executeScript();
+        },
+        "addat with non-heightmap lhs should throw during execution");
 }
 
 using TestFunction = void (*)();
@@ -315,6 +378,7 @@ int main() {
         runTest("execute whole float script", testExecuteWholeFloatScript);
         runTest("seeded int and bool values", testSeededIntAndBoolValues);
         runTest("heightmap declaration arguments", testHeightMapDeclarationArguments);
+        runTest("addat command", testAddAtCommand);
         runTest("clear resets program and variables", testClearResetsProgramAndVariables);
         runTest("load errors", testLoadErrors);
         runTest("runtime errors", testRuntimeErrors);

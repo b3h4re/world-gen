@@ -385,6 +385,38 @@ namespace wgen {
             };
         }
 
+        if (commandName == "addat") {
+            // addat {x} {y} {var1} to {var2} = {var3}
+            if (tokens.size() != 8 || tokens[4] != "to" || tokens[6] != "=") {
+                throw std::runtime_error(
+                    "Line " + std::to_string(lineNumber) +
+                    ": addat expects: addat {x} {y} {var1} to {var2} = {var3}"
+                );
+            }
+
+            AddAtCommand command;
+            const auto x = tryParseInt(tokens[1]);
+            const auto y = tryParseInt(tokens[2]);
+            if (!x || !y || *x < 0 || *y < 0) {
+                throw std::runtime_error(
+                    "Line " + std::to_string(lineNumber) +
+                    ": addat coordinates must be non-negative integers"
+                );
+            }
+
+            command.x = static_cast<std::size_t>(*x);
+            command.y = static_cast<std::size_t>(*y);
+            command.lhs = tokens[3];
+            command.rhs = tokens[5];
+            command.result = tokens[7];
+
+            return Command{
+                .lineNumber = lineNumber,
+                .sourceLine = std::move(sourceLine),
+                .payload = std::move(command)
+            };
+        }
+
         if (commandName == "copy") {
             // copy {source} to {destination}
             if (tokens.size() != 4 || tokens[2] != "to") {
@@ -624,6 +656,9 @@ namespace wgen {
                 [this](const AddCommand& cmd) {
                     executeAdd(cmd);
                 },
+                [this](const AddAtCommand& cmd) {
+                    executeAddAt(cmd);
+                },
                 [this](const CopyCommand& cmd) {
                     executeCopy(cmd);
                 },
@@ -684,6 +719,32 @@ namespace wgen {
         }
 
         variables[command.result] = operatorIt->second(lhs, rhs);
+    }
+
+    void Interpreter::executeAddAt(const AddAtCommand& command) {
+        auto lhsIt = variables.find(command.lhs);
+        if (lhsIt == variables.end()) {
+            throw std::runtime_error("Unknown variable: " + command.lhs);
+        }
+
+        auto rhsIt = variables.find(command.rhs);
+        if (rhsIt == variables.end()) {
+            throw std::runtime_error("Unknown variable: " + command.rhs);
+        }
+
+        const auto* lhs = std::get_if<HeightMap<float>>(&lhsIt->second);
+        if (lhs == nullptr) {
+            throw std::runtime_error("addat lhs must be heightmap, got: " + typeNameOf(lhsIt->second));
+        }
+
+        const auto* rhs = std::get_if<HeightMap<float>>(&rhsIt->second);
+        if (rhs == nullptr) {
+            throw std::runtime_error("addat rhs must be heightmap, got: " + typeNameOf(rhsIt->second));
+        }
+
+        HeightMap<float> result = *lhs;
+        result.add_at(*rhs, command.x, command.y);
+        variables[command.result] = std::move(result);
     }
 
 

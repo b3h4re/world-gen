@@ -8,3 +8,4 @@
 #include "terrain/generators/fractal/dla.hpp"
 #include "terrain/generators/fractal/dla_combiner.hpp"
 #include "terrain/generators/noise/noise_octaves.hpp"
+#include "terrain/generators/terrain_pipeline.hpp"

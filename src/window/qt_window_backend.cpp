@@ -40,13 +40,14 @@ QtWindowBackend::QtWindowBackend(int w, int h, std::string name)
     rootWidget_->resize(w, h);
     rootWidget_->installEventFilter(this);
 
-    auto* layout = new QVBoxLayout(rootWidget_.get());
+    auto* layout = new QHBoxLayout(rootWidget_.get());
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
     controlsWidget_ = new QWidget{rootWidget_.get()};
     controlsWidget_->setObjectName("terrainControls");
-    controlsWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    controlsWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    controlsWidget_->setFixedWidth(260);
     layout->addWidget(controlsWidget_);
 }
 

@@ -4,6 +4,9 @@ project(world_gen VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
 find_package(Vulkan REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Gui Widgets)
@@ -39,10 +42,14 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 )
 
+file(GLOB_RECURSE UI_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
+)
 
-add_executable(world_gen ${SOURCES} ${HEADERS})
+add_executable(world_gen ${SOURCES} ${HEADERS} ${UI_FILES})
 target_include_directories(world_gen PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/world_gen_autogen/include"
 )
 
 

@@ -1,6 +1,9 @@
 #pragma once
 
+#include "apps/terrain_controls_widget.hpp"
+
 #include <functional>
+#include <memory>
 
 class QWidget;
 
@@ -21,6 +24,7 @@ public:
 
 private:
     QWidget& parent_;
+    std::unique_ptr<TerrainControlsWidget> controls_;
 };
 
 } // namespace lve

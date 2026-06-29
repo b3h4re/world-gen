@@ -19,7 +19,7 @@ namespace lve {
             LveRenderer(const LveRenderer&) = delete;
             LveRenderer &operator=(const LveRenderer&) = delete;
 
-            
+
             bool isFrameInProgress() const { return isFrameStarted; }
 
             VkRenderPass getSwapChainRenderPass() const { return lveSwapChain->getRenderPass(); }
@@ -40,6 +40,7 @@ namespace lve {
 
             void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
             void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
+            void destroySwapChain();
 
         private:
             void createCommandBuffers();

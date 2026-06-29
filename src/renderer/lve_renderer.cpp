@@ -13,7 +13,15 @@ namespace lve {
     }
 
     LveRenderer::~LveRenderer() {
+        destroySwapChain();
         freeCommandBuffers();
+    }
+
+    void LveRenderer::destroySwapChain() {
+        if (lveSwapChain != nullptr) {
+            vkDeviceWaitIdle(lveDevice.device());
+            lveSwapChain.reset();
+        }
     }
 
     void LveRenderer::recreateSwapChain() {

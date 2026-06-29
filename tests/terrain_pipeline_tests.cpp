@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
 
@@ -50,30 +51,30 @@ void testEmptyPipelineReturnsZeroHeightMap() {
 }
 
 void testSingleGeneratorPipeline() {
-    const wgen::TerrainPipeline pipeline{
-        "value_noise seed=17",
-    };
+    const auto pipeline = std::make_unique<wgen::TerrainPipeline>(
+        "value_noise seed=17"
+    );
 
     const wgen::ValueNoiseGenerator expectedGenerator{17};
     expectMapNear(
-        pipeline.generateHeightMap(4, 3),
+        pipeline->generateHeightMap(4, 3),
         expectedGenerator.generateHeightMap(4, 3),
         "single generator pipeline result is wrong"
     );
 }
 
 void testMultipleGeneratorPipeline() {
-    const wgen::TerrainPipeline pipeline{
+    const auto pipeline = std::make_unique<wgen::TerrainPipeline>(
         "value_noise seed=17",
-        "value_noise seed=29",
-    };
+        "value_noise seed=29"
+    );
 
     const wgen::ValueNoiseGenerator first{17};
     const wgen::ValueNoiseGenerator second{29};
     const auto expected = first.generateHeightMap(4, 3) + second.generateHeightMap(4, 3);
 
     expectMapNear(
-        pipeline.generateHeightMap(4, 3),
+        pipeline->generateHeightMap(4, 3),
         expected,
         "multiple generator pipeline result is wrong"
     );

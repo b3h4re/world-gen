@@ -52,6 +52,9 @@ namespace {
 
 }
 
+    TerrainPipeline::TerrainPipeline(std::string generatorLine)
+    : generatorLines_{std::move(generatorLine)} {}
+
     TerrainPipeline::TerrainPipeline(std::vector<std::string> generatorLines)
     : generatorLines_{std::move(generatorLines)} {}
 

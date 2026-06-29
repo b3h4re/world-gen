@@ -210,10 +210,9 @@ void TerrainAppCore::initGenerators(
         std::random_device rd;
         seed = rd();
     }
-
-    generators.push_back(std::make_unique<wgen::DLACombiner>(
-        3,
-        seed
+    generators.push_back(std::make_unique<wgen::TerrainPipeline>(
+        "perlin width=1000 height=1000 dots=100 seed=10",
+        "worley width=1000 height=1000 dots=100 seed=10"
     ));
     generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(
         wgen::OctaveGenerator<wgen::PerlinNoise2d>(

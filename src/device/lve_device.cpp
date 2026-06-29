@@ -59,7 +59,7 @@ namespace lve {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
 
-        vkDestroySurfaceKHR(instance, surface_, nullptr);
+        window.destroyWindowSurface(instance, surface_);
         vkDestroyInstance(instance, nullptr);
     }
 

@@ -42,7 +42,7 @@ namespace lve {
     }
 
     // class member functions
-    LveDevice::LveDevice(LveWindow &window) : window{window} {
+    LveDevice::LveDevice(WindowSurface &window) : window{window} {
         createInstance();
         setupDebugMessenger();
         createSurface();
@@ -100,7 +100,7 @@ namespace lve {
             throw std::runtime_error("failed to create instance!");
         }
 
-        hasGflwRequiredInstanceExtensions();
+        verifyRequiredInstanceExtensions();
     }
 
     void LveDevice::pickPhysicalDevice() {
@@ -250,11 +250,7 @@ namespace lve {
     }
 
     std::vector<const char *> LveDevice::getRequiredExtensions() {
-        uint32_t glfwExtensionCount = 0;
-        const char **glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        std::vector<const char *> extensions = window.getRequiredInstanceExtensions();
 
         if (enableValidationLayers) {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -263,7 +259,7 @@ namespace lve {
         return extensions;
     }
 
-    void LveDevice::hasGflwRequiredInstanceExtensions() {
+    void LveDevice::verifyRequiredInstanceExtensions() {
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> extensions(extensionCount);
@@ -281,7 +277,7 @@ namespace lve {
         for (const auto &required : requiredExtensions) {
             std::cout << "\t" << required << "\n";
             if (available.find(required) == available.end()) {
-                throw std::runtime_error("Missing required glfw extension");
+                throw std::runtime_error("Missing required Vulkan instance extension");
             }
         }
     }

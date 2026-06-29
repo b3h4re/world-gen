@@ -1,7 +1,7 @@
 #pragma once
-#include "window/lve_window.hpp"
 #include "device/lve_device.hpp"
 #include "swap_chain/lve_swap_chain.hpp"
+#include "window/window_surface.hpp"
 
 #include <cassert>
 #include <vector>
@@ -13,7 +13,7 @@ namespace lve {
     class LveRenderer {
         public:
 
-            LveRenderer(LveWindow& window, LveDevice& device);
+            LveRenderer(WindowSurface& window, LveDevice& device);
             ~LveRenderer();
 
             LveRenderer(const LveRenderer&) = delete;
@@ -46,7 +46,7 @@ namespace lve {
             void freeCommandBuffers();
             void recreateSwapChain();
 
-            LveWindow& lveWindow;
+            WindowSurface& lveWindow;
             LveDevice& lveDevice;
             std::unique_ptr<LveSwapChain> lveSwapChain;
             std::vector<VkCommandBuffer> commandBuffers;

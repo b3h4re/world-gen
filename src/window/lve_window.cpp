@@ -2,6 +2,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <stdexcept>
+#include <vector>
 
 namespace lve {
 
@@ -14,15 +15,19 @@ namespace lve {
         glfwTerminate();
     }
 
-    bool LveWindow::shouldClose() {
+    bool LveWindow::shouldClose() const {
         return glfwWindowShouldClose(window);
     }
 
-    VkExtent2D LveWindow::getExtent() {
+    void LveWindow::requestClose() {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+
+    VkExtent2D LveWindow::getExtent() const {
         return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
     }
 
-    bool LveWindow::wasWindowResized() {
+    bool LveWindow::wasWindowResized() const {
         return frameBufferResized;
     }
 
@@ -30,10 +35,24 @@ namespace lve {
         frameBufferResized = false;
     }
 
+    void LveWindow::waitEvents() {
+        glfwWaitEvents();
+    }
+
     void LveWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR *surface) {
         if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface");
         }
+    }
+
+    std::vector<const char*> LveWindow::getRequiredInstanceExtensions() const {
+        uint32_t extensionCount = 0;
+        const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
+        if (extensions == nullptr) {
+            throw std::runtime_error("failed to get required GLFW Vulkan instance extensions");
+        }
+
+        return {extensions, extensions + extensionCount};
     }
 
     void LveWindow::frameBufferResizedCallback(GLFWwindow *window, int width, int height) {

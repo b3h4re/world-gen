@@ -135,7 +135,7 @@ void TerrainApp::run() {
 
         const bool uiHandledInput = gui_.update(input);
         if (input.escapeJustPressed && !uiHandledInput) {
-            glfwSetWindowShouldClose(window.getGLFWwindow(), GLFW_TRUE);
+            window.requestClose();
         }
 
         if (input.viewToggleJustPressed) {

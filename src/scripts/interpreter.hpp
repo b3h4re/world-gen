@@ -8,9 +8,11 @@
 #include <optional>
 #include <functional>
 #include <fstream>
+#include <memory>
 
 #include "files/file_path.hpp"
 #include "terrain/terrain.hpp"
+#include "terrain/generators/generators.hpp"
 
 
 namespace wgen {
@@ -20,7 +22,8 @@ namespace wgen {
         float,
         int,
         bool,
-        wgen::HeightMap<float>
+        wgen::HeightMap<float>,
+        std::unique_ptr<wgen::Generator>
     >;
     using Constructor = std::function<Value(const std::vector<Value>&)>;
     using MutatingOperator = std::function<void(Value&, const std::vector<Value>&)>;
@@ -103,8 +106,14 @@ namespace wgen {
     class Interpreter {
         public:
             Interpreter();
+            ~Interpreter() = default;
 
-            constexpr static UndefinedVariable UNDEFINDED{};
+            Interpreter(const Interpreter&) = delete;
+            Interpreter& operator=(const Interpreter&) = delete;
+            Interpreter(Interpreter&&) = default;
+            Interpreter& operator=(Interpreter&&) = default;
+
+            inline static const Value UNDEFINDED{UndefinedVariable{}};
 
             void clear();
             void loadScript(const std::filesystem::path& scriptPath);
@@ -134,9 +143,15 @@ namespace wgen {
 
             void executeCommand(const Command& command);
 
-	            std::optional<int> tryParseInt(const std::string& text);
-	            std::optional<float> tryParseFloat(const std::string& text);
-	            Value resolveArgument(const std::string& token);
+            std::optional<int> tryParseInt(const std::string& text);
+            std::optional<float> tryParseFloat(const std::string& text);
+            Value resolveArgument(const std::string& token);
+            std::vector<Value> resolveConstructorArguments(const DeclCommand& command);
+            Value copyLanguageValue(const Value& value);
+
+            std::optional<std::pair<std::string, std::string>> splitNamedArgument(const std::string& token);
+            std::vector<std::string> constructorArgumentOrder(const std::string& typeName);
+            std::string normalizeArgumentName(const std::string& typeName, std::string name);
 
             void executeDeclaration(const DeclCommand& command);
             void executeAdd(const AddCommand& command);

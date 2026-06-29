@@ -7,15 +7,25 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
 namespace {
 
+static_assert(!std::is_copy_constructible_v<wgen::Interpreter>);
+static_assert(!std::is_copy_assignable_v<wgen::Interpreter>);
+static_assert(std::is_move_constructible_v<wgen::Interpreter>);
+static_assert(std::is_move_assignable_v<wgen::Interpreter>);
+static_assert(!std::is_copy_constructible_v<wgen::Value>);
+static_assert(!std::is_copy_assignable_v<wgen::Value>);
+static_assert(std::is_move_constructible_v<wgen::Value>);
+static_assert(std::is_move_assignable_v<wgen::Value>);
+
 class TestInterpreter : public wgen::Interpreter {
 public:
     void setVariable(std::string name, wgen::Value value) {
-        variables[std::move(name)] = value;
+        variables[std::move(name)] = std::move(value);
     }
 };
 
@@ -140,6 +150,38 @@ void testSeededIntAndBoolValues() {
 	    expectValue(interpreter.getVariableValue("sum"), 13, "int addition has wrong value");
 	}
 
+void testHeightMapDeclarationArguments() {
+    const auto scriptPath = makeScript(
+        "heightmap_constructor_args.txt",
+        "decl heightmap positional 3 2\n"
+        "decl heightmap named width=4 height=5\n"
+        "decl heightmap filled width=2 height=2 default=7.5\n"
+        "decl heightmap mixed 6 height=7\n"
+    );
+
+    wgen::Interpreter interpreter;
+    interpreter.loadScript(scriptPath);
+    interpreter.executeScript();
+
+    const auto& positional = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("positional"));
+    require(positional.width() == 3, "positional heightmap width is wrong");
+    require(positional.height() == 2, "positional heightmap height is wrong");
+
+    const auto& named = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("named"));
+    require(named.width() == 4, "named heightmap width is wrong");
+    require(named.height() == 5, "named heightmap height is wrong");
+
+    const auto& filled = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("filled"));
+    require(filled.width() == 2, "default-filled heightmap width is wrong");
+    require(filled.height() == 2, "default-filled heightmap height is wrong");
+    expectNear(filled.at(0, 0), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
+    expectNear(filled.at(1, 1), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
+
+    const auto& mixed = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("mixed"));
+    require(mixed.width() == 6, "mixed heightmap width is wrong");
+    require(mixed.height() == 7, "mixed heightmap height is wrong");
+}
+
 void testClearResetsProgramAndVariables() {
     const auto scriptPath = makeScript("clear.txt", "decl float value 3.0\n");
 
@@ -241,6 +283,18 @@ void testRuntimeErrors() {
             interpreter.executeScript();
         },
         "mixed float and int addition should throw during execution");
+
+    requireThrows<std::runtime_error>(
+        [] {
+            wgen::Interpreter interpreter;
+            interpreter.loadScript(makeScript(
+                "copy_generator.txt",
+                "decl worley generator width=3 height=3 dots=2\n"
+                "copy generator to copied\n"
+            ));
+            interpreter.executeScript();
+        },
+        "copying a generator should throw during execution");
 }
 
 using TestFunction = void (*)();
@@ -260,6 +314,7 @@ int main() {
         runTest("load and step through script", testLoadAndStepThroughScript);
         runTest("execute whole float script", testExecuteWholeFloatScript);
         runTest("seeded int and bool values", testSeededIntAndBoolValues);
+        runTest("heightmap declaration arguments", testHeightMapDeclarationArguments);
         runTest("clear resets program and variables", testClearResetsProgramAndVariables);
         runTest("load errors", testLoadErrors);
         runTest("runtime errors", testRuntimeErrors);

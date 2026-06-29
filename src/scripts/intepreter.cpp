@@ -1,7 +1,55 @@
 #include "interpreter.hpp"
 
+#include <algorithm>
+#include <utility>
+
 
 namespace wgen {
+
+    std::optional<std::pair<std::string, std::string>> Interpreter::splitNamedArgument(const std::string& token) {
+        const auto separator = token.find('=');
+        if (separator == std::string::npos) {
+            return std::nullopt;
+        }
+
+        if (separator == 0 || separator + 1 >= token.size()) {
+            throw std::runtime_error("Named argument expects name=value: " + token);
+        }
+
+        return std::pair{
+            token.substr(0, separator),
+            token.substr(separator + 1)
+        };
+    }
+
+    std::vector<std::string> Interpreter::constructorArgumentOrder(const std::string& typeName) {
+        if (typeName == "float" || typeName == "int" || typeName == "bool") {
+            return {"value"};
+        }
+
+        if (typeName == "heightmap") {
+            return {"width", "height", "default"};
+        }
+
+        if (typeName == "worley") {
+            return {"width", "height", "dots", "seed", "p"};
+        }
+
+        return {};
+    }
+
+    std::string Interpreter::normalizeArgumentName(const std::string& typeName, std::string name) {
+        if (typeName == "heightmap" && name == "value") {
+            return "default";
+        }
+
+        if (typeName == "worley" && (name == "dots_per_cell" || name == "dotsPerCell")) {
+            return "dots";
+        }
+
+        return name;
+    }
+
 
     Interpreter::Interpreter() : currentLine{0} {
         registerConstructors();
@@ -44,6 +92,35 @@ namespace wgen {
             }
 
             return HeightMap<float>{width, height, as<float>(args[2])};
+        };
+
+        // Constructors for generators
+        constructors["worley"] = [](const std::vector<Value>& args) -> Value {
+            if (args.size() < 3) {
+                throw std::runtime_error("Worley must have at least three arguments: width, height and dots per cell");
+            }
+
+            const auto width = static_cast<std::size_t>(as<int>(args[0]));
+            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+            const auto dots = static_cast<std::size_t>(as<int>(args[2]));
+
+            if (args.size() == 3) {
+                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots);
+            }
+
+            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+
+            if (args.size() == 4) {
+                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots, seed);
+            }
+
+            const auto p = static_cast<float>(as<float>(args[4]));
+
+            if (args.size() == 5) {
+                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots, seed, p);
+            }
+
+            throw std::runtime_error("Worley expects width, height, dots, optional seed, and optional p");
         };
     }
     void Interpreter::registerMutatingOperators() {
@@ -254,7 +331,37 @@ namespace wgen {
             return "heightmap";
         }
 
+        if (std::holds_alternative<std::unique_ptr<Generator>>(value)) {
+            return "generator";
+        }
+
         return "<unknown>";
+    }
+
+    Value Interpreter::copyLanguageValue(const Value& value) {
+        return std::visit(
+            Overloaded{
+                [](const UndefinedVariable& undefined) -> Value {
+                    return undefined;
+                },
+                [](float number) -> Value {
+                    return number;
+                },
+                [](int number) -> Value {
+                    return number;
+                },
+                [](bool boolean) -> Value {
+                    return boolean;
+                },
+                [](const HeightMap<float>& heightMap) -> Value {
+                    return heightMap;
+                },
+                [](const std::unique_ptr<Generator>&) -> Value {
+                    throw std::runtime_error("Generator values are not copyable");
+                }
+            },
+            value
+        );
     }
 
 	    Value Interpreter::resolveArgument(const std::string& token) {
@@ -268,11 +375,95 @@ namespace wgen {
 
         auto it = variables.find(token);
         if (it != variables.end()) {
-            return it->second;
+            return copyLanguageValue(it->second);
         }
 
-	        throw std::runtime_error("Unknown argument: " + token);
+        throw std::runtime_error("Unknown argument: " + token);
 	    }
+
+    std::vector<Value> Interpreter::resolveConstructorArguments(const DeclCommand& command) {
+        const bool hasNamedArgument = std::any_of(
+            command.argumentTokens.begin(),
+            command.argumentTokens.end(),
+            [](const std::string& token) {
+                return token.find('=') != std::string::npos;
+            }
+        );
+
+        if (!hasNamedArgument) {
+            std::vector<Value> args;
+            args.reserve(command.argumentTokens.size());
+            for (const std::string& argToken : command.argumentTokens) {
+                args.push_back(resolveArgument(argToken));
+            }
+
+            return args;
+        }
+
+        const auto order = constructorArgumentOrder(command.typeName);
+        if (order.empty()) {
+            throw std::runtime_error("Named constructor arguments are not supported for type: " + command.typeName);
+        }
+
+        std::vector<std::optional<Value>> orderedArgs(order.size());
+        std::size_t positionalIndex = 0;
+
+        for (const std::string& token : command.argumentTokens) {
+            if (auto namedArg = splitNamedArgument(token)) {
+                const std::string name = normalizeArgumentName(command.typeName, namedArg->first);
+                const auto nameIt = std::find(order.begin(), order.end(), name);
+                if (nameIt == order.end()) {
+                    throw std::runtime_error(
+                        "Unknown constructor argument '" + namedArg->first + "' for type: " + command.typeName
+                    );
+                }
+
+                const auto index = static_cast<std::size_t>(std::distance(order.begin(), nameIt));
+                if (orderedArgs[index]) {
+                    throw std::runtime_error("Duplicate constructor argument: " + namedArg->first);
+                }
+
+                orderedArgs[index] = resolveArgument(namedArg->second);
+                continue;
+            }
+
+            while (positionalIndex < orderedArgs.size() && orderedArgs[positionalIndex]) {
+                ++positionalIndex;
+            }
+
+            if (positionalIndex >= orderedArgs.size()) {
+                throw std::runtime_error("Too many constructor arguments for type: " + command.typeName);
+            }
+
+            orderedArgs[positionalIndex] = resolveArgument(token);
+            ++positionalIndex;
+        }
+
+        std::size_t lastArgument = 0;
+        bool foundArgument = false;
+        for (std::size_t i = 0; i < orderedArgs.size(); ++i) {
+            if (orderedArgs[i]) {
+                lastArgument = i;
+                foundArgument = true;
+            }
+        }
+
+        if (!foundArgument) {
+            return {};
+        }
+
+        std::vector<Value> args;
+        args.reserve(lastArgument + 1);
+        for (std::size_t i = 0; i <= lastArgument; ++i) {
+            if (!orderedArgs[i]) {
+                throw std::runtime_error("Missing constructor argument: " + order[i]);
+            }
+
+            args.push_back(std::move(*orderedArgs[i]));
+        }
+
+        return args;
+    }
 
 	    std::optional<int> Interpreter::tryParseInt(const std::string& text) {
 	        char* end = nullptr;
@@ -328,11 +519,7 @@ namespace wgen {
             throw std::runtime_error("Unknown type: " + command.typeName);
         }
 
-        std::vector<Value> args;
-
-        for (const std::string& argToken : command.argumentTokens) {
-            args.push_back(resolveArgument(argToken));
-        }
+        std::vector<Value> args = resolveConstructorArguments(command);
 
         variables[command.variableName] = constructorIt->second(args);
     }
@@ -344,7 +531,7 @@ namespace wgen {
             throw std::runtime_error("Unknown variable: " + command.source);
         }
 
-        variables[command.destination] = sourceIt->second;
+        variables[command.destination] = copyLanguageValue(sourceIt->second);
     }
 
     void Interpreter::executeAdd(const AddCommand& command) {

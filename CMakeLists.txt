@@ -144,6 +144,9 @@ if(BUILD_TESTING)
         src/scripts/interpreter.hpp
         src/files/file_path.cpp
         src/files/file_path.hpp
+        src/terrain/generators/generator.cpp
+        src/terrain/generators/noise/worley.cpp
+        src/terrain/generators/noise/worley.hpp
     )
     target_include_directories(interpreter_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"

@@ -288,6 +288,19 @@ namespace wgen {
         parseScriptFile(scriptPath);
     }
 
+
+    void Interpreter::loadScript(const std::vector<std::string>& script) {
+        clear();
+
+        for (std::size_t i = 0; i < script.size(); ++i) {
+            auto tokens = tokenizeLine(script[i]);
+
+            if (!tokens.empty()) {
+                program.push_back(parseCommand(tokens, i+1, script[i]));
+            }
+        }
+    }
+
     void Interpreter::parseScriptFile(const std::filesystem::path& scriptPath) {
         files::Path path{scriptPath};
         if (!std::filesystem::exists(path.get())) {
@@ -303,21 +316,17 @@ namespace wgen {
             throw std::runtime_error("Could not open file: " + path.string());
         }
 
+        std::vector<std::string> lines{};
+
         program.clear();
 
         std::string line;
-        std::size_t lineNumber = 1;
 
         while (std::getline(file, line)) {
-            auto tokens = tokenizeLine(line);
-
-            if (!tokens.empty()) {
-                program.push_back(parseCommand(tokens, lineNumber, line));
-            }
-
-            ++lineNumber;
+            lines.push_back(line);
         }
         file.close();
+        loadScript(lines);
     }
 
     std::vector<std::string> Interpreter::tokenizeLine(const std::string& line) {

@@ -129,6 +129,7 @@ namespace wgen {
 
             void clear();
             void loadScript(const std::filesystem::path& scriptPath);
+            void loadScript(const std::vector<std::string>& script);
             void executeScript();
             void executeCurrentLine();
             typename std::vector<Command>::const_reference getCurrentCommand() const;

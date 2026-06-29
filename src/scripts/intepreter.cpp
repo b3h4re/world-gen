@@ -264,6 +264,12 @@ namespace wgen {
                 return std::get<float>(lhs) + std::get<HeightMap<float>>(rhs);
             };
 
+        binaryOperators["heightmap + generator"] =
+            [](const Value& lhs, const Value& rhs) -> Value {
+                const auto h = std::get<HeightMap<float>>(lhs);
+                return h + std::get<std::unique_ptr<wgen::Generator>>(rhs)->generateHeightMap(h.width(), h.height());
+            };
+
         binaryOperators["int + int"] =
             [](const Value& lhs, const Value& rhs) -> Value {
                 return std::get<int>(lhs) + std::get<int>(rhs);

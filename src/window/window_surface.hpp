@@ -15,6 +15,7 @@ public:
     virtual VkExtent2D getExtent() const = 0;
     virtual bool wasWindowResized() const = 0;
     virtual void resetWindowResizedFlag() = 0;
+    virtual void pollEvents() = 0;
     virtual void waitEvents() = 0;
     virtual void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) = 0;
     virtual std::vector<const char*> getRequiredInstanceExtensions() const = 0;

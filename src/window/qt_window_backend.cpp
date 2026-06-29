@@ -4,6 +4,7 @@
 #include <QtCore/QEvent>
 #include <QtCore/QString>
 #include <QtGui/QGuiApplication>
+#include <QtGui/QWindow>
 
 #include <array>
 #include <stdexcept>
@@ -25,14 +26,18 @@ private:
 };
 
 QtWindowBackend::QtWindowBackend(int w, int h, std::string name)
-    : ownedApplication_{ensureGuiApplication()} {
-    setSurfaceType(QSurface::VulkanSurface);
-    resize(w, h);
-    setTitle(QString::fromStdString(name));
+    : ownedApplication_{ensureGuiApplication()}, window_{std::make_unique<QWindow>()} {
+    window_->setSurfaceType(QSurface::VulkanSurface);
+    window_->resize(w, h);
+    window_->setTitle(QString::fromStdString(name));
+    window_->installEventFilter(this);
 }
 
 QtWindowBackend::~QtWindowBackend() {
-    destroy();
+    if (window_) {
+        window_->removeEventFilter(this);
+        window_->destroy();
+    }
 }
 
 bool QtWindowBackend::shouldClose() const {
@@ -41,13 +46,13 @@ bool QtWindowBackend::shouldClose() const {
 
 void QtWindowBackend::requestClose() {
     closeRequested_ = true;
-    close();
+    window_->close();
 }
 
 VkExtent2D QtWindowBackend::getExtent() const {
     return {
-        static_cast<uint32_t>(width()),
-        static_cast<uint32_t>(height()),
+        static_cast<uint32_t>(window_->width()),
+        static_cast<uint32_t>(window_->height()),
     };
 }
 
@@ -57,6 +62,10 @@ bool QtWindowBackend::wasWindowResized() const {
 
 void QtWindowBackend::resetWindowResizedFlag() {
     frameBufferResized_ = false;
+}
+
+void QtWindowBackend::pollEvents() {
+    QCoreApplication::processEvents();
 }
 
 void QtWindowBackend::waitEvents() {
@@ -69,11 +78,11 @@ void QtWindowBackend::createWindowSurface(VkInstance instance, VkSurfaceKHR* sur
         throw std::runtime_error("failed to initialize Qt Vulkan instance wrapper");
     }
 
-    setVulkanInstance(&vulkanInstance_);
-    create();
-    show();
+    window_->setVulkanInstance(&vulkanInstance_);
+    window_->create();
+    window_->show();
 
-    *surface = QVulkanInstance::surfaceForWindow(this);
+    *surface = QVulkanInstance::surfaceForWindow(window_.get());
     if (*surface == VK_NULL_HANDLE) {
         throw std::runtime_error("failed to create Qt Vulkan window surface");
     }
@@ -83,7 +92,15 @@ std::vector<const char*> QtWindowBackend::getRequiredInstanceExtensions() const 
     return platformSurfaceExtensions();
 }
 
-bool QtWindowBackend::event(QEvent* event) {
+QWindow& QtWindowBackend::qWindow() {
+    return *window_;
+}
+
+bool QtWindowBackend::eventFilter(QObject* watched, QEvent* event) {
+    if (watched != window_.get()) {
+        return QObject::eventFilter(watched, event);
+    }
+
     switch (event->type()) {
         case QEvent::Close:
             closeRequested_ = true;
@@ -95,7 +112,7 @@ bool QtWindowBackend::event(QEvent* event) {
             break;
     }
 
-    return QWindow::event(event);
+    return QObject::eventFilter(watched, event);
 }
 
 std::unique_ptr<QtWindowBackend::OwnedGuiApplication> QtWindowBackend::ensureGuiApplication() {

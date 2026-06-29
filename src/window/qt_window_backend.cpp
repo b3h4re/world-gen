@@ -66,7 +66,6 @@ bool QtWindowBackend::shouldClose() const {
 
 void QtWindowBackend::requestClose() {
     closeRequested_ = true;
-    rootWidget_->close();
 }
 
 VkExtent2D QtWindowBackend::getExtent() const {
@@ -119,6 +118,12 @@ void QtWindowBackend::createWindowSurface(VkInstance instance, VkSurfaceKHR* sur
     }
 }
 
+void QtWindowBackend::destroyWindowSurface(VkInstance, VkSurfaceKHR) {
+    if (window_) {
+        window_->destroy();
+    }
+}
+
 std::vector<const char*> QtWindowBackend::getRequiredInstanceExtensions() const {
     return platformSurfaceExtensions();
 }
@@ -147,7 +152,8 @@ bool QtWindowBackend::eventFilter(QObject* watched, QEvent* event) {
     switch (event->type()) {
         case QEvent::Close:
             closeRequested_ = true;
-            break;
+            event->ignore();
+            return true;
         case QEvent::Resize:
             frameBufferResized_ = true;
             break;

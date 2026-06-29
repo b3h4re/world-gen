@@ -31,6 +31,7 @@ public:
     void pollEvents() override;
     void waitEvents() override;
     void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) override;
+    void destroyWindowSurface(VkInstance instance, VkSurfaceKHR surface) override;
     std::vector<const char*> getRequiredInstanceExtensions() const override;
 
     QWindow& qWindow();

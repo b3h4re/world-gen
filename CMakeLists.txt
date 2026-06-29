@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(Qt6 QUIET COMPONENTS Gui)
 
 include(FetchContent)
 # Fetching toml++
@@ -34,6 +35,10 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
+
+# if(NOT Qt6Gui_FOUND)
+#     list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/window/qt_window_backend.cpp")
+# endif()
 
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
@@ -100,6 +105,9 @@ target_link_libraries(world_gen PRIVATE
     tomlplusplus::tomlplusplus
     stb
 )
+
+target_link_libraries(world_gen PRIVATE Qt6::Gui)
+target_compile_definitions(world_gen PRIVATE WORLD_GEN_HAS_QT_BACKEND=1)
 
 # Testing
 include(CTest)

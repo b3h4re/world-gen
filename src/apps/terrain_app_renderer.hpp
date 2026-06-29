@@ -7,7 +7,7 @@
 #include "game/objects/game_object_3d.hpp"
 #include "pipeline/descriptors/lve_descriptors.hpp"
 #include "renderer/lve_renderer.hpp"
-#include "window/glfw_window_backend.hpp"
+#include "window/qt_window_backend.hpp"
 
 #include <array>
 #include <memory>
@@ -41,7 +41,7 @@ public:
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
 
-    GlfwWindowBackend& window() { return window_; }
+    QtWindowBackend& window() { return window_; }
     WindowSurface& windowSurface() { return window_; }
     LveDevice& device() { return device_; }
     LveRenderer& renderer() { return renderer_; }
@@ -55,7 +55,7 @@ private:
     std::vector<GameObject2d> makeObjects2d(const TerrainMeshData& data);
     std::vector<GameObject3d> makeObjects3d(const TerrainMeshData& data);
 
-    GlfwWindowBackend window_;
+    QtWindowBackend window_;
     LveDevice device_;
     LveRenderer renderer_;
     std::unique_ptr<LveDescriptorPool> globalPool_{};

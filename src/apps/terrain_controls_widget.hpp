@@ -27,6 +27,8 @@ public:
     TerrainControlsWidget(const TerrainControlsWidget&) = delete;
     TerrainControlsWidget& operator=(const TerrainControlsWidget&) = delete;
 
+    QWidget& vulkanWidget();
+
 private:
     std::unique_ptr<Ui::TerrainControlsWidget> ui_;
     Callbacks callbacks_;

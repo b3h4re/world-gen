@@ -38,6 +38,7 @@ public:
     QWidget& rootWidget();
     QWidget& controlsWidget();
     QWidget& renderWidget();
+    void setRenderParent(QWidget& renderParent);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -51,6 +52,7 @@ private:
     std::unique_ptr<OwnedGuiApplication> ownedApplication_;
     std::unique_ptr<QWidget> rootWidget_;
     QWidget* controlsWidget_{nullptr};
+    QWidget* renderParentWidget_{nullptr};
     std::unique_ptr<QWindow> window_;
     QWidget* windowContainer_{nullptr};
     QVulkanInstance vulkanInstance_{};

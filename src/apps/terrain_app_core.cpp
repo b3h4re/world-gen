@@ -210,53 +210,57 @@ void TerrainAppCore::initGenerators(
         std::random_device rd;
         seed = rd();
     }
-    generators.push_back(std::make_unique<wgen::TerrainPipeline>(
-        "perlin width=1000 height=1000 dots=100 seed=10",
-        "worley width=1000 height=1000 dots=100 seed=10"
-    ));
-    generators.push_back(std::make_unique<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(
-        wgen::OctaveGenerator<wgen::PerlinNoise2d>(
-            terrainConfig.perlin.gridWidth,
-            terrainConfig.perlin.gridHeight,
-            terrainConfig.perlin.dotsPerCell,
-            seed,
-            3,
-            2.5F,
-            0.5F
-        )
-    ));
-    generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-        terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
-        terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
-    generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-        terrainConfig.worley.gridWidth,
-        terrainConfig.worley.gridHeight,
-        terrainConfig.worley.dotsPerCell,
-        seed,
-        terrainConfig.worley.p,
-        terrainConfig.worley.numPoints
-    )));
-    generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-        terrainConfig.wavelet.gridWidth,
-        terrainConfig.wavelet.gridHeight,
-        seed,
-        wgen::defaultReconstructionKernel
-    )));
-    generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-        terrainConfig.simplex.gridWidth,
-        terrainConfig.simplex.gridHeight,
-        terrainConfig.simplex.dotsPerCell,
-        seed
-    )));
-    generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-        terrainConfig.perlin.gridWidth,
-        terrainConfig.perlin.gridHeight,
-        terrainConfig.perlin.dotsPerCell,
-        seed,
-        wgen::defaultPerlinInterp
-    )));
-    generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
-    generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+
+    auto width = terrainConfig.perlin.gridWidth;
+    auto height = terrainConfig.perlin.gridHeight;
+    auto dots = terrainConfig.perlin.dotsPerCell;
+    std::unique_ptr<wgen::TerrainPipeline> pipe = std::make_unique<wgen::TerrainPipeline>();
+    pipe->push_back<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(width, height, dots, 0, 4, 2.0F, 0.5F);
+    // pipe->push_back<wgen::WorleyNoise2d>(
+    //     terrainConfig.worley.gridWidth,
+    //     terrainConfig.worley.gridHeight,
+    //     terrainConfig.worley.dotsPerCell,
+    //     seed,
+    //     terrainConfig.worley.p,
+    //     terrainConfig.worley.numPoints
+    // );
+    pipe->setSeed(seed);
+
+    generators.push_back(std::move(pipe));
+
+
+    // generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
+    //     terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
+    //     terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
+    // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
+    //     terrainConfig.worley.gridWidth,
+    //     terrainConfig.worley.gridHeight,
+    //     terrainConfig.worley.dotsPerCell,
+    //     seed,
+    //     terrainConfig.worley.p,
+    //     terrainConfig.worley.numPoints
+    // )));
+    // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
+    //     terrainConfig.wavelet.gridWidth,
+    //     terrainConfig.wavelet.gridHeight,
+    //     seed,
+    //     wgen::defaultReconstructionKernel
+    // )));
+    // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
+    //     terrainConfig.simplex.gridWidth,
+    //     terrainConfig.simplex.gridHeight,
+    //     terrainConfig.simplex.dotsPerCell,
+    //     seed
+    // )));
+    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
+    //     terrainConfig.perlin.gridWidth,
+    //     terrainConfig.perlin.gridHeight,
+    //     terrainConfig.perlin.dotsPerCell,
+    //     seed,
+    //     wgen::defaultPerlinInterp
+    // )));
+    // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
+    // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
 }
 
 TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap) {

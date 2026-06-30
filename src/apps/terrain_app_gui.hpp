@@ -22,6 +22,8 @@ public:
     TerrainAppGui(const TerrainAppGui&) = delete;
     TerrainAppGui& operator=(const TerrainAppGui&) = delete;
 
+    QWidget& vulkanWidget();
+
 private:
     QWidget& parent_;
     std::unique_ptr<TerrainControlsWidget> controls_;

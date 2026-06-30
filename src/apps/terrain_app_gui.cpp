@@ -21,4 +21,8 @@ TerrainAppGui::TerrainAppGui(QWidget& parent, Callbacks callbacks) : parent_{par
     layout->addWidget(controls_.get());
 }
 
+QWidget& TerrainAppGui::vulkanWidget() {
+    return controls_->vulkanWidget();
+}
+
 } // namespace lve

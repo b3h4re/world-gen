@@ -25,6 +25,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .switchColor = [this] { core_.rotateColorFunction(); },
           }
       } {
+    renderer_.window().setRenderParent(gui_.vulkanWidget());
     renderer_.setTerrainMesh(core_.loadTerrain());
 }
 

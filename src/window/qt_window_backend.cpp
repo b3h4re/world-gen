@@ -5,10 +5,13 @@
 #include <QtCore/QString>
 #include <QtGui/QWindow>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
 #include <array>
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -46,12 +49,17 @@ QtWindowBackend::QtWindowBackend(int w, int h, std::string name)
 
     controlsWidget_ = new QWidget{rootWidget_.get()};
     controlsWidget_->setObjectName("terrainControls");
-    controlsWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-    controlsWidget_->setFixedWidth(260);
+    controlsWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(controlsWidget_);
 }
 
 QtWindowBackend::~QtWindowBackend() {
+    if (windowContainer_) {
+        windowContainer_->removeEventFilter(this);
+    }
+    if (renderParentWidget_) {
+        renderParentWidget_->removeEventFilter(this);
+    }
     if (rootWidget_) {
         rootWidget_->removeEventFilter(this);
     }
@@ -70,9 +78,23 @@ void QtWindowBackend::requestClose() {
 }
 
 VkExtent2D QtWindowBackend::getExtent() const {
+    if (windowContainer_ != nullptr) {
+        return {
+            static_cast<uint32_t>(std::max(windowContainer_->width(), 1)),
+            static_cast<uint32_t>(std::max(windowContainer_->height(), 1)),
+        };
+    }
+
+    if (renderParentWidget_ != nullptr) {
+        return {
+            static_cast<uint32_t>(std::max(renderParentWidget_->width(), 1)),
+            static_cast<uint32_t>(std::max(renderParentWidget_->height(), 1)),
+        };
+    }
+
     return {
-        static_cast<uint32_t>(window_->width()),
-        static_cast<uint32_t>(window_->height()),
+        static_cast<uint32_t>(std::max(window_->width(), 1)),
+        static_cast<uint32_t>(std::max(window_->height(), 1)),
     };
 }
 
@@ -101,11 +123,13 @@ void QtWindowBackend::createWindowSurface(VkInstance instance, VkSurfaceKHR* sur
     window_->setVulkanInstance(&vulkanInstance_);
 
     if (windowContainer_ == nullptr) {
-        windowContainer_ = QWidget::createWindowContainer(window_.get(), rootWidget_.get());
+        QWidget* parentWidget = renderParentWidget_ != nullptr ? renderParentWidget_ : rootWidget_.get();
+        windowContainer_ = QWidget::createWindowContainer(window_.get(), parentWidget);
         windowContainer_->setFocusPolicy(Qt::StrongFocus);
         windowContainer_->setMouseTracking(true);
         windowContainer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        rootWidget_->layout()->addWidget(windowContainer_);
+        windowContainer_->installEventFilter(this);
+        setRenderParent(*parentWidget);
     }
 
     rootWidget_->show();
@@ -145,8 +169,44 @@ QWidget& QtWindowBackend::renderWidget() {
     return *windowContainer_;
 }
 
+void QtWindowBackend::setRenderParent(QWidget& renderParent) {
+    if (renderParentWidget_ != nullptr && renderParentWidget_ != &renderParent) {
+        renderParentWidget_->removeEventFilter(this);
+    }
+
+    if (windowContainer_ != nullptr && windowContainer_->parentWidget() != &renderParent) {
+        if (auto* oldParent = windowContainer_->parentWidget()) {
+            if (auto* oldLayout = oldParent->layout()) {
+                oldLayout->removeWidget(windowContainer_);
+            }
+        }
+        windowContainer_->setParent(&renderParent);
+    }
+
+    renderParentWidget_ = &renderParent;
+    renderParentWidget_->installEventFilter(this);
+    renderParentWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto* layout = renderParentWidget_->layout();
+    if (layout == nullptr) {
+        layout = new QVBoxLayout(renderParentWidget_);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(0);
+    }
+
+    if (windowContainer_ != nullptr) {
+        layout->addWidget(windowContainer_);
+        windowContainer_->show();
+    }
+
+    frameBufferResized_ = true;
+}
+
 bool QtWindowBackend::eventFilter(QObject* watched, QEvent* event) {
-    if (watched != window_.get() && watched != rootWidget_.get()) {
+    if (watched != window_.get()
+        && watched != rootWidget_.get()
+        && watched != renderParentWidget_
+        && watched != windowContainer_) {
         return QObject::eventFilter(watched, event);
     }
 

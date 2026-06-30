@@ -10,6 +10,12 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     : QWidget{parent}, ui_{std::make_unique<Ui::TerrainControlsWidget>()}, callbacks_{std::move(callbacks)} {
     ui_->setupUi(this);
 
+    ui_->generatorSettingsWidget->setVisible(false);
+    ui_->generatorSettingsButton->setCheckable(true);
+
+    ui_->toolBarWidget->setMaximumWidth(256);
+
+
     connect(ui_->regenerateButton, &QPushButton::clicked, this, [this] {
         callbacks_.regenerateTerrain();
     });
@@ -19,8 +25,15 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     connect(ui_->switchColorButton, &QPushButton::clicked, this, [this] {
         callbacks_.switchColor();
     });
+    connect(ui_->generatorSettingsButton, &QPushButton::clicked, this, [this](bool checked) {
+        ui_->generatorSettingsWidget->setVisible(checked);
+    });
 }
 
 TerrainControlsWidget::~TerrainControlsWidget() = default;
+
+QWidget& TerrainControlsWidget::vulkanWidget() {
+    return *ui_->vulkanWidget;
+}
 
 } // namespace lve

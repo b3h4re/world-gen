@@ -7,6 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC_SEARCH_PATHS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/apps"
+)
 
 find_package(Vulkan REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Gui Widgets)
@@ -46,7 +50,8 @@ file(GLOB_RECURSE UI_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
 )
 
-add_executable(world_gen ${SOURCES} ${HEADERS} ${UI_FILES})
+add_executable(world_gen ${SOURCES} ${HEADERS})
+target_sources(world_gen PRIVATE ${UI_FILES})
 target_include_directories(world_gen PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_BINARY_DIR}/world_gen_autogen/include"

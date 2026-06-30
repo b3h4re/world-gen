@@ -168,23 +168,10 @@ if(BUILD_TESTING)
         tests/terrain_pipeline_tests.cpp
         src/terrain/generators/terrain_pipeline.cpp
         src/terrain/generators/terrain_pipeline.hpp
-        src/scripts/intepreter.cpp
-        src/scripts/interpreter.hpp
-        src/files/file_path.cpp
-        src/files/file_path.hpp
         src/terrain/generators/generator.cpp
-        src/terrain/generators/noise/worley.cpp
-        src/terrain/generators/noise/worley.hpp
-        src/terrain/generators/noise/wavelet.cpp
-        src/terrain/generators/noise/wavelet.hpp
+        src/terrain/generators/generator.hpp
         src/terrain/generators/noise/value_noise.cpp
         src/terrain/generators/noise/value_noise.hpp
-        src/terrain/generators/noise/simplex.cpp
-        src/terrain/generators/noise/simplex.hpp
-        src/terrain/generators/noise/perlin.cpp
-        src/terrain/generators/noise/perlin.hpp
-        src/terrain/generators/noise/layered_sin_noise.cpp
-        src/terrain/generators/noise/layered_sin_noise.hpp
     )
     target_include_directories(terrain_pipeline_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"

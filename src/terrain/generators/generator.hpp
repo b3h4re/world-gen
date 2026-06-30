@@ -131,6 +131,12 @@ namespace wgen {
         };
     }
 
+    inline auto multiplyFunction(float scale) {
+        return [scale](float value) {
+            return value*scale;
+        };
+    }
+
 
     class Generator {
     public:

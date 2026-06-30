@@ -27,6 +27,7 @@ class QtInputReader : public QObject, public InputReader {
 public:
     explicit QtInputReader(QWindow& window);
     QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderWidget);
+    QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderParentWidget, QWidget& renderWidget);
     ~QtInputReader() override;
 
     QtInputReader(const QtInputReader&) = delete;
@@ -43,9 +44,13 @@ private:
     void handleKeyPress(int key, bool autoRepeat);
     void handleKeyRelease(int key, bool autoRepeat);
     void setKeyDown(int key, bool down);
+    bool isRenderObject(QObject* object) const;
+    void focusRenderTarget();
+    void releaseRenderKeyboard();
 
     QWindow& window_;
     QWidget* rootWidget_{nullptr};
+    QWidget* renderParentWidget_{nullptr};
     QWidget* renderWidget_{nullptr};
     QtKeyMappings keyMapping_{};
     QPointF mousePosition_{};

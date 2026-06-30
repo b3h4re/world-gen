@@ -61,7 +61,7 @@ void TerrainApp::run() {
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};
-    QtInputReader inputReader{window.qWindow(), window.rootWidget(), window.renderWidget()};
+    QtInputReader inputReader{window.qWindow(), window.rootWidget(), window.renderParentWidget(), window.renderWidget()};
     std::vector<CameraUpdateTarget> cameraTargets{
         makeCameraTarget(camera2d, !render3d_),
         makeCameraTarget(camera3d, render3d_),

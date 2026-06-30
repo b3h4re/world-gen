@@ -38,6 +38,7 @@ public:
     QWidget& rootWidget();
     QWidget& controlsWidget();
     QWidget& renderWidget();
+    QWidget& renderParentWidget();
     void setRenderParent(QWidget& renderParent);
 
 protected:

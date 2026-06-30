@@ -15,15 +15,21 @@ QtInputReader::QtInputReader(QWindow& window) : window_{window} {
 }
 
 QtInputReader::QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderWidget)
-    : window_{window}, rootWidget_{&rootWidget}, renderWidget_{&renderWidget} {
+    : QtInputReader{window, rootWidget, renderWidget, renderWidget} {}
+
+QtInputReader::QtInputReader(QWindow& window, QWidget& rootWidget, QWidget& renderParentWidget, QWidget& renderWidget)
+    : window_{window}, rootWidget_{&rootWidget}, renderParentWidget_{&renderParentWidget}, renderWidget_{&renderWidget} {
     installOn(*QCoreApplication::instance());
     installOn(window_);
     installOn(*rootWidget_);
+    installOn(*renderParentWidget_);
     installOn(*renderWidget_);
     rootWidget_->setFocusPolicy(Qt::StrongFocus);
+    renderParentWidget_->setFocusPolicy(Qt::StrongFocus);
+    renderParentWidget_->setMouseTracking(true);
     renderWidget_->setFocusPolicy(Qt::StrongFocus);
     renderWidget_->setMouseTracking(true);
-    renderWidget_->setFocus(Qt::OtherFocusReason);
+    focusRenderTarget();
 }
 
 QtInputReader::~QtInputReader() {
@@ -33,6 +39,9 @@ QtInputReader::~QtInputReader() {
     removeFrom(window_);
     if (rootWidget_ != nullptr) {
         removeFrom(*rootWidget_);
+    }
+    if (renderParentWidget_ != nullptr && renderParentWidget_ != renderWidget_) {
+        removeFrom(*renderParentWidget_);
     }
     if (renderWidget_ != nullptr) {
         removeFrom(*renderWidget_);
@@ -65,6 +74,16 @@ AppInputState QtInputReader::readInputState(VkExtent2D extent) {
 
 bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
     switch (event->type()) {
+        case QEvent::FocusIn:
+            if (watched == renderParentWidget_) {
+                focusRenderTarget();
+            }
+            break;
+        case QEvent::FocusOut:
+            if (watched == renderParentWidget_) {
+                releaseRenderKeyboard();
+            }
+            break;
         case QEvent::KeyPress: {
             auto* keyEvent = static_cast<QKeyEvent*>(event);
             handleKeyPress(keyEvent->key(), keyEvent->isAutoRepeat());
@@ -82,6 +101,9 @@ bool QtInputReader::eventFilter(QObject* watched, QEvent* event) {
         }
         case QEvent::MouseButtonPress: {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (isRenderObject(watched)) {
+                focusRenderTarget();
+            }
             mousePosition_ = window_.mapFromGlobal(mouseEvent->globalPosition().toPoint());
             if (mouseEvent->button() == Qt::LeftButton) {
                 primaryMouseJustPressed_ = true;
@@ -147,6 +169,34 @@ void QtInputReader::setKeyDown(int key, bool down) {
     } else if (key == keyMapping_.cameraZoomOut) {
         cameraZoomOut_ = down;
     }
+}
+
+bool QtInputReader::isRenderObject(QObject* object) const {
+    return object == &window_ || object == renderParentWidget_ || object == renderWidget_;
+}
+
+void QtInputReader::focusRenderTarget() {
+    if (renderParentWidget_ != nullptr && renderParentWidget_->isVisible()) {
+        if (!renderParentWidget_->hasFocus()) {
+            renderParentWidget_->setFocus(Qt::OtherFocusReason);
+        }
+        renderParentWidget_->grabKeyboard();
+    }
+    window_.requestActivate();
+}
+
+void QtInputReader::releaseRenderKeyboard() {
+    if (renderParentWidget_ != nullptr && renderParentWidget_->keyboardGrabber() == renderParentWidget_) {
+        renderParentWidget_->releaseKeyboard();
+    }
+    closeDown_ = false;
+    toggleViewDown_ = false;
+    cameraMoveLeft_ = false;
+    cameraMoveRight_ = false;
+    cameraMoveUp_ = false;
+    cameraMoveDown_ = false;
+    cameraZoomIn_ = false;
+    cameraZoomOut_ = false;
 }
 
 } // namespace lve

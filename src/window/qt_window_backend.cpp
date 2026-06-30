@@ -135,6 +135,7 @@ void QtWindowBackend::createWindowSurface(VkInstance instance, VkSurfaceKHR* sur
     rootWidget_->show();
     windowContainer_->setFocus(Qt::OtherFocusReason);
     window_->requestActivate();
+    window_->requestUpdate();
     window_->create();
 
     *surface = QVulkanInstance::surfaceForWindow(window_.get());
@@ -169,6 +170,10 @@ QWidget& QtWindowBackend::renderWidget() {
     return *windowContainer_;
 }
 
+QWidget& QtWindowBackend::renderParentWidget() {
+    return renderParentWidget_ != nullptr ? *renderParentWidget_ : *windowContainer_;
+}
+
 void QtWindowBackend::setRenderParent(QWidget& renderParent) {
     if (renderParentWidget_ != nullptr && renderParentWidget_ != &renderParent) {
         renderParentWidget_->removeEventFilter(this);
@@ -185,6 +190,8 @@ void QtWindowBackend::setRenderParent(QWidget& renderParent) {
 
     renderParentWidget_ = &renderParent;
     renderParentWidget_->installEventFilter(this);
+    renderParentWidget_->setFocusPolicy(Qt::StrongFocus);
+    renderParentWidget_->setMouseTracking(true);
     renderParentWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     auto* layout = renderParentWidget_->layout();
@@ -195,8 +202,12 @@ void QtWindowBackend::setRenderParent(QWidget& renderParent) {
     }
 
     if (windowContainer_ != nullptr) {
+        windowContainer_->setFocusPolicy(Qt::StrongFocus);
+        windowContainer_->setMouseTracking(true);
         layout->addWidget(windowContainer_);
         windowContainer_->show();
+        windowContainer_->setFocus(Qt::OtherFocusReason);
+        window_->requestActivate();
     }
 
     frameBufferResized_ = true;

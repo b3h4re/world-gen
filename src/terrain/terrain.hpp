@@ -286,6 +286,23 @@ private:
     std::vector<T> samples_;
 };
 
+
+template <typename T, typename Func>
+auto map(const HeightMap<T>& h, Func&& f) {
+    using Out = std::invoke_result_t<Func, T>;
+
+    HeightMap<Out> result{h.width(), h.height()};
+
+    for (std::size_t y = 0; y < h.height(); ++y) {
+        for (std::size_t x = 0; x < h.width(); ++x) {
+            result.at(x, y) = std::invoke(f, h.at(x, y));
+        }
+    }
+
+    return result;
+}
+
+
 } // namespace wgen
 
 namespace std {

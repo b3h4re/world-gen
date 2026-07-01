@@ -18,4 +18,20 @@ namespace wgen {
         return std::clamp(noise(hashValues(getSeed(), x, y)), 0.0F, 1.0F);
     }
 
+    GeneratorCapabilities ValueNoiseGenerator::capabilities() const {
+        return {
+            .cpu = true,
+            .vulkanCompute = true,
+        };
+    }
+
+    GeneratorSpec ValueNoiseGenerator::spec() const {
+        return {
+            .type = GeneratorType::ValueNoise,
+            .valueNoise = ValueNoiseGeneratorSpec{
+                .seed = getSeed(),
+            },
+        };
+    }
+
 }

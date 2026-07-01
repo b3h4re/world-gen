@@ -124,6 +124,7 @@ namespace lve {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 
+        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures_);
         vkGetPhysicalDeviceProperties(physicalDevice, &properties);
         std::cout << "physical device: " << properties.deviceName << "\n";
     }
@@ -145,6 +146,7 @@ namespace lve {
         }
 
         VkPhysicalDeviceFeatures deviceFeatures = {};
+        deviceFeatures.shaderInt64 = supportedFeatures_.shaderInt64;
 
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -317,6 +319,7 @@ namespace lve {
             if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 indices.graphicsFamily = i;
                 indices.graphicsFamilyHasValue = true;
+                graphicsQueueSupportsCompute_ = (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
             }
             VkBool32 presentSupport = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);

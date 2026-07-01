@@ -44,6 +44,8 @@ namespace lve {
         VkSurfaceKHR surface() { return surface_; }
         VkQueue graphicsQueue() { return graphicsQueue_; }
         VkQueue presentQueue() { return presentQueue_; }
+        bool graphicsQueueSupportsCompute() const { return graphicsQueueSupportsCompute_; }
+        bool supportsShaderInt64() const { return supportedFeatures_.shaderInt64 == VK_TRUE; }
 
         SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
@@ -93,6 +95,7 @@ namespace lve {
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDeviceFeatures supportedFeatures_{};
         WindowSurface &window;
         VkCommandPool commandPool;
 
@@ -100,6 +103,7 @@ namespace lve {
         VkSurfaceKHR surface_;
         VkQueue graphicsQueue_;
         VkQueue presentQueue_;
+        bool graphicsQueueSupportsCompute_{false};
 
         const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
         const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};

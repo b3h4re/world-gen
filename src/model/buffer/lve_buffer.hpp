@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "device/lve_compute_device.hpp"
 #include "device/lve_device.hpp"
 
 #include <cstdint>
@@ -10,6 +11,14 @@ namespace lve {
         public:
             LveBuffer(
                 LveDevice& device,
+                VkDeviceSize instanceSize,
+                uint32_t instanceCount,
+                VkBufferUsageFlags usageFlags,
+                VkMemoryPropertyFlags memoryPropertyFlags,
+                VkDeviceSize minOffsetAlignment = 1
+            );
+            LveBuffer(
+                LveComputeDevice& device,
                 VkDeviceSize instanceSize,
                 uint32_t instanceCount,
                 VkBufferUsageFlags usageFlags,
@@ -46,7 +55,7 @@ namespace lve {
         private:
             static VkDeviceSize getAlignment(VkDeviceSize instanceSize, VkDeviceSize minOffsetAlignment);
             
-            LveDevice& lveDevice;
+            VkDevice device_{VK_NULL_HANDLE};
             void* mapped = nullptr;
             VkBuffer buffer = VK_NULL_HANDLE;
             VkDeviceMemory memory = VK_NULL_HANDLE;

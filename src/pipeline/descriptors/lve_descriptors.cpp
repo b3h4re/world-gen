@@ -23,13 +23,13 @@ LveDescriptorSetLayout::Builder &LveDescriptorSetLayout::Builder::addBinding(
 }
 
 std::unique_ptr<LveDescriptorSetLayout> LveDescriptorSetLayout::Builder::build() const {
-    return std::make_unique<LveDescriptorSetLayout>(lveDevice, bindings);
+    return std::make_unique<LveDescriptorSetLayout>(device_, bindings);
 }
 
 LveDescriptorSetLayout::LveDescriptorSetLayout(
-    LveDevice &lveDevice,
+    VkDevice device,
     std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings)
-    : lveDevice_{lveDevice}, bindings_{std::move(bindings)} {
+    : device_{device}, bindings_{std::move(bindings)} {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings{};
     setLayoutBindings.reserve(bindings_.size());
     for (const auto &[binding, layoutBinding] : bindings_) {
@@ -42,7 +42,7 @@ LveDescriptorSetLayout::LveDescriptorSetLayout(
     descriptorSetLayoutInfo.pBindings = setLayoutBindings.data();
 
     if (vkCreateDescriptorSetLayout(
-            lveDevice_.device(),
+            device_,
             &descriptorSetLayoutInfo,
             nullptr,
             &descriptorSetLayout_) != VK_SUCCESS) {
@@ -50,8 +50,18 @@ LveDescriptorSetLayout::LveDescriptorSetLayout(
     }
 }
 
+LveDescriptorSetLayout::LveDescriptorSetLayout(
+    LveDevice &lveDevice,
+    std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings)
+    : LveDescriptorSetLayout{lveDevice.device(), std::move(bindings)} {}
+
+LveDescriptorSetLayout::LveDescriptorSetLayout(
+    LveComputeDevice &lveDevice,
+    std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings)
+    : LveDescriptorSetLayout{lveDevice.device(), std::move(bindings)} {}
+
 LveDescriptorSetLayout::~LveDescriptorSetLayout() {
-    vkDestroyDescriptorSetLayout(lveDevice_.device(), descriptorSetLayout_, nullptr);
+    vkDestroyDescriptorSetLayout(device_, descriptorSetLayout_, nullptr);
 }
 
 LveDescriptorPool::Builder &LveDescriptorPool::Builder::addPoolSize(
@@ -72,15 +82,15 @@ LveDescriptorPool::Builder &LveDescriptorPool::Builder::setMaxSets(std::uint32_t
 }
 
 std::unique_ptr<LveDescriptorPool> LveDescriptorPool::Builder::build() const {
-    return std::make_unique<LveDescriptorPool>(lveDevice, maxSets, poolFlags, poolSizes);
+    return std::make_unique<LveDescriptorPool>(device_, maxSets, poolFlags, poolSizes);
 }
 
 LveDescriptorPool::LveDescriptorPool(
-    LveDevice &lveDevice,
+    VkDevice device,
     std::uint32_t maxSets,
     VkDescriptorPoolCreateFlags poolFlags,
     const std::vector<VkDescriptorPoolSize> &poolSizes)
-    : lveDevice_{lveDevice} {
+    : device_{device} {
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolInfo.poolSizeCount = static_cast<std::uint32_t>(poolSizes.size());
@@ -88,14 +98,28 @@ LveDescriptorPool::LveDescriptorPool(
     descriptorPoolInfo.maxSets = maxSets;
     descriptorPoolInfo.flags = poolFlags;
 
-    if (vkCreateDescriptorPool(lveDevice_.device(), &descriptorPoolInfo, nullptr, &descriptorPool_) !=
+    if (vkCreateDescriptorPool(device_, &descriptorPoolInfo, nullptr, &descriptorPool_) !=
         VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool");
     }
 }
 
+LveDescriptorPool::LveDescriptorPool(
+    LveDevice &lveDevice,
+    std::uint32_t maxSets,
+    VkDescriptorPoolCreateFlags poolFlags,
+    const std::vector<VkDescriptorPoolSize> &poolSizes)
+    : LveDescriptorPool{lveDevice.device(), maxSets, poolFlags, poolSizes} {}
+
+LveDescriptorPool::LveDescriptorPool(
+    LveComputeDevice &lveDevice,
+    std::uint32_t maxSets,
+    VkDescriptorPoolCreateFlags poolFlags,
+    const std::vector<VkDescriptorPoolSize> &poolSizes)
+    : LveDescriptorPool{lveDevice.device(), maxSets, poolFlags, poolSizes} {}
+
 LveDescriptorPool::~LveDescriptorPool() {
-    vkDestroyDescriptorPool(lveDevice_.device(), descriptorPool_, nullptr);
+    vkDestroyDescriptorPool(device_, descriptorPool_, nullptr);
 }
 
 bool LveDescriptorPool::allocateDescriptor(
@@ -107,19 +131,19 @@ bool LveDescriptorPool::allocateDescriptor(
     allocInfo.pSetLayouts = &descriptorSetLayout;
     allocInfo.descriptorSetCount = 1;
 
-    return vkAllocateDescriptorSets(lveDevice_.device(), &allocInfo, &descriptor) == VK_SUCCESS;
+    return vkAllocateDescriptorSets(device_, &allocInfo, &descriptor) == VK_SUCCESS;
 }
 
 void LveDescriptorPool::freeDescriptors(std::vector<VkDescriptorSet> &descriptors) const {
     vkFreeDescriptorSets(
-        lveDevice_.device(),
+        device_,
         descriptorPool_,
         static_cast<std::uint32_t>(descriptors.size()),
         descriptors.data());
 }
 
 void LveDescriptorPool::resetPool() {
-    vkResetDescriptorPool(lveDevice_.device(), descriptorPool_, 0);
+    vkResetDescriptorPool(device_, descriptorPool_, 0);
 }
 
 LveDescriptorWriter::LveDescriptorWriter(LveDescriptorSetLayout &setLayout, LveDescriptorPool &pool)
@@ -182,7 +206,7 @@ void LveDescriptorWriter::overwrite(VkDescriptorSet &set) {
     }
 
     vkUpdateDescriptorSets(
-        pool_.lveDevice_.device(),
+        pool_.device_,
         static_cast<std::uint32_t>(writes_.size()),
         writes_.data(),
         0,

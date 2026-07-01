@@ -68,6 +68,7 @@ find_program(GLSLC glslc REQUIRED)
 file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp"
 )
 
 set(SHADER_BINARY_FILES)
@@ -201,4 +202,35 @@ if(BUILD_TESTING)
     )
     target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
     add_test(NAME hash_uniform_real_distribution_tests COMMAND hash_uniform_real_distribution_tests)
+
+
+    add_executable(gpu_terrain_generation_tests
+        tests/gpu_terrain_generation_tests.cpp
+        src/device/lve_device.cpp
+        src/device/lve_device.hpp
+        src/device/lve_compute_device.cpp
+        src/device/lve_compute_device.hpp
+        src/model/buffer/lve_buffer.cpp
+        src/model/buffer/lve_buffer.hpp
+        src/pipeline/descriptors/lve_descriptors.cpp
+        src/pipeline/descriptors/lve_descriptors.hpp
+        src/terrain/generators/noise/value_noise.cpp
+        src/terrain/generators/noise/value_noise.hpp
+        src/renderer/compute/gpu_height_map.cpp
+        src/renderer/compute/gpu_height_map.hpp
+        src/renderer/compute/value_noise_compute.cpp
+        src/renderer/compute/value_noise_compute.hpp
+    )
+    target_include_directories(gpu_terrain_generation_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_compile_features(gpu_terrain_generation_tests PRIVATE cxx_std_20)
+    target_compile_definitions(gpu_terrain_generation_tests PRIVATE
+    WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"
+)
+    target_link_libraries(gpu_terrain_generation_tests PRIVATE
+        Vulkan::Vulkan
+    )
+    add_test(NAME gpu_terrain_generation_tests COMMAND gpu_terrain_generation_tests)
+    set_tests_properties(gpu_terrain_generation_tests PROPERTIES SKIP_RETURN_CODE 77)
 endif()

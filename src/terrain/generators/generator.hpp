@@ -60,6 +60,40 @@ namespace wgen {
         };
     }
 
+    enum class GeneratorDeviceKind {
+        Cpu,
+        VulkanCompute,
+    };
+
+    struct GeneratorCapabilities {
+        bool cpu{true};
+        bool vulkanCompute{false};
+
+        bool supports(GeneratorDeviceKind kind) const {
+            switch (kind) {
+                case GeneratorDeviceKind::Cpu:
+                    return cpu;
+                case GeneratorDeviceKind::VulkanCompute:
+                    return vulkanCompute;
+            }
+
+            return false;
+        }
+    };
+
+    enum class GeneratorType {
+        ValueNoise,
+    };
+
+    struct ValueNoiseGeneratorSpec {
+        std::uint32_t seed{};
+    };
+
+    struct GeneratorSpec {
+        GeneratorType type{};
+        ValueNoiseGeneratorSpec valueNoise{};
+    };
+
 
     class Generator {
     public:
@@ -74,6 +108,11 @@ namespace wgen {
             }
 
             return map;
+        }
+
+        virtual GeneratorCapabilities capabilities() const { return {}; }
+        virtual GeneratorSpec spec() const {
+            throw std::runtime_error("generator does not provide a serializable spec");
         }
 
 

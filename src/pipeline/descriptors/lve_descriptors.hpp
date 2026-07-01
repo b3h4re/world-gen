@@ -1,5 +1,6 @@
 #pragma once
 
+#include "device/lve_compute_device.hpp"
 #include "device/lve_device.hpp"
 
 #include <cstdint>
@@ -13,7 +14,9 @@ class LveDescriptorSetLayout {
 public:
     class Builder {
     public:
-        explicit Builder(LveDevice &lveDevice) : lveDevice{lveDevice} {}
+        explicit Builder(VkDevice device) : device_{device} {}
+        explicit Builder(LveDevice &lveDevice) : Builder{lveDevice.device()} {}
+        explicit Builder(LveComputeDevice &lveDevice) : Builder{lveDevice.device()} {}
 
         Builder &addBinding(
             std::uint32_t binding,
@@ -23,12 +26,18 @@ public:
         std::unique_ptr<LveDescriptorSetLayout> build() const;
 
     private:
-        LveDevice &lveDevice;
+        VkDevice device_;
         std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings{};
     };
 
     LveDescriptorSetLayout(
+        VkDevice device,
+        std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings);
+    LveDescriptorSetLayout(
         LveDevice &lveDevice,
+        std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings);
+    LveDescriptorSetLayout(
+        LveComputeDevice &lveDevice,
         std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings);
     ~LveDescriptorSetLayout();
 
@@ -38,7 +47,7 @@ public:
     VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout_; }
 
 private:
-    LveDevice &lveDevice_;
+    VkDevice device_{VK_NULL_HANDLE};
     VkDescriptorSetLayout descriptorSetLayout_{VK_NULL_HANDLE};
     std::unordered_map<std::uint32_t, VkDescriptorSetLayoutBinding> bindings_;
 
@@ -49,7 +58,9 @@ class LveDescriptorPool {
 public:
     class Builder {
     public:
-        explicit Builder(LveDevice &lveDevice) : lveDevice{lveDevice} {}
+        explicit Builder(VkDevice device) : device_{device} {}
+        explicit Builder(LveDevice &lveDevice) : Builder{lveDevice.device()} {}
+        explicit Builder(LveComputeDevice &lveDevice) : Builder{lveDevice.device()} {}
 
         Builder &addPoolSize(VkDescriptorType descriptorType, std::uint32_t count);
         Builder &setPoolFlags(VkDescriptorPoolCreateFlags flags);
@@ -57,14 +68,24 @@ public:
         std::unique_ptr<LveDescriptorPool> build() const;
 
     private:
-        LveDevice &lveDevice;
+        VkDevice device_;
         std::vector<VkDescriptorPoolSize> poolSizes{};
         std::uint32_t maxSets{1000};
         VkDescriptorPoolCreateFlags poolFlags{0};
     };
 
     LveDescriptorPool(
+        VkDevice device,
+        std::uint32_t maxSets,
+        VkDescriptorPoolCreateFlags poolFlags,
+        const std::vector<VkDescriptorPoolSize> &poolSizes);
+    LveDescriptorPool(
         LveDevice &lveDevice,
+        std::uint32_t maxSets,
+        VkDescriptorPoolCreateFlags poolFlags,
+        const std::vector<VkDescriptorPoolSize> &poolSizes);
+    LveDescriptorPool(
+        LveComputeDevice &lveDevice,
         std::uint32_t maxSets,
         VkDescriptorPoolCreateFlags poolFlags,
         const std::vector<VkDescriptorPoolSize> &poolSizes);
@@ -78,7 +99,7 @@ public:
     void resetPool();
 
 private:
-    LveDevice &lveDevice_;
+    VkDevice device_{VK_NULL_HANDLE};
     VkDescriptorPool descriptorPool_{VK_NULL_HANDLE};
 
     friend class LveDescriptorWriter;

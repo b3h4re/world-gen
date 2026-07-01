@@ -1,0 +1,50 @@
+#version 450
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint width;
+    uint height;
+    uint seed;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+uint64_t splitmix64(uint64_t x) {
+    x += 0x9E3779B97F4A7C15ul;
+    x = (x ^ (x >> 30ul)) * 0xBF58476D1CE4E5B9ul;
+    x = (x ^ (x >> 27ul)) * 0x94D049BB133111EBul;
+    return x ^ (x >> 31ul);
+}
+
+uint64_t hashValues(uint seed, uint x, uint y) {
+    uint64_t h = splitmix64(uint64_t(seed));
+    h = splitmix64(h ^ splitmix64(uint64_t(x)));
+    h = splitmix64(h ^ splitmix64(uint64_t(y)));
+    return h;
+}
+
+float hashUnitFloat(uint64_t hash) {
+    uint value = uint(hash >> 40ul);
+    return float(value) * (1.0 / 16777216.0);
+}
+
+float valueNoise(uint seed, uint x, uint y) {
+    float value = -0.08 + 0.16 * hashUnitFloat(hashValues(seed, x, y));
+    return clamp(value, 0.0, 1.0);
+}
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+
+    if (x >= params.width || y >= params.height) {
+        return;
+    }
+
+    uint index = y * params.width + x;
+    heightMap.values[index] = valueNoise(params.seed, x, y);
+}

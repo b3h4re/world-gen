@@ -31,6 +31,11 @@ struct IsHeightMap<HeightMap<T>> : std::true_type {};
 template<class T>
 concept NotHeightMap = !IsHeightMap<std::remove_cvref_t<T>>::value && std::is_arithmetic_v<std::remove_cvref_t<T>>;
 
+template<class T, class N>
+concept CanCompare = requires (const T& t1, const N& t2) {
+    t1 < t2;
+};
+
 template<class T>
 class HeightMap {
 public:
@@ -227,6 +232,24 @@ public:
 
     bool operator!=(const HeightMap<T>& other) const {
         return !this->operator==(other);
+    }
+
+    template<typename N>
+    requires requires (T t, const N& n) { std::abs(t - n) < 0.00001F; }
+    bool isClose(const HeightMap<N>& other, float epsilon = 0.00001F) const {
+        if (this->width() != other.width() || this->height() != other.height()) {
+            return false;
+        }
+
+        for (std::size_t y = 0; y < other.height(); ++y) {
+            for (std::size_t x = 0; x < other.width(); ++x) {
+                if (std::abs(this->at(x, y) - other.at(x, y)) > epsilon) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
 

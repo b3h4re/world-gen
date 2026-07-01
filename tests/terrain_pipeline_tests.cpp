@@ -15,20 +15,20 @@ namespace {
 void testMakeGeneratorForwardsConstructorArguments() {
     const auto generator = wgen::makeGenerator<wgen::ValueNoiseGenerator>(17);
 
-    require(generator != nullptr, "makeGenerator should return a generator");
-    require(generator->getSeed() == 17, "makeGenerator should forward constructor arguments");
+    wgen::tests::require(generator != nullptr, "makeGenerator should return a generator");
+    wgen::tests::require(generator->getSeed() == 17, "makeGenerator should forward constructor arguments");
 }
 
 void testEmptyPipelineReturnsZeroHeightMap() {
     const wgen::TerrainPipeline pipeline;
     const auto map = pipeline.generateHeightMap(3, 2);
 
-    require(map.width() == 3, "empty pipeline width is wrong");
-    require(map.height() == 2, "empty pipeline height is wrong");
+    wgen::tests::require(map.width() == 3, "empty pipeline width is wrong");
+    wgen::tests::require(map.height() == 2, "empty pipeline height is wrong");
 
     for (std::size_t y = 0; y < map.height(); ++y) {
         for (std::size_t x = 0; x < map.width(); ++x) {
-            expectNear(map.at(x, y), 0.0F, 0.00001F, "empty pipeline should produce zero heightmap");
+            wgen::tests::expectNear(map.at(x, y), 0.0F, 0.00001F, "empty pipeline should produce zero heightmap");
         }
     }
 }
@@ -38,7 +38,7 @@ void testSingleGeneratorPipeline() {
     pipeline.push_back<wgen::ValueNoiseGenerator>(17);
 
     const wgen::ValueNoiseGenerator expectedGenerator{17};
-    expectMapNear(
+    wgen::tests::expectMapNear(
         pipeline.generateHeightMap(4, 3),
         expectedGenerator.generateHeightMap(4, 3),
         "single generator pipeline result is wrong"
@@ -54,7 +54,7 @@ void testMultipleGeneratorPipeline() {
     const wgen::ValueNoiseGenerator second{29};
     const auto expected = first.generateHeightMap(4, 3) + second.generateHeightMap(4, 3);
 
-    expectMapNear(
+    wgen::tests::expectMapNear(
         pipeline.generateHeightMap(4, 3),
         expected,
         "multiple generator pipeline result is wrong"
@@ -71,7 +71,7 @@ void testGeneratorImpactFunction() {
         wgen::multiplyFunction(2.5F)
     );
 
-    expectMapNear(
+    wgen::tests::expectMapNear(
         pipeline.generateHeightMap(4, 3),
         expected,
         "pipeline should apply generator impact function"
@@ -87,7 +87,7 @@ void testNoiseMatchesHeightMapSamples() {
 
     for (std::size_t y = 0; y < map.height(); ++y) {
         for (std::size_t x = 0; x < map.width(); ++x) {
-            expectNear(
+            wgen::tests::expectNear(
                 pipeline.noise(x, y),
                 map.at(x, y),
                 0.00001F,
@@ -108,7 +108,7 @@ void testSetSeedChainsGeneratorSeeds() {
     const wgen::ValueNoiseGenerator second{wgen::hashSeed(42)};
     const auto expected = first.generateHeightMap(4, 3) + second.generateHeightMap(4, 3);
 
-    expectMapNear(
+    wgen::tests::expectMapNear(
         pipeline.generateHeightMap(4, 3),
         expected,
         "pipeline setSeed should seed each generator deterministically"

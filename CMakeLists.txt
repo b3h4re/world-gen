@@ -182,20 +182,22 @@ if(BUILD_TESTING)
     add_test(NAME interpreter_tests COMMAND interpreter_tests)
 
     # Terrain Pipeline Tests
-    # add_executable(terrain_pipeline_tests
-    #     tests/terrain_pipeline_tests.cpp
-    #     src/terrain/utils/hash_random.hpp
-    #     src/terrain/utils/hash_random.cpp
-    #     src/terrain/generators/terrain_pipeline.cpp
-    #     src/terrain/generators/terrain_pipeline.hpp
-    #     src/terrain/generators/generator.cpp
-    #     src/terrain/generators/generator.hpp
-    #     src/terrain/generators/noise/value_noise.cpp
-    #     src/terrain/generators/noise/value_noise.hpp
-    # )
-    # target_include_directories(terrain_pipeline_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
-    # target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
-    # add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
+    add_executable(terrain_pipeline_tests
+        tests/terrain_pipeline_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/generators/terrain_pipeline.cpp
+        src/terrain/generators/terrain_pipeline.hpp
+        src/terrain/generators/generator.cpp
+        src/terrain/generators/generator.hpp
+        src/terrain/generators/noise/value_noise.cpp
+        src/terrain/generators/noise/value_noise.hpp
+    )
+    target_include_directories(terrain_pipeline_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
+    add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
 
     # Hash random tests
     add_executable(hash_uniform_real_distribution_tests

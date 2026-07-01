@@ -189,4 +189,16 @@ if(BUILD_TESTING)
     )
     target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
     add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
+
+
+    add_executable(hash_uniform_real_distribution_tests
+        tests/hash_uniform_real_distribution_tests.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
+    )
+    target_include_directories(hash_uniform_real_distribution_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
+    add_test(NAME hash_uniform_real_distribution_tests COMMAND hash_uniform_real_distribution_tests)
 endif()

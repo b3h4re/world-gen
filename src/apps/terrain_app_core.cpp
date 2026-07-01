@@ -1,6 +1,6 @@
 #include "terrain_app_core.hpp"
 
-#include "terrain/generators/generators.hpp"
+#include "terrain/generators/generator_factory.hpp"
 #include "terrain/terrain.hpp"
 
 #include <chrono>
@@ -211,22 +211,18 @@ void TerrainAppCore::initGenerators(
         seed = rd();
     }
 
-    auto width = terrainConfig.perlin.gridWidth;
-    auto height = terrainConfig.perlin.gridHeight;
-    auto dots = terrainConfig.perlin.dotsPerCell;
-    std::unique_ptr<wgen::TerrainPipeline> pipe = std::make_unique<wgen::TerrainPipeline>();
-    pipe->push_back<wgen::OctaveGenerator<wgen::PerlinNoise2d>>(width, height, dots, 0, 4, 2.0F, 0.5F);
-    // pipe->push_back<wgen::WorleyNoise2d>(
-    //     terrainConfig.worley.gridWidth,
-    //     terrainConfig.worley.gridHeight,
-    //     terrainConfig.worley.dotsPerCell,
-    //     seed,
-    //     terrainConfig.worley.p,
-    //     terrainConfig.worley.numPoints
-    // );
-    pipe->setSeed(seed);
+    const wgen::GeneratorPipelineSpec pipelineSpec{
+        wgen::GeneratorSpec{
+            .kind = wgen::GeneratorKind::PerlinNoise,
+            .config = wgen::PerlinNoiseGeneratorSpec{
+                .gridWidth = terrainConfig.perlin.gridWidth,
+                .gridHeight = terrainConfig.perlin.gridHeight,
+                .dotsPerCell = terrainConfig.perlin.dotsPerCell,
+            },
+        },
+    };
 
-    generators.push_back(std::move(pipe));
+    generators.push_back(wgen::makePipeline(pipelineSpec, seed));
 
 
     // generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(

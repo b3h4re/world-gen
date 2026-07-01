@@ -29,6 +29,8 @@ namespace wgen {
 
         float noise(std::size_t x, std::size_t y) const override;
         void setSeed(SeedType newSeed) override;
+        void push_back(std::unique_ptr<Generator> generator);
+        void push_back(std::unique_ptr<Generator> generator, HeightFunc impact);
 
         template <typename Gen, HeightTransform Func, typename... Args>
         void push_back(Func&& func, Args&&... args) {

@@ -2,9 +2,25 @@
 
 #include "terrain/utils/hash_random.hpp"
 
+#include <stdexcept>
+#include <utility>
+
 
 
 namespace wgen {
+
+void TerrainPipeline::push_back(std::unique_ptr<Generator> generator) {
+    push_back(std::move(generator), multiplyFunction(1.0F));
+}
+
+void TerrainPipeline::push_back(std::unique_ptr<Generator> generator, HeightFunc impact) {
+    if (generator == nullptr) {
+        throw std::invalid_argument("terrain pipeline generator cannot be null");
+    }
+
+    generators_.push_back(std::move(generator));
+    generatorsImpact_.push_back(std::move(impact));
+}
 
 void TerrainPipeline::setSeed(SeedType newSeed)  {
     Generator::setSeed(newSeed);

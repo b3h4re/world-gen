@@ -31,6 +31,13 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .currentPipeline = [this] {
                   return core_.currentPipeline();
               },
+              .computeMethodChanged = [this](wgen::TerrainComputeMethod computeMethod) {
+                  core_.setComputeMethod(computeMethod);
+                  reloadConfiguredSeed();
+              },
+              .currentComputeMethod = [this] {
+                  return core_.computeMethod();
+              },
           }
       } {
     renderer_.window().setRenderParent(gui_.vulkanWidget());

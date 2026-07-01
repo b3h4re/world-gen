@@ -5,6 +5,7 @@
 #include "renderer/objects/mesh_3d.hpp"
 #include "terrain/generators/generator.hpp"
 #include "terrain/generators/generator_spec.hpp"
+#include "terrain/terrain_compute_method.hpp"
 
 #include <cstdint>
 #include <future>
@@ -56,6 +57,8 @@ public:
     void rotateColorFunction();
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
     wgen::GeneratorPipelineSpec currentPipeline() const;
+    void setComputeMethod(wgen::TerrainComputeMethod computeMethod);
+    wgen::TerrainComputeMethod computeMethod() const { return computeMethod_; }
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
 
     const wgen::AppConfig& config() const { return config_; }
@@ -68,11 +71,15 @@ private:
     static wgen::GeneratorPipelineSpec defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig);
     wgen::SeedType activeSeed() const;
 
+    wgen::HeightMap<float> generateHeightMap(std::size_t generatorIndex, const wgen::TerrainConfig& terrainConfig);
+    wgen::HeightMap<float> generateHeightMapCpu(std::size_t generatorIndex, const wgen::TerrainConfig& terrainConfig);
+
     TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap);
     wgen::colorFromHeightFunc getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
     wgen::GeneratorPipelineSpec pipelineSpec_{};
+    wgen::TerrainComputeMethod computeMethod_{wgen::TerrainComputeMethod::Cpu};
     std::size_t activeColorFuncId_{0};
     static constexpr std::size_t NUM_COLOR_FUNCTIONS = 2;
     static constexpr wgen::colorFromHeightFunc COLOR_FUNCTIONS[NUM_COLOR_FUNCTIONS] = {

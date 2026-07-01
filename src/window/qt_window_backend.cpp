@@ -9,6 +9,8 @@
 #include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include <QtGui/QPlatformSurfaceEvent>
+
 
 #include <array>
 #include <algorithm>
@@ -64,6 +66,7 @@ QtWindowBackend::~QtWindowBackend() {
         rootWidget_->removeEventFilter(this);
     }
     if (window_) {
+        window_->setParent(nullptr);
         window_->removeEventFilter(this);
         window_->destroy();
     }
@@ -212,6 +215,31 @@ void QtWindowBackend::setRenderParent(QWidget& renderParent) {
 
     frameBufferResized_ = true;
 }
+void QtWindowBackend::detachRenderParent() {
+    if (renderParentWidget_ != nullptr) {
+        renderParentWidget_->removeEventFilter(this);
+    }
+
+    if (windowContainer_ != nullptr) {
+        if (auto* oldParent = windowContainer_->parentWidget()) {
+            if (auto* oldLayout = oldParent->layout()) {
+                oldLayout->removeWidget(windowContainer_);
+            }
+        }
+
+        windowContainer_->hide();
+
+        if (rootWidget_ != nullptr && windowContainer_->parentWidget() != rootWidget_.get()) {
+            windowContainer_->setParent(rootWidget_.get());
+        }
+    }
+
+    renderParentWidget_ = nullptr;
+}
+
+void QtWindowBackend::setSurfaceAboutToBeDestroyedCallback(std::function<void()> callback) {
+    surfaceAboutToBeDestroyedCallback_ = std::move(callback);
+}
 
 bool QtWindowBackend::eventFilter(QObject* watched, QEvent* event) {
     if (watched != window_.get()
@@ -229,6 +257,25 @@ bool QtWindowBackend::eventFilter(QObject* watched, QEvent* event) {
         case QEvent::Resize:
             frameBufferResized_ = true;
             break;
+        case QEvent::PlatformSurface: {
+            QPlatformSurfaceEvent* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);
+
+            if (surfaceEvent->surfaceEventType()
+                == QPlatformSurfaceEvent::SurfaceAboutToBeDestroyed) {
+                closeRequested_ = true;
+                if (surfaceAboutToBeDestroyedCallback_) {
+                    surfaceAboutToBeDestroyedCallback_();
+                }
+
+            }
+
+            if (surfaceEvent->surfaceEventType()
+                == QPlatformSurfaceEvent::SurfaceCreated) {
+                frameBufferResized_ = true;
+            }
+
+            break;
+        }
         default:
             break;
     }

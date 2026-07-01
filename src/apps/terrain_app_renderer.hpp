@@ -41,6 +41,7 @@ public:
     void applyTerrainMesh(int frameIndex, TerrainMeshData data);
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
+    void shutdownVulkanResources();
 
     QtWindowBackend& window() { return window_; }
     WindowSurface& windowSurface() { return window_; }
@@ -63,6 +64,7 @@ private:
     std::vector<GameObject2d> objects2d_{};
     std::vector<GameObject3d> objects3d_{};
     std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
+    bool vulkanResourcesShutdown_{false};
 };
 
 } // namespace lve

@@ -29,6 +29,11 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
     renderer_.setTerrainMesh(core_.loadTerrain());
 }
 
+TerrainApp::~TerrainApp() {
+    renderer_.shutdownVulkanResources();
+    renderer_.window().detachRenderParent();
+}
+
 void TerrainApp::run() {
     auto& device = renderer_.device();
     auto& lveRenderer = renderer_.renderer();
@@ -127,6 +132,10 @@ void TerrainApp::run() {
             lveRenderer.beginSwapChainRenderPass(commandBuffer);
             terrainRenderSystem.render(frameInfo);
             lveRenderer.endSwapChainRenderPass(commandBuffer);
+            if (window.shouldClose()) {
+                lveRenderer.abortFrame();
+                break;
+            }
             lveRenderer.endFrame();
         }
     }

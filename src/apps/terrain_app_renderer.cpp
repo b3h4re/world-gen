@@ -13,15 +13,14 @@ TerrainAppRenderer::TerrainAppRenderer() : TerrainAppRenderer(wgen::WindowConfig
 TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig&)
     : window_{WIDTH, HEIGHT, "World Generator"}, device_{window_}, renderer_{window_, device_} {
     initDescriptorPool();
+    window_.setSurfaceAboutToBeDestroyedCallback([this] {
+        shutdownVulkanResources();
+    });
 }
 
 TerrainAppRenderer::~TerrainAppRenderer() {
-    waitIdle();
-    retiredObjects_ = {};
-    objects3d_.clear();
-    objects2d_.clear();
-    globalPool_.reset();
-    renderer_.destroySwapChain();
+    window_.setSurfaceAboutToBeDestroyedCallback({});
+    shutdownVulkanResources();
 }
 
 void TerrainAppRenderer::setTerrainMesh(TerrainMeshData data) {
@@ -43,6 +42,24 @@ void TerrainAppRenderer::clearRetiredObjects(int frameIndex) {
 
 void TerrainAppRenderer::waitIdle() {
     vkDeviceWaitIdle(device_.device());
+}
+
+void TerrainAppRenderer::shutdownVulkanResources() {
+    if (vulkanResourcesShutdown_) {
+        return;
+    }
+
+    vulkanResourcesShutdown_ = true;
+    if (renderer_.isFrameInProgress()) {
+        renderer_.abortFrame();
+    }
+
+    waitIdle();
+    retiredObjects_ = {};
+    objects3d_.clear();
+    objects2d_.clear();
+    globalPool_.reset();
+    renderer_.destroySwapChain();
 }
 
 void TerrainAppRenderer::initDescriptorPool() {

@@ -18,6 +18,10 @@ namespace lve {
     }
 
     void LveRenderer::destroySwapChain() {
+        if (isFrameStarted) {
+            abortFrame();
+        }
+
         if (lveSwapChain != nullptr) {
             vkDeviceWaitIdle(lveDevice.device());
             lveSwapChain.reset();
@@ -102,6 +106,10 @@ namespace lve {
     }
     void LveRenderer::endFrame() {
         assert(isFrameStarted && "Can't end frame while frame is not in progress");
+        if (lveWindow.shouldClose()) {
+            abortFrame();
+            return;
+        }
         auto commandBuffer = getCurrentCommandBuffer();
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -119,6 +127,18 @@ namespace lve {
         isFrameStarted = false;
         currentFrameIndex = (currentFrameIndex + 1) % LveSwapChain::MAX_FRAMES_IN_FLIGHT;
     }
+    void LveRenderer::abortFrame() {
+        if (!isFrameStarted) {
+            return;
+        }
+
+        const VkCommandBuffer commandBuffer = getCurrentCommandBuffer();
+
+        vkResetCommandBuffer(commandBuffer, 0);
+
+        isFrameStarted = false;
+    }
+
 
     void LveRenderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer) {
         assert(isFrameStarted && "Can't start swap chain render pass when frame is not in progress");

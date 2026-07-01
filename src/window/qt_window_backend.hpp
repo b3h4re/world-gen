@@ -5,6 +5,7 @@
 #include <QtCore/QObject>
 #include <QtGui/QVulkanInstance>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,6 +41,10 @@ public:
     QWidget& renderWidget();
     QWidget& renderParentWidget();
     void setRenderParent(QWidget& renderParent);
+    void detachRenderParent();
+
+    void setSurfaceAboutToBeDestroyedCallback(std::function<void()> callback);
+
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -59,6 +64,8 @@ private:
     QVulkanInstance vulkanInstance_{};
     bool closeRequested_{false};
     bool frameBufferResized_{false};
+
+    std::function<void()> surfaceAboutToBeDestroyedCallback_;
 };
 
 } // namespace lve

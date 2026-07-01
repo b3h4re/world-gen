@@ -37,6 +37,8 @@ namespace lve {
 
             VkCommandBuffer beginFrame();
             void endFrame();
+            void abortFrame();
+
 
             void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
             void endSwapChainRenderPass(VkCommandBuffer commandBuffer);

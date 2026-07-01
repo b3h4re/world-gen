@@ -11,6 +11,7 @@ class TerrainApp {
 public:
     TerrainApp();
     explicit TerrainApp(const wgen::AppConfig& config);
+    ~TerrainApp();
 
     TerrainApp(const TerrainApp&) = delete;
     TerrainApp& operator=(const TerrainApp&) = delete;

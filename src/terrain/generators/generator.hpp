@@ -2,9 +2,11 @@
 
 #include "terrain/terrain.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <stdexcept>
 #include <utility>
-#include <cmath>
 
 
 namespace wgen {

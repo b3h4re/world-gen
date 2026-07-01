@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.h>
 
 // std lib headers
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <vector>
 

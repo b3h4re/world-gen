@@ -2,6 +2,7 @@
 
 #include "terrain/generators/generator.hpp"
 
+#include <cstdint>
 
 
 namespace wgen {

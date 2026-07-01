@@ -2,6 +2,7 @@
 
 #include "device/lve_device.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <vector>

@@ -3,6 +3,7 @@
 
 #include "device/lve_device.hpp"
 
+#include <cstdint>
 
 namespace lve {
     class LveBuffer {

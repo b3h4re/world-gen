@@ -3,10 +3,9 @@
 #include "generator.hpp"
 
 #include <concepts>
-#include <initializer_list>
-#include <string>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>

@@ -1,17 +1,9 @@
 #pragma once
 
 #include "device/lve_device.hpp"
-#include "game/camera/camera_2d.hpp"
-#include "game/objects/game_object_2d.hpp"
 #include "render_system_2d.hpp"
-#include "game/camera/camera_3d.hpp"
-#include "game/objects/game_object_3d.hpp"
 #include "render_system_3d.hpp"
 #include "renderer/lve_frame_info.hpp"
-
-#include <vulkan/vulkan.h>
-
-#include <vector>
 
 namespace lve {
 

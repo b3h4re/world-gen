@@ -1,5 +1,6 @@
 #include "wavelet.hpp"
 
+#include <random>
 #include <stdexcept>
 
 

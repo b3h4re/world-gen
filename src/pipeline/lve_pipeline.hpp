@@ -2,6 +2,7 @@
 
 #include "device/lve_device.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

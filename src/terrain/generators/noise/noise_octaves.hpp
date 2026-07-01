@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>

@@ -2,6 +2,9 @@
 
 #include "terrain/generators/generator.hpp"
 
+#include <cstddef>
+#include <cstdint>
+
 namespace wgen {
 
     class WaveletNoise2d : public Generator {

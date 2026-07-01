@@ -3,6 +3,8 @@
 #include "terrain/generators/generator.hpp"
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <random>
 #include <stdexcept>

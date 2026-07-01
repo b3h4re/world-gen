@@ -2,6 +2,9 @@
 
 #include "terrain/generators/noise/gradient_noise_interface.hpp"
 
+#include <cstddef>
+#include <cstdint>
+
 namespace wgen {
 
 

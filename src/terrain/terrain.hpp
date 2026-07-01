@@ -1,19 +1,16 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <concepts>
-#include <random>
-#include <stdexcept>
 #include <cstddef>
-#include <cstdint>
+#include <functional>
 #include <initializer_list>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
-#include <cassert>
 
 namespace wgen {
 

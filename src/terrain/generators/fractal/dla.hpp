@@ -3,9 +3,16 @@
 #include "terrain/generators/generator.hpp"
 #include "terrain/utils/kernel.hpp"
 
-#include <unordered_set>
-#include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <queue>
+#include <random>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace wgen {
 

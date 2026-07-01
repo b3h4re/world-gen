@@ -3,6 +3,7 @@
 #include "device/lve_device.hpp"
 #include "model/buffer/lve_buffer.hpp"
 
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>

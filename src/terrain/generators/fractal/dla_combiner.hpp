@@ -3,6 +3,9 @@
 
 #include "terrain/generators/generator.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace wgen {
 

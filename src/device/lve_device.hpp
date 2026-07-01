@@ -3,6 +3,7 @@
 #include "window/window_surface.hpp"
 
 
+#include <cstdint>
 #include <vector>
 
 namespace lve {

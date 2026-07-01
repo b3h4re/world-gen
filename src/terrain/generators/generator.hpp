@@ -65,6 +65,8 @@ namespace wgen {
     }
     std::uint32_t hashSeed(std::uint32_t seed);
 
+    glm::vec2 randomHashDir(std::size_t x, std::size_t y, std::uint32_t seed);
+
     constexpr std::uint64_t makeKey(int i, int j) noexcept {
         auto ui = static_cast<std::uint32_t>(i);
         auto uj = static_cast<std::uint32_t>(j);

@@ -60,7 +60,7 @@ namespace wgen {
             std::size_t gridWidth,
             std::size_t gridHeight,
             std::size_t dotsPerCell,
-            std::uint32_t seed
+            SeedType seed
         ) : gridWidth_{gridWidth}, gridHeight_{gridHeight}, dotsPerCell_{dotsPerCell} {
             if (dotsPerCell_ < 2) {
                 throw std::invalid_argument("dots per cell must be at least two");
@@ -73,7 +73,7 @@ namespace wgen {
             setSeed(seed);
         }
 
-        void setSeed(std::uint32_t newSeed) override {
+        void setSeed(SeedType newSeed) override {
             Generator::setSeed(newSeed);
         }
 

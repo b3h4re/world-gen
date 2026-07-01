@@ -11,7 +11,7 @@ namespace wgen {
 	                                   float frequency)
 	    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel, frequency} {}
 
-	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed,
+	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, SeedType seed,
 		                                   FloatFunction reconstructionKernel, float frequency)
 		    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, frequency_{frequency}, reconstructionKernel_{reconstructionKernel},
 		        kernelWidth_{1}, kernelHeight_{1} {

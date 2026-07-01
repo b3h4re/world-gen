@@ -10,7 +10,7 @@
 namespace wgen {
 
     RandomGridPoints::RandomGridPoints() : RandomGridPoints{std::random_device{}()} {}
-    RandomGridPoints::RandomGridPoints(std::uint32_t seed) : seed_{seed} {
+    RandomGridPoints::RandomGridPoints(SeedType seed) : seed_{seed} {
         this->reset();
     }
 
@@ -18,7 +18,7 @@ namespace wgen {
         random_ = std::mt19937(seed_);
     }
 
-    void RandomGridPoints::setSeed(std::uint32_t newSeed) {
+    void RandomGridPoints::setSeed(SeedType newSeed) {
         seed_ = newSeed;
         this->reset();
     }
@@ -32,7 +32,7 @@ namespace wgen {
 
     DLABasic::DLABasic(std::size_t numSteps, HeightFunc heightFunc)
         : DLABasic{numSteps, std::random_device{}(), heightFunc} {}
-    DLABasic::DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc)
+    DLABasic::DLABasic(std::size_t numSteps, SeedType seed, HeightFunc heightFunc)
         : numSteps_{numSteps}, heightFunc_{heightFunc} {
         setSeed(seed);
     }
@@ -242,7 +242,7 @@ namespace wgen {
     // DLA with dual filter blur
     DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc, float fill, float jiggle)
         : DLADualFilterBlur{numSteps, std::random_device{}(), heightFunc, fill, jiggle} {}
-    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc, float fill, float jiggle)
+    DLADualFilterBlur::DLADualFilterBlur(std::size_t numSteps, SeedType seed, HeightFunc heightFunc, float fill, float jiggle)
         : DLABasic{numSteps, seed, heightFunc}, fill_{fill}, jiggle_{jiggle} {
         setSeed(seed);
     }
@@ -461,7 +461,7 @@ namespace wgen {
         std::size_t targetSize = static_cast<std::size_t>(
             fill_ * static_cast<float>(pixels.width() * pixels.height())
         );
-        std::uint32_t innerSeed = randomDevice();
+        SeedType innerSeed = randomDevice();
         RandomGridPoints points{innerSeed};
 
         while (placedPoints.size() < targetSize) {

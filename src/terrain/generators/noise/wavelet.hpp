@@ -18,8 +18,8 @@ namespace wgen {
 
         constexpr static float DEFAULT_FREQUENCY = 0.014231234F;
 
-        WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed,
-                        FloatFunction reconstructionKernel = defaultReconstructionKernel,
+        WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, SeedType seed,
+                       FloatFunction reconstructionKernel = defaultReconstructionKernel,
                         float frequency = DEFAULT_FREQUENCY);
         WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight,
                         FloatFunction reconstructionKernel = defaultReconstructionKernel,

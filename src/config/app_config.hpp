@@ -1,6 +1,7 @@
 #pragma once
 
 #include "files/file_path.hpp"
+#include "terrain/generators/generator.hpp"
 
 #include <string>
 #include <cstdint>
@@ -130,7 +131,7 @@ namespace wgen {
     struct TerrainConfig {
         std::string generator{"perlin"};
         bool setSeed = false;
-        std::uint32_t seed{0};
+        SeedType seed{0};
         std::size_t width{96};
         std::size_t height{64};
         PerlinConfig perlin{};

@@ -11,6 +11,7 @@
 namespace wgen {
 
     using HeightFunc = std::function<float(float)>; // Function whic receives int of point and returns height
+    using SeedType = std::uint64_t;
 
     float minkowskiDistance(glm::vec2 v1, glm::vec2 v2, float p);
 
@@ -86,7 +87,7 @@ namespace wgen {
     };
 
     struct ValueNoiseGeneratorSpec {
-        std::uint32_t seed{};
+        SeedType seed{};
     };
 
     struct GeneratorSpec {
@@ -116,12 +117,12 @@ namespace wgen {
         }
 
 
-        virtual void setSeed(std::uint32_t newSeed) { seed_ = newSeed; }
-        std::uint32_t getSeed() const { return seed_; }
+        virtual void setSeed(SeedType newSeed) { seed_ = newSeed; }
+        SeedType getSeed() const { return seed_; }
         virtual float noise(std::size_t x, std::size_t y) const = 0;
 
     private:
-        std::uint32_t seed_{};
+        SeedType seed_{};
     };
 
 }

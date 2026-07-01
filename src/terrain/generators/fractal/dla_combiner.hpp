@@ -11,7 +11,7 @@ namespace wgen {
 
 struct DLAGeneratorConfig {
     std::size_t numSteps{5};
-    std::uint32_t seed{0};
+    SeedType seed{0};
     HeightFunc heightFunc = defaultDLAHeightFunction(1.0F);
     float fill = 0.25;
     float jiggle = 0.021;
@@ -22,11 +22,11 @@ struct DLAGeneratorConfig {
 class DLACombiner : public Generator {
 public:
     DLACombiner(std::size_t numDlas, std::vector<DLAGeneratorConfig> configs = {});
-    DLACombiner(std::size_t numDlas, std::uint32_t seed, std::vector<DLAGeneratorConfig> configs = {});
+    DLACombiner(std::size_t numDlas, SeedType seed, std::vector<DLAGeneratorConfig> configs = {});
 
     HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
 
-    void setSeed(std::uint32_t newSeed) override;
+    void setSeed(SeedType newSeed) override;
 
 private:
     std::size_t numDlas_;

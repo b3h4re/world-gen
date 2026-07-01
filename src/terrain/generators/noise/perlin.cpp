@@ -11,7 +11,7 @@ namespace wgen {
     : PerlinNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), funcInterpolate} {}
 
     PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 std::uint32_t seed, FloatFunction funcInterpolate)
+                                 SeedType seed, FloatFunction funcInterpolate)
     : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, funcInterpolate_{funcInterpolate} {
         if (funcInterpolate_ == nullptr) {
             throw std::invalid_argument("Perlin interpolation function must not be null");

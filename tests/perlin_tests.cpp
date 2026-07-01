@@ -43,7 +43,7 @@ int main() {
     static_assert(std::has_virtual_destructor_v<wgen::Generator>);
 
     try {
-        constexpr std::uint32_t seed = 12345;
+        constexpr wgen::SeedType seed = 12345;
         wgen::PerlinNoise2d first{5, 4, 8, seed};
         wgen::PerlinNoise2d second{5, 4, 8, seed};
 

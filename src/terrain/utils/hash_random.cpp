@@ -7,13 +7,13 @@
 
 namespace wgen {
 
-    std::uint32_t hashSeed(std::uint32_t seed) {
+    SeedType hashSeed(SeedType seed) {
         const std::uint64_t hashed = splitmix64(seed);
-        return static_cast<std::uint32_t>(hashed ^ (hashed >> 32));
+        return hashed ^ (hashed >> 32);
     }
 
-    glm::vec2 randomHashDir(std::size_t x, std::size_t y, std::uint32_t seed) {
-        std::uint64_t h = static_cast<std::uint64_t>(seed);
+    glm::vec2 randomHashDir(std::size_t x, std::size_t y, SeedType seed) {
+        std::uint64_t h = seed;
         h ^= splitmix64(static_cast<std::uint64_t>(x) + 0x9E3779B97F4A7C15ull);
         h ^= splitmix64(static_cast<std::uint64_t>(y) + 0xBF58476D1CE4E5B9ull);
 

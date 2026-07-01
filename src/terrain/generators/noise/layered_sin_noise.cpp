@@ -15,7 +15,7 @@ namespace wgen {
 
     LayeredSinNoiseGenerator::LayeredSinNoiseGenerator() : LayeredSinNoiseGenerator{std::random_device{}()} {}
 
-    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator(std::uint32_t seed) {
+    LayeredSinNoiseGenerator::LayeredSinNoiseGenerator(SeedType seed) {
         setSeed(seed);
     }
 

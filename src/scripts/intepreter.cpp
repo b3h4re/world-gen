@@ -129,7 +129,7 @@ namespace wgen {
                 return std::make_unique<wgen::WorleyNoise2d>(width, height, dots);
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+            const auto seed = static_cast<SeedType>(as<int>(args[3]));
 
             if (args.size() == 4) {
                 return std::make_unique<wgen::WorleyNoise2d>(width, height, dots, seed);
@@ -156,7 +156,7 @@ namespace wgen {
                 return std::make_unique<wgen::WaveletNoise2d>(width, height);
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+            const auto seed = static_cast<SeedType>(as<int>(args[3]));
 
             if (args.size() == 3) {
                 return std::make_unique<wgen::WaveletNoise2d>(width, height, seed);
@@ -182,7 +182,7 @@ namespace wgen {
                 return std::make_unique<wgen::ValueNoiseGenerator>();
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[0]));
+            const auto seed = static_cast<SeedType>(as<int>(args[0]));
 
             if (args.size() == 1) {
                 return std::make_unique<wgen::ValueNoiseGenerator>(seed);
@@ -194,7 +194,7 @@ namespace wgen {
                 return std::make_unique<wgen::LayeredSinNoiseGenerator>();
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[0]));
+            const auto seed = static_cast<SeedType>(as<int>(args[0]));
 
             if (args.size() == 1) {
                 return std::make_unique<wgen::LayeredSinNoiseGenerator>(seed);
@@ -215,7 +215,7 @@ namespace wgen {
                 return std::make_unique<wgen::SimplexNoise2d>(width, height, dots);
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+            const auto seed = static_cast<SeedType>(as<int>(args[3]));
 
             if (args.size() == 4) {
                 return std::make_unique<wgen::SimplexNoise2d>(width, height, dots, seed);
@@ -237,7 +237,7 @@ namespace wgen {
                 return std::make_unique<wgen::PerlinNoise2d>(width, height, dots);
             }
 
-            const auto seed = static_cast<std::uint32_t>(as<int>(args[3]));
+            const auto seed = static_cast<SeedType>(as<int>(args[3]));
 
             if (args.size() == 4) {
                 return std::make_unique<wgen::PerlinNoise2d>(width, height, dots, seed);

@@ -28,7 +28,7 @@ namespace wgen {
         TerrainPipeline() = default;
 
         float noise(std::size_t x, std::size_t y) const override;
-        void setSeed(std::uint32_t newSeed) override;
+        void setSeed(SeedType newSeed) override;
 
         template <typename Gen, HeightTransform Func, typename... Args>
         void push_back(Func&& func, Args&&... args) {

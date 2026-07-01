@@ -7,7 +7,7 @@ namespace wgen {
         : DLACombiner{numDlas, std::random_device{}(), configs} {}
 
 
-    DLACombiner::DLACombiner(std::size_t numDlas, std::uint32_t seed, std::vector<DLAGeneratorConfig> configs)
+    DLACombiner::DLACombiner(std::size_t numDlas, SeedType seed, std::vector<DLAGeneratorConfig> configs)
         : numDlas_{numDlas}, configs_{configs} {
         Generator::setSeed(seed);
         presetSeeds.reserve(numDlas_);
@@ -16,7 +16,7 @@ namespace wgen {
         setSeed(seed);
     }
 
-    void DLACombiner::setSeed(std::uint32_t newSeed) {
+    void DLACombiner::setSeed(SeedType newSeed) {
         Generator::setSeed(newSeed);
         for (std::size_t i = 0; i < numDlas_; ++i) {
             if (presetSeeds[0]) { continue; }

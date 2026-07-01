@@ -23,16 +23,16 @@ namespace wgen {
         using Point = glm::vec<2, int>;
 
         RandomGridPoints();
-        RandomGridPoints(std::uint32_t seed);
+        RandomGridPoints(SeedType seed);
 
         Point next(std::size_t width, std::size_t height);
 
         void reset(); // Resets random device
-        void setSeed(std::uint32_t seed);
+        void setSeed(SeedType seed);
 
 
     private:
-        std::uint32_t seed_{};
+        SeedType seed_{};
         std::mt19937 random_{};
     };
 
@@ -48,7 +48,7 @@ namespace wgen {
     public:
 
         DLABasic(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
-        DLABasic(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
+        DLABasic(std::size_t numSteps, SeedType seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F));
 
         virtual HeightMap<float> generateHeightMap(std::size_t width, std::size_t height) const override;
 
@@ -95,7 +95,7 @@ namespace wgen {
     class DLADualFilterBlur : public DLABasic {
     public:
         DLADualFilterBlur(std::size_t numSteps, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F), float fill = 0.25, float jiggle = 0.021);
-        DLADualFilterBlur(std::size_t numSteps, std::uint32_t seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F), float fill = 0.25, float jiggle = 0.021);
+        DLADualFilterBlur(std::size_t numSteps, SeedType seed, HeightFunc heightFunc = defaultDLAHeightFunction(1.0F), float fill = 0.25, float jiggle = 0.021);
 
         HeightMap<float> generateHeightMap(std::size_t widthTarget, std::size_t heightTarget) const override;
 

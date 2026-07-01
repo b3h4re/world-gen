@@ -245,7 +245,7 @@ namespace wgen {
             "terrain.generator"
         );
 
-        config.seed = checked_integer<std::uint32_t>(
+        config.seed = checked_uinteger<SeedType>(
             root["terrain"]["seed"],
             config.seed,
             "terrain.seed"

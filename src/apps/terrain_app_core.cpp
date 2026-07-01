@@ -93,7 +93,7 @@ TerrainMeshData TerrainAppCore::loadTerrain() {
     return buildMeshData(activeHeightMap_);
 }
 
-void TerrainAppCore::regenerateTerrain(std::uint32_t seed) {
+void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
     if (terrainJobRunning_) {
         return;
     }
@@ -203,7 +203,7 @@ void TerrainAppCore::initGenerators(
         std::vector<std::unique_ptr<wgen::Generator>>& generators,
         const wgen::TerrainConfig& terrainConfig) {
     generators.clear();
-    std::uint32_t seed;
+    wgen::SeedType seed;
     if (terrainConfig.setSeed) {
         seed = terrainConfig.seed;
     } else {

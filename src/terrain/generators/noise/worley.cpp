@@ -15,7 +15,7 @@ namespace wgen {
     : WorleyNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), p, numPoints} {}
 
     WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 std::uint32_t seed, float p, std::size_t numPoints)
+                                 SeedType seed, float p, std::size_t numPoints)
     : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, p_{p}, numPoints_{numPoints},
         featurePoints_{gridWidth, gridHeight} {
         if (p_ <= 0.0F) {
@@ -46,7 +46,7 @@ namespace wgen {
         std::vector<glm::vec2> points{};
         points.reserve(numPoints_);
         glm::vec2 cell{i, j};
-        std::uint32_t seed = getSeed();
+        SeedType seed = getSeed();
 
 
         for (std::size_t n = 0; n < numPoints_; ++n) {

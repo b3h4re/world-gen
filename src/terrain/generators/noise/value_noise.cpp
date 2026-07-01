@@ -9,7 +9,7 @@ namespace wgen {
 
     ValueNoiseGenerator::ValueNoiseGenerator() : ValueNoiseGenerator{std::random_device{}()} {}
 
-    ValueNoiseGenerator::ValueNoiseGenerator(std::uint32_t seed) {
+    ValueNoiseGenerator::ValueNoiseGenerator(SeedType seed) {
         setSeed(seed);
     }
 

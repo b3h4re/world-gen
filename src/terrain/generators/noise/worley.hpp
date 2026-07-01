@@ -15,7 +15,7 @@ namespace wgen {
             std::size_t gridWidth,
             std::size_t gridHeight,
             std::size_t dotsPerCell,
-            std::uint32_t seed,
+            SeedType seed,
             float p = 2,
             std::size_t numPoints = 1
         );

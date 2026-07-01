@@ -50,7 +50,7 @@ public:
     TerrainAppCore& operator=(const TerrainAppCore&) = delete;
 
     TerrainMeshData loadTerrain();
-    void regenerateTerrain(std::uint32_t seed);
+    void regenerateTerrain(wgen::SeedType seed);
     void rotateColorFunction();
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
 

@@ -10,7 +10,7 @@ namespace wgen {
     class LayeredSinNoiseGenerator : public Generator {
     public:
         LayeredSinNoiseGenerator();
-        explicit LayeredSinNoiseGenerator(std::uint32_t seed);
+        explicit LayeredSinNoiseGenerator(SeedType seed);
 
         float noise(std::size_t x, std::size_t y) const override;
     };

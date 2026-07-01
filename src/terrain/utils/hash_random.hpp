@@ -1,5 +1,7 @@
 #pragma once
 
+#include "terrain/generators/generator.hpp"
+
 #include <utility>
 #include <cstdint>
 
@@ -55,9 +57,9 @@ namespace wgen {
         x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
         return x ^ (x >> 31);
     }
-    std::uint32_t hashSeed(std::uint32_t seed);
+    SeedType hashSeed(SeedType seed);
 
-    glm::vec2 randomHashDir(std::size_t x, std::size_t y, std::uint32_t seed);
+    glm::vec2 randomHashDir(std::size_t x, std::size_t y, SeedType seed);
 
     constexpr std::uint64_t makeKey(int i, int j) noexcept {
         auto ui = static_cast<std::uint32_t>(i);
@@ -89,10 +91,10 @@ namespace wgen {
     }
 
     template <typename... Ints>
-    std::uint64_t hashValues(std::uint32_t seed, Ints... values) noexcept {
+    std::uint64_t hashValues(SeedType seed, Ints... values) noexcept {
         static_assert((std::is_integral_v<Ints> && ...));
 
-        std::uint64_t h = splitmix64(static_cast<std::uint64_t>(seed));
+        std::uint64_t h = splitmix64(seed);
 
         ((h = splitmix64(
             h ^ splitmix64(static_cast<std::uint64_t>(values))

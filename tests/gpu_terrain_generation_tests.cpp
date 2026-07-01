@@ -34,7 +34,7 @@ bool equals(const wgen::HeightMap<float>& h1, const wgen::HeightMap<float>& h2) 
 void testValueNoise(lve::LveComputeDevice& device) {
     const std::size_t width = 1000;
     const std::size_t height = 1000;
-    std::uint32_t seeds[10] = {0, 42, 12323, 12333214, 1287612763};
+    wgen::SeedType seeds[10] = {0, 42, 12323, 12333214, 1287612763};
 
     for (const auto& seed : seeds) {
         wgen::ValueNoiseGenerator gen{seed};

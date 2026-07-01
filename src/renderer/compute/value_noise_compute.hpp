@@ -40,7 +40,7 @@ private:
     struct PushConstants {
         std::uint32_t width{};
         std::uint32_t height{};
-        std::uint32_t seed{};
+        wgen::SeedType seed{};
     };
 
     static constexpr std::uint32_t LOCAL_SIZE_X = 16;

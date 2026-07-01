@@ -6,7 +6,7 @@ namespace wgen {
     SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell)
     : SimplexNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}()} {}
 
-    SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, std::uint32_t seed)
+    SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, SeedType seed)
     : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed} {}
 
     float SimplexNoise2d::noise(std::size_t x, std::size_t y) const {

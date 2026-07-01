@@ -6,7 +6,7 @@
 
 namespace wgen {
 
-void TerrainPipeline::setSeed(std::uint32_t newSeed)  {
+void TerrainPipeline::setSeed(SeedType newSeed)  {
     Generator::setSeed(newSeed);
     for (std::size_t i = 0; i < generators_.size(); ++i) {
         if (i == 0) {

@@ -12,7 +12,7 @@ namespace wgen {
     public:
         using FloatFunction = float (*)(float);
 
-        PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, std::uint32_t seed,
+        PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, SeedType seed,
                       FloatFunction funcInterpolate = defaultPerlinInterp);
         PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
                       FloatFunction funcInterpolate = defaultPerlinInterp);

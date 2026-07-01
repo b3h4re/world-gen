@@ -4,9 +4,11 @@
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
 #include "terrain/generators/generator.hpp"
+#include "terrain/generators/generator_spec.hpp"
 
 #include <cstdint>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <vector>
@@ -52,6 +54,8 @@ public:
     TerrainMeshData loadTerrain();
     void regenerateTerrain(wgen::SeedType seed);
     void rotateColorFunction();
+    void setPipeline(wgen::GeneratorPipelineSpec pipeline);
+    wgen::GeneratorPipelineSpec currentPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
 
     const wgen::AppConfig& config() const { return config_; }
@@ -59,12 +63,16 @@ public:
 private:
     static void initGenerators(
         std::vector<std::unique_ptr<wgen::Generator>>& generators,
-        const wgen::TerrainConfig& terrainConfig);
+        const wgen::GeneratorPipelineSpec& pipelineSpec,
+        wgen::SeedType seed);
+    static wgen::GeneratorPipelineSpec defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig);
+    wgen::SeedType activeSeed() const;
 
     TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap);
     wgen::colorFromHeightFunc getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
+    wgen::GeneratorPipelineSpec pipelineSpec_{};
     std::size_t activeColorFuncId_{0};
     static constexpr std::size_t NUM_COLOR_FUNCTIONS = 2;
     static constexpr wgen::colorFromHeightFunc COLOR_FUNCTIONS[NUM_COLOR_FUNCTIONS] = {

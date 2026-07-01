@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <random>
+#include <utility>
 #include <vulkan/vulkan.h>
 
 namespace lve {
@@ -23,6 +24,12 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .regenerateTerrain = [this] { regenerateWithRandomSeed(); },
               .reloadTerrain = [this] { reloadConfiguredSeed(); },
               .switchColor = [this] { core_.rotateColorFunction(); },
+              .pipelineChanged = [this](wgen::GeneratorPipelineSpec pipeline) {
+                  core_.setPipeline(std::move(pipeline));
+              },
+              .currentPipeline = [this] {
+                  return core_.currentPipeline();
+              },
           }
       } {
     renderer_.window().setRenderParent(gui_.vulkanWidget());

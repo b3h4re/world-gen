@@ -16,6 +16,8 @@ TerrainAppGui::TerrainAppGui(QWidget& parent, Callbacks callbacks) : parent_{par
             .regenerateTerrain = std::move(callbacks.regenerateTerrain),
             .reloadTerrain = std::move(callbacks.reloadTerrain),
             .switchColor = std::move(callbacks.switchColor),
+            .pipelineChanged = std::move(callbacks.pipelineChanged),
+            .currentPipeline = std::move(callbacks.currentPipeline),
         },
         &parent_);
     layout->addWidget(controls_.get());

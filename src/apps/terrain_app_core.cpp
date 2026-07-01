@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <random>
+#include <utility>
 
 namespace lve {
 
@@ -82,8 +83,9 @@ void appendHeightMapMesh3d(
 
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 
-TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config) : config_{config} {
-    initGenerators(generators_, config_.terrainConfig);
+TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
+    : config_{config}, pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)} {
+    initGenerators(generators_, pipelineSpec_, activeSeed());
 }
 
 TerrainMeshData TerrainAppCore::loadTerrain() {
@@ -177,6 +179,22 @@ void TerrainAppCore::rotateColorFunction() {
     });
 }
 
+void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
+    if (terrainJobRunning_) {
+        return;
+    }
+
+    std::lock_guard lock{generatorsMutex_};
+    const wgen::SeedType seed = activeSeed();
+    pipelineSpec_ = std::move(pipeline);
+    initGenerators(generators_, pipelineSpec_, seed);
+    usedGenerator_ = 0;
+}
+
+wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
+    return pipelineSpec_;
+}
+
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (!terrainJobRunning_) {
         return std::nullopt;
@@ -201,17 +219,14 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
 
 void TerrainAppCore::initGenerators(
         std::vector<std::unique_ptr<wgen::Generator>>& generators,
-        const wgen::TerrainConfig& terrainConfig) {
+        const wgen::GeneratorPipelineSpec& pipelineSpec,
+        wgen::SeedType seed) {
     generators.clear();
-    wgen::SeedType seed;
-    if (terrainConfig.setSeed) {
-        seed = terrainConfig.seed;
-    } else {
-        std::random_device rd;
-        seed = rd();
-    }
+    generators.push_back(wgen::makePipeline(pipelineSpec, seed));
+}
 
-    const wgen::GeneratorPipelineSpec pipelineSpec{
+wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig) {
+    return wgen::GeneratorPipelineSpec{
         wgen::GeneratorSpec{
             .kind = wgen::GeneratorKind::PerlinNoise,
             .config = wgen::PerlinNoiseGeneratorSpec{
@@ -219,37 +234,19 @@ void TerrainAppCore::initGenerators(
             },
         },
     };
+}
 
-    generators.push_back(wgen::makePipeline(pipelineSpec, seed));
+wgen::SeedType TerrainAppCore::activeSeed() const {
+    if (!generators_.empty() && usedGenerator_ < generators_.size()) {
+        return generators_[usedGenerator_]->getSeed();
+    }
 
+    if (config_.terrainConfig.setSeed) {
+        return config_.terrainConfig.seed;
+    }
 
-    // generators.push_back(std::make_unique<wgen::DLADualFilterBlur>(wgen::DLADualFilterBlur(
-    //     terrainConfig.dla.numSteps, seed, wgen::defaultDLAHeightFunction(terrainConfig.dla.heightFuncScale),
-    //     terrainConfig.dla.fill, terrainConfig.dla.jiggle)));
-    // generators.push_back(std::make_unique<wgen::WorleyNoise2d>(wgen::WorleyNoise2d(
-    //     terrainConfig.worley.gridWidth,
-    //     terrainConfig.worley.gridHeight,
-    //     terrainConfig.worley.dotsPerCell,
-    //     seed,
-    //     terrainConfig.worley.p,
-    //     terrainConfig.worley.numPoints
-    // )));
-    // generators.push_back(std::make_unique<wgen::WaveletNoise2d>(wgen::WaveletNoise2d(
-    //     terrainConfig.wavelet.gridWidth,
-    //     terrainConfig.wavelet.gridHeight,
-    //     seed,
-    //     wgen::defaultReconstructionKernel
-    // )));
-    // generators.push_back(std::make_unique<wgen::SimplexNoise2d>(wgen::SimplexNoise2d(
-    //     terrainConfig.simplex.gridWidth,
-    //     terrainConfig.simplex.gridHeight,
-    //     terrainConfig.simplex.dotsPerCell,
-    //     seed
-    // )));
-    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(
-    //     terrainConfig.perlin.dotsPerCell, seed, wgen::defaultPerlinInterp));
-    // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
-    // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
+    std::random_device rd;
+    return rd();
 }
 
 TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap) {

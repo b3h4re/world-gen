@@ -16,14 +16,25 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
     ui_->toolBarWidget->setMaximumWidth(256);
 
-    pipelineModel_ = std::make_unique<TerrainPipelineListModel>(
-        wgen::GeneratorPipelineSpec{
+    wgen::GeneratorPipelineSpec initialPipeline;
+    if (callbacks_.currentPipeline) {
+        initialPipeline = callbacks_.currentPipeline();
+    } else {
+        initialPipeline = wgen::GeneratorPipelineSpec{
             wgen::GeneratorSpec{
                 .kind = wgen::GeneratorKind::PerlinNoise,
                 .config = wgen::PerlinNoiseGeneratorSpec{},
             },
-        });
+        };
+    }
+
+    pipelineModel_ = std::make_unique<TerrainPipelineListModel>(std::move(initialPipeline));
     ui_->listView->setModel(pipelineModel_.get());
+    connect(pipelineModel_.get(), &QAbstractItemModel::modelReset, this, [this] {
+        if (callbacks_.pipelineChanged) {
+            callbacks_.pipelineChanged(pipelineModel_->pipeline());
+        }
+    });
 
     connect(ui_->regenerateButton, &QPushButton::clicked, this, [this] {
         callbacks_.regenerateTerrain();

@@ -225,10 +225,10 @@ if(BUILD_TESTING)
         src/pipeline/descriptors/lve_descriptors.hpp
         src/terrain/generators/noise/value_noise.cpp
         src/terrain/generators/noise/value_noise.hpp
+        src/renderer/compute/computer.cpp
+        src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp
         src/renderer/compute/gpu_height_map.hpp
-        src/renderer/compute/value_noise_compute.cpp
-        src/renderer/compute/value_noise_compute.hpp
     )
     target_include_directories(gpu_terrain_generation_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(gpu_terrain_generation_tests PRIVATE cxx_std_20)

@@ -215,7 +215,7 @@ namespace wgen {
             "terrain.dla.num_steps"
         );
 
-        config.fill = checked_float(
+        config.heightFuncScale = checked_float(
             root["terrain"]["dla"]["height_scale"],
             config.heightFuncScale,
             "terrain.dla.height_scale"

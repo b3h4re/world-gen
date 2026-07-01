@@ -1,21 +1,16 @@
 #include "terrain/utils/hash_random.hpp"
 
+#include "helpers.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 
 namespace {
-
-void require(bool condition, const std::string& message) {
-    if (!condition) {
-        std::cerr << "Test failed: " << message << '\n';
-        std::exit(EXIT_FAILURE);
-    }
-}
 
 void testBounds() {
     wgen::HashUniformRealDistribution<float> dist{-2.0f, 5.0f};
@@ -24,8 +19,8 @@ void testBounds() {
         const std::uint64_t h = wgen::splitmix64(i);
         const float v = dist(h);
 
-        require(v >= -2.0f, "value below min");
-        require(v < 5.0f, "value greater than or equal to max");
+        wgen::tests::require(v >= -2.0f, "value below min");
+        wgen::tests::require(v < 5.0f, "value greater than or equal to max");
     }
 }
 
@@ -37,7 +32,7 @@ void testDeterminism() {
     const float a = dist(h);
     const float b = dist(h);
 
-    require(a == b, "same hash produced different values");
+    wgen::tests::require(a == b, "same hash produced different values");
 }
 
 void testMeanAndVariance() {
@@ -61,10 +56,10 @@ void testMeanAndVariance() {
     constexpr double expectedMean = 0.5;
     constexpr double expectedVariance = 1.0 / 12.0;
 
-    require(std::abs(mean - expectedMean) < 0.001,
+    wgen::tests::require(std::abs(mean - expectedMean) < 0.001,
             "mean is too far from 0.5: " + std::to_string(mean));
 
-    require(std::abs(variance - expectedVariance) < 0.001,
+    wgen::tests::require(std::abs(variance - expectedVariance) < 0.001,
             "variance is too far from 1/12: " + std::to_string(variance));
 }
 
@@ -100,7 +95,7 @@ void testHistogramChiSquare() {
     // Degrees of freedom = bucketCount - 1 = 99.
     // Expected chi-square is about 99.
     // This threshold is deliberately loose to avoid overfitting the test.
-    require(chiSquare < 160.0,
+    wgen::tests::require(chiSquare < 160.0,
             "chi-square statistic too large: " + std::to_string(chiSquare));
 }
 
@@ -137,7 +132,7 @@ void testNeighborCorrelation() {
     const double covariance = sumAB * invN - meanA * meanB;
     const double correlation = covariance / std::sqrt(varA * varB);
 
-    require(std::abs(correlation) < 0.005,
+    wgen::tests::require(std::abs(correlation) < 0.005,
             "neighbor correlation too large: " + std::to_string(correlation));
 }
 
@@ -145,9 +140,16 @@ void testNeighborCorrelation() {
 
 
 int main() {
-    testBounds();
-    testDeterminism();
-    testMeanAndVariance();
-    testHistogramChiSquare();
-    testNeighborCorrelation();
+    try {
+        wgen::tests::runTest("distribution within bounds", testBounds);
+        wgen::tests::runTest("determinism", testDeterminism);
+        wgen::tests::runTest("mean and variance of distribution", testMeanAndVariance);
+        wgen::tests::runTest("chi square", testHistogramChiSquare);
+        wgen::tests::runTest("neighboor correlation", testNeighborCorrelation);
+    } catch (const std::exception &exception) {
+        std::cerr << exception.what() << '\n';
+        return 1;
+    }
+
+    return 0;
 }

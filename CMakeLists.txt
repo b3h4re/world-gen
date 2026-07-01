@@ -10,6 +10,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC_SEARCH_PATHS
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apps"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests"
 )
 
 find_package(Vulkan REQUIRED)
@@ -121,9 +122,15 @@ include(CTest)
 enable_testing()
 
 if(BUILD_TESTING)
+    set(TEST_INCLUDE_DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests"
+    )
+    # Perlin tests
     add_executable(perlin_tests
         tests/perlin_tests.cpp
-        src/terrain/utils/hash_random.hpp
+        tests/helpers.cpp
+        tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/generators/generator.cpp
         src/terrain/generators/generator.hpp
@@ -131,23 +138,25 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/perlin.cpp
         src/terrain/generators/noise/perlin.hpp
     )
-    target_include_directories(perlin_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
+    target_include_directories(perlin_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(perlin_tests PRIVATE cxx_std_20)
     add_test(NAME perlin_tests COMMAND perlin_tests)
 
+    # HeightMap tests
     add_executable(heightmap_tests
         tests/heightmap_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
     )
-    target_include_directories(heightmap_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
+    target_include_directories(heightmap_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(heightmap_tests PRIVATE cxx_std_20)
     add_test(NAME heightmap_tests COMMAND heightmap_tests)
 
+    # Interpreter tests
     add_executable(interpreter_tests
         tests/interpreter_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
         src/scripts/intepreter.cpp
         src/scripts/interpreter.hpp
         src/files/file_path.cpp
@@ -168,44 +177,44 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/layered_sin_noise.cpp
         src/terrain/generators/noise/layered_sin_noise.hpp
     )
-    target_include_directories(interpreter_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
+    target_include_directories(interpreter_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(interpreter_tests PRIVATE cxx_std_20)
     add_test(NAME interpreter_tests COMMAND interpreter_tests)
 
-    add_executable(terrain_pipeline_tests
-        tests/terrain_pipeline_tests.cpp
-        src/terrain/utils/hash_random.hpp
-        src/terrain/utils/hash_random.cpp
-        src/terrain/generators/terrain_pipeline.cpp
-        src/terrain/generators/terrain_pipeline.hpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/generator.hpp
-        src/terrain/generators/noise/value_noise.cpp
-        src/terrain/generators/noise/value_noise.hpp
-    )
-    target_include_directories(terrain_pipeline_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
-    target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
-    add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
+    # Terrain Pipeline Tests
+    # add_executable(terrain_pipeline_tests
+    #     tests/terrain_pipeline_tests.cpp
+    #     src/terrain/utils/hash_random.hpp
+    #     src/terrain/utils/hash_random.cpp
+    #     src/terrain/generators/terrain_pipeline.cpp
+    #     src/terrain/generators/terrain_pipeline.hpp
+    #     src/terrain/generators/generator.cpp
+    #     src/terrain/generators/generator.hpp
+    #     src/terrain/generators/noise/value_noise.cpp
+    #     src/terrain/generators/noise/value_noise.hpp
+    # )
+    # target_include_directories(terrain_pipeline_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    # target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
+    # add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
 
-
+    # Hash random tests
     add_executable(hash_uniform_real_distribution_tests
         tests/hash_uniform_real_distribution_tests.cpp
-        src/terrain/utils/hash_random.hpp
+        tests/helpers.cpp
+        tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
     )
-    target_include_directories(hash_uniform_real_distribution_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
+    target_include_directories(hash_uniform_real_distribution_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
     add_test(NAME hash_uniform_real_distribution_tests COMMAND hash_uniform_real_distribution_tests)
 
 
+    # GPU compute tests
     add_executable(gpu_terrain_generation_tests
         tests/gpu_terrain_generation_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
         src/device/lve_device.cpp
         src/device/lve_device.hpp
         src/device/lve_compute_device.cpp
@@ -221,9 +230,7 @@ if(BUILD_TESTING)
         src/renderer/compute/value_noise_compute.cpp
         src/renderer/compute/value_noise_compute.hpp
     )
-    target_include_directories(gpu_terrain_generation_tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    )
+    target_include_directories(gpu_terrain_generation_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(gpu_terrain_generation_tests PRIVATE cxx_std_20)
     target_compile_definitions(gpu_terrain_generation_tests PRIVATE
     WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"

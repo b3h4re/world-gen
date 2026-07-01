@@ -2,36 +2,18 @@
 #include "terrain/generators/noise/value_noise.hpp"
 #include "renderer/compute/value_noise_compute.hpp"
 
+#include "helpers.hpp"
+
 #include <exception>
 #include <iostream>
 
 namespace {
 
+lve::LveComputeDevice device{};
+
 constexpr float EPS = 0.000001;
 
-void require(bool condition, const std::string& message) {
-    if (!condition) {
-        std::cerr << "Test failed: " << message << '\n';
-        std::exit(EXIT_FAILURE);
-    }
-}
-
-bool equals(const wgen::HeightMap<float>& h1, const wgen::HeightMap<float>& h2) {
-    if (h1.width() != h2.width() || h1.height() != h2.height()) {
-        return false;
-    }
-
-    for (std::size_t x = 0; x < h1.width(); ++x) {
-        for (std::size_t y = 0; y < h1.height(); ++y) {
-            if (std::abs(h1.at(x, y) - h2.at(x, y)) > EPS) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-void testValueNoise(lve::LveComputeDevice& device) {
+void testValueNoise() {
     const std::size_t width = 1000;
     const std::size_t height = 1000;
     wgen::SeedType seeds[10] = {0, 42, 12323, 12333214, 1287612763};
@@ -44,7 +26,7 @@ void testValueNoise(lve::LveComputeDevice& device) {
         wgen::HeightMap<float> heightMapGpu = valueNoiseGpu.generateHeightMap(gen, width, height);
         wgen::HeightMap<float> heightMapCpu = gen.generateHeightMap(width, height);
 
-        require(equals(heightMapGpu, heightMapCpu),
+        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, EPS),
             "Value Noise generated on cpu must be exactly the same as generated on GPU");
     }
 }
@@ -55,14 +37,7 @@ void testValueNoise(lve::LveComputeDevice& device) {
 
 int main() {
     try {
-        lve::LveComputeDevice device{};
-
-        if (device.device() == VK_NULL_HANDLE || device.computeQueue() == VK_NULL_HANDLE) {
-            std::cerr << "failed to create compute device handles\n";
-            return 1;
-        }
-
-        testValueNoise(device);
+        wgen::tests::runTest("Value Noise Test", testValueNoise);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
         return 77;

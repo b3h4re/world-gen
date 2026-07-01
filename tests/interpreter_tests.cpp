@@ -1,5 +1,7 @@
 #include "scripts/interpreter.hpp"
 
+#include "helpers.hpp"
+
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -22,48 +24,13 @@ static_assert(!std::is_copy_assignable_v<wgen::Value>);
 static_assert(std::is_move_constructible_v<wgen::Value>);
 static_assert(std::is_move_assignable_v<wgen::Value>);
 
-class TestInterpreter : public wgen::Interpreter {
-public:
-    void setVariable(std::string name, wgen::Value value) {
-        variables[std::move(name)] = std::move(value);
-    }
-};
 
-void require(bool condition, std::string_view message) {
-    if (!condition) {
-        throw std::runtime_error{std::string{message}};
-    }
-}
 
-template<typename Exception, typename Function>
-void requireThrows(Function function, std::string_view message) {
-    bool threwExpected = false;
-    try {
-        function();
-    } catch (const Exception &) {
-        threwExpected = true;
-    }
-
-    require(threwExpected, message);
-}
-
-void expectNear(float actual, float expected, float epsilon, std::string_view message) {
-    if (std::abs(actual - expected) > epsilon) {
-        throw std::runtime_error{std::string{message}};
-    }
-}
-
-template<typename T>
-void expectValue(const wgen::Value &value, const T &expected, std::string_view message) {
-    const auto *actual = std::get_if<T>(&value);
-    require(actual != nullptr, message);
-    require(*actual == expected, message);
-}
 
 void expectFloatValue(const wgen::Value &value, float expected, std::string_view message) {
     const auto *actual = std::get_if<float>(&value);
-    require(actual != nullptr, message);
-    expectNear(*actual, expected, 0.00001F, message);
+    wgen::tests::require(actual != nullptr, message);
+    wgen::tests::expectNear(*actual, expected, 0.00001F, message);
 }
 
 std::filesystem::path makeScript(std::string_view name, std::string_view contents) {
@@ -90,22 +57,22 @@ void testLoadAndStepThroughScript() {
     interpreter.loadScript(scriptPath);
 
     const auto &firstCommand = interpreter.getCurrentCommand();
-    require(firstCommand.lineNumber == 3, "first parsed command should keep original source line number");
-    require(std::holds_alternative<wgen::DeclCommand>(firstCommand.payload), "first command should be declaration");
+    wgen::tests::require(firstCommand.lineNumber == 3, "first parsed command should keep original source line number");
+    wgen::tests::require(std::holds_alternative<wgen::DeclCommand>(firstCommand.payload), "first command should be declaration");
 
     interpreter.executeCurrentLine();
     expectFloatValue(interpreter.getVariableValue("height"), 1.25F, "float declaration produced wrong value");
 
     const auto &secondCommand = interpreter.getCurrentCommand();
-    require(secondCommand.lineNumber == 4, "second parsed command should keep original source line number");
-    require(std::holds_alternative<wgen::CopyCommand>(secondCommand.payload), "second command should be copy");
+    wgen::tests::require(secondCommand.lineNumber == 4, "second parsed command should keep original source line number");
+    wgen::tests::require(std::holds_alternative<wgen::CopyCommand>(secondCommand.payload), "second command should be copy");
 
     interpreter.executeCurrentLine();
     expectFloatValue(interpreter.getVariableValue("copied"), 1.25F, "copy command produced wrong value");
 
     const auto &emptyCommand = interpreter.getCurrentCommand();
-    require(emptyCommand.lineNumber == 0, "current command after script end should be empty command");
-    require(std::holds_alternative<wgen::EmptyCommand>(emptyCommand.payload), "current command after script end should be empty");
+    wgen::tests::require(emptyCommand.lineNumber == 0, "current command after script end should be empty command");
+    wgen::tests::require(std::holds_alternative<wgen::EmptyCommand>(emptyCommand.payload), "current command after script end should be empty");
 
     interpreter.executeCurrentLine();
     expectFloatValue(interpreter.getVariableValue("copied"), 1.25F, "executing past script end should be a no-op");
@@ -139,15 +106,15 @@ void testSeededIntAndBoolValues() {
 	        "add first to second = sum\n"
 	    );
 
-	    TestInterpreter interpreter;
+	    wgen::Interpreter interpreter;
 	    interpreter.loadScript(scriptPath);
 	    interpreter.setVariable("sourceFlag", true);
 	    interpreter.executeScript();
 
-	    expectValue(interpreter.getVariableValue("copiedFlag"), true, "bool copy has wrong value");
-	    expectValue(interpreter.getVariableValue("first"), 4, "int declaration from literal has wrong value");
-	    expectValue(interpreter.getVariableValue("second"), 9, "int declaration from literal has wrong value");
-	    expectValue(interpreter.getVariableValue("sum"), 13, "int addition has wrong value");
+	    wgen::tests::expectValue(interpreter.getVariableValue("copiedFlag"), true, "bool copy has wrong value");
+	    wgen::tests::expectValue(interpreter.getVariableValue("first"), 4, "int declaration from literal has wrong value");
+	    wgen::tests::expectValue(interpreter.getVariableValue("second"), 9, "int declaration from literal has wrong value");
+	    wgen::tests::expectValue(interpreter.getVariableValue("sum"), 13, "int addition has wrong value");
 	}
 
 void testHeightMapDeclarationArguments() {
@@ -164,22 +131,22 @@ void testHeightMapDeclarationArguments() {
     interpreter.executeScript();
 
     const auto& positional = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("positional"));
-    require(positional.width() == 3, "positional heightmap width is wrong");
-    require(positional.height() == 2, "positional heightmap height is wrong");
+    wgen::tests::require(positional.width() == 3, "positional heightmap width is wrong");
+    wgen::tests::require(positional.height() == 2, "positional heightmap height is wrong");
 
     const auto& named = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("named"));
-    require(named.width() == 4, "named heightmap width is wrong");
-    require(named.height() == 5, "named heightmap height is wrong");
+    wgen::tests::require(named.width() == 4, "named heightmap width is wrong");
+    wgen::tests::require(named.height() == 5, "named heightmap height is wrong");
 
     const auto& filled = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("filled"));
-    require(filled.width() == 2, "default-filled heightmap width is wrong");
-    require(filled.height() == 2, "default-filled heightmap height is wrong");
-    expectNear(filled.at(0, 0), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
-    expectNear(filled.at(1, 1), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
+    wgen::tests::require(filled.width() == 2, "default-filled heightmap width is wrong");
+    wgen::tests::require(filled.height() == 2, "default-filled heightmap height is wrong");
+    wgen::tests::expectNear(filled.at(0, 0), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
+    wgen::tests::expectNear(filled.at(1, 1), 7.5F, 0.00001F, "default-filled heightmap value is wrong");
 
     const auto& mixed = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("mixed"));
-    require(mixed.width() == 6, "mixed heightmap width is wrong");
-    require(mixed.height() == 7, "mixed heightmap height is wrong");
+    wgen::tests::require(mixed.width() == 6, "mixed heightmap width is wrong");
+    wgen::tests::require(mixed.height() == 7, "mixed heightmap height is wrong");
 }
 
 void testAddAtCommand() {
@@ -197,13 +164,13 @@ void testAddAtCommand() {
     const auto& base = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("base"));
     for (std::size_t y = 0; y < base.height(); ++y) {
         for (std::size_t x = 0; x < base.width(); ++x) {
-            expectNear(base.at(x, y), 1.0F, 0.00001F, "addat should not mutate the source heightmap");
+            wgen::tests::expectNear(base.at(x, y), 1.0F, 0.00001F, "addat should not mutate the source heightmap");
         }
     }
 
     const auto& result = wgen::as<wgen::HeightMap<float>>(interpreter.getVariableValue("result"));
-    require(result.width() == 4, "addat result width is wrong");
-    require(result.height() == 3, "addat result height is wrong");
+    wgen::tests::require(result.width() == 4, "addat result width is wrong");
+    wgen::tests::require(result.height() == 3, "addat result height is wrong");
 
     const std::vector<float> expected{
         1.0F, 1.0F, 1.0F, 1.0F,
@@ -213,7 +180,7 @@ void testAddAtCommand() {
 
     for (std::size_t y = 0; y < result.height(); ++y) {
         for (std::size_t x = 0; x < result.width(); ++x) {
-            expectNear(
+            wgen::tests::expectNear(
                 result.at(x, y),
                 expected[y * result.width() + x],
                 0.00001F,
@@ -233,7 +200,7 @@ void testClearResetsProgramAndVariables() {
 
     interpreter.clear();
 
-    require(
+    wgen::tests::require(
         std::holds_alternative<wgen::EmptyCommand>(interpreter.getCurrentCommand().payload),
         "clear should remove loaded program");
 }
@@ -241,37 +208,37 @@ void testClearResetsProgramAndVariables() {
 void testLoadErrors() {
     wgen::Interpreter interpreter;
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(std::filesystem::temp_directory_path() / "world_gen_missing_script.txt"); },
         "missing script path should throw");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(std::filesystem::temp_directory_path()); },
         "directory script path should throw");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("unknown_command.txt", "multiply a by b\n")); },
         "unknown command should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_decl.txt", "decl float\n")); },
         "malformed decl should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_add.txt", "add a b = c\n")); },
         "malformed add should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_addat.txt", "addat 1 base to patch = result\n")); },
         "malformed addat should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_addat_x.txt", "addat left 1 base to patch = result\n")); },
         "non-integer addat x coordinate should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_addat_y.txt", "addat 1 -1 base to patch = result\n")); },
         "negative addat y coordinate should throw during load");
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [&] { interpreter.loadScript(makeScript("bad_copy.txt", "copy a b\n")); },
         "malformed copy should throw during load");
 }
 
 void testRuntimeErrors() {
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("unknown_type.txt", "decl vector value 1.0\n"));
@@ -279,7 +246,7 @@ void testRuntimeErrors() {
         },
         "unknown declared type should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("unknown_arg.txt", "decl float value missing\n"));
@@ -287,7 +254,7 @@ void testRuntimeErrors() {
         },
         "unknown declaration argument should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("wrong_arg_count.txt", "decl float value\n"));
@@ -295,7 +262,7 @@ void testRuntimeErrors() {
         },
         "wrong constructor argument count should throw during execution");
 
-	    requireThrows<std::runtime_error>(
+	    wgen::tests::requireThrows<std::runtime_error>(
 	        [] {
 	            wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("bad_copy_source.txt", "copy missing to destination\n"));
@@ -303,7 +270,7 @@ void testRuntimeErrors() {
         },
         "copy from unknown variable should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("bad_add_left.txt", "decl float value 1.0\nadd missing to value = sum\n"));
@@ -311,7 +278,7 @@ void testRuntimeErrors() {
         },
         "add with unknown lhs should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript("bad_add_right.txt", "decl float value 1.0\nadd value to missing = sum\n"));
@@ -319,7 +286,7 @@ void testRuntimeErrors() {
         },
         "add with unknown rhs should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             const auto scriptPath = makeScript(
                 "unsupported_add.txt",
@@ -327,14 +294,14 @@ void testRuntimeErrors() {
                 "add floatValue to intValue = sum\n"
             );
 
-            TestInterpreter interpreter;
+            wgen::Interpreter interpreter;
             interpreter.loadScript(scriptPath);
             interpreter.setVariable("intValue", 2);
             interpreter.executeScript();
         },
         "mixed float and int addition should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript(
@@ -346,7 +313,7 @@ void testRuntimeErrors() {
         },
         "copying a generator should throw during execution");
 
-    requireThrows<std::runtime_error>(
+    wgen::tests::requireThrows<std::runtime_error>(
         [] {
             wgen::Interpreter interpreter;
             interpreter.loadScript(makeScript(
@@ -360,28 +327,19 @@ void testRuntimeErrors() {
         "addat with non-heightmap lhs should throw during execution");
 }
 
-using TestFunction = void (*)();
-
-void runTest(std::string_view name, TestFunction test) {
-    try {
-        test();
-    } catch (const std::exception &exception) {
-        throw std::runtime_error{std::string{name} + ": " + exception.what()};
-    }
-}
 
 } // namespace
 
 int main() {
     try {
-        runTest("load and step through script", testLoadAndStepThroughScript);
-        runTest("execute whole float script", testExecuteWholeFloatScript);
-        runTest("seeded int and bool values", testSeededIntAndBoolValues);
-        runTest("heightmap declaration arguments", testHeightMapDeclarationArguments);
-        runTest("addat command", testAddAtCommand);
-        runTest("clear resets program and variables", testClearResetsProgramAndVariables);
-        runTest("load errors", testLoadErrors);
-        runTest("runtime errors", testRuntimeErrors);
+        wgen::tests::runTest("load and step through script", testLoadAndStepThroughScript);
+        wgen::tests::runTest("execute whole float script", testExecuteWholeFloatScript);
+        wgen::tests::runTest("seeded int and bool values", testSeededIntAndBoolValues);
+        wgen::tests::runTest("heightmap declaration arguments", testHeightMapDeclarationArguments);
+        wgen::tests::runTest("addat command", testAddAtCommand);
+        wgen::tests::runTest("clear resets program and variables", testClearResetsProgramAndVariables);
+        wgen::tests::runTest("load errors", testLoadErrors);
+        wgen::tests::runTest("runtime errors", testRuntimeErrors);
     } catch (const std::exception &exception) {
         std::cerr << exception.what() << '\n';
         return 1;

@@ -46,10 +46,10 @@ namespace wgen {
         std::size_t kernelWidth_;
         std::size_t kernelHeight_;
 
-	        std::size_t gridWidth_;
-	        std::size_t gridHeight_;
-	        float frequency_;
-	        HeightMap<float> randomValues;
+        std::size_t gridWidth_;
+        std::size_t gridHeight_;
+        float frequency_;
+        HeightMap<float> randomValues;
 
         void generateRandomValues();
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);

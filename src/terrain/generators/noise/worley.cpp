@@ -23,31 +23,38 @@ namespace wgen {
         if (numPoints_ == 0) {
             throw std::invalid_argument("Worley feature point count must be at least one");
         }
-
-        generateGradients();
     }
 
-    void WorleyNoise2d::generateGradients() {
-        std::mt19937 random{getSeed()};
+    // void WorleyNoise2d::generateGradients() {
+    //     std::mt19937 random{getSeed()};
 
-        for (std::size_t y = 0; y < gridHeight_; ++y) {
-            for (std::size_t x = 0; x < gridWidth_; ++x) {
-                featurePoints_.at(x, y).clear();
-                featurePoints_.at(x, y).reserve(numPoints_);
-                for (std::size_t n = 0; n < numPoints_; ++n) {
-                    featurePoints_.at(x, y).emplace_back(
-                        (glm::vec2{1, 1} + hash2(static_cast<int>(x + random()), static_cast<int>(y + random()))) / 2.0F
-                    );
-                }
-            }
-        }
-    }
+    //     for (std::size_t y = 0; y < gridHeight_; ++y) {
+    //         for (std::size_t x = 0; x < gridWidth_; ++x) {
+    //             featurePoints_.at(x, y).clear();
+    //             featurePoints_.at(x, y).reserve(numPoints_);
+    //             for (std::size_t n = 0; n < numPoints_; ++n) {
+    //                 featurePoints_.at(x, y).emplace_back(
+    //                     (glm::vec2{1, 1} + hash2(static_cast<int>(x + random()), static_cast<int>(y + random()))) / 2.0F
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
 
     std::vector<glm::vec2> WorleyNoise2d::featurePointsAt(std::size_t i, std::size_t j) const {
         std::vector<glm::vec2> points{};
-        for (auto& elem : featurePoints_.at(i, j)) {
-            points.emplace_back(glm::vec2{i, j} + elem);
+        points.reserve(numPoints_);
+        glm::vec2 cell{i, j};
+        std::uint32_t seed = getSeed();
+
+
+        for (std::size_t n = 0; n < numPoints_; ++n) {
+            seed = hashSeed(seed);
+            points.emplace_back(
+                (glm::vec2{1, 1} + hash2(static_cast<int>(cell.x + seed), static_cast<int>(cell.y + seed))) / 2.0F
+            );
         }
+\
         return points;
     }
 

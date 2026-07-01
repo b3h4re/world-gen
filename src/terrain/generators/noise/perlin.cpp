@@ -28,12 +28,17 @@ namespace wgen {
         const float localY = static_cast<float>(y % dotsPerCell_) / static_cast<float>(dotsPerCell_);
         const glm::vec2 point{localX, localY};
 
-        const float topLeft = glm::dot(point, gradients_.at(gridX, gridY));
-        const float topRight = glm::dot(point - glm::vec2{1.0F, 0.0F}, gradients_.at(gridX + 1, gridY));
-        const float bottomLeft = glm::dot(point - glm::vec2{0.0F, 1.0F}, gradients_.at(gridX, gridY + 1));
+        glm::vec2 randomDirXY = randomHashDir(gridX, gridY, getSeed());
+        glm::vec2 randomDirX1Y = randomHashDir(gridX + 1, gridY, getSeed());
+        glm::vec2 randomDirXY1 = randomHashDir(gridX, gridY + 1, getSeed());
+        glm::vec2 randomDirX1Y1 = randomHashDir(gridX+1, gridY + 1, getSeed());
+
+        const float topLeft = glm::dot(point, randomDirXY);
+        const float topRight = glm::dot(point - glm::vec2{1.0F, 0.0F}, randomDirX1Y);
+        const float bottomLeft = glm::dot(point - glm::vec2{0.0F, 1.0F}, randomDirXY1);
         const float bottomRight = glm::dot(
             point - glm::vec2{1.0F, 1.0F},
-            gradients_.at(gridX + 1, gridY + 1)
+            randomDirX1Y1
         );
 
         const float fadeX = funcInterpolate_(localX);

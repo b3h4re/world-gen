@@ -36,17 +36,20 @@ namespace wgen {
         const std::size_t j1 = x0 > y0 ? 0 : 1;
         // Now we have three corners in skewed coords: (i, j), (i + i1, j + j1), (i + 1, j + 1)
         // get gradients for those corners and then get points in real coordinates
-        const glm::vec2 g0 = gradients_.at(
+        const glm::vec2 g0 = randomHashDir(
             wrapIndex(skewed_i, gridWidth_),
-            wrapIndex(skewed_j, gridHeight_)
+            wrapIndex(skewed_j, gridHeight_),
+            getSeed()
         );
-        const glm::vec2 g1 = gradients_.at(
+        const glm::vec2 g1 = randomHashDir(
             wrapIndex(skewed_i + i1, gridWidth_),
-            wrapIndex(skewed_j + j1, gridHeight_)
+            wrapIndex(skewed_j + j1, gridHeight_),
+            getSeed()
         );
-        const glm::vec2 g2 = gradients_.at(
+        const glm::vec2 g2 = randomHashDir(
             wrapIndex(skewed_i + 1, gridWidth_),
-            wrapIndex(skewed_j + 1, gridHeight_)
+            wrapIndex(skewed_j + 1, gridHeight_),
+            getSeed()
         );
 
         const glm::vec2 d0 = {x0, y0};

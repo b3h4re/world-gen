@@ -61,8 +61,7 @@ namespace wgen {
             std::size_t gridHeight,
             std::size_t dotsPerCell,
             std::uint32_t seed
-        ) : gridWidth_{gridWidth}, gridHeight_{gridHeight}, dotsPerCell_{dotsPerCell},
-            gradients_{gridWidth, gridHeight} {
+        ) : gridWidth_{gridWidth}, gridHeight_{gridHeight}, dotsPerCell_{dotsPerCell} {
             if (dotsPerCell_ < 2) {
                 throw std::invalid_argument("dots per cell must be at least two");
             }
@@ -76,7 +75,6 @@ namespace wgen {
 
         void setSeed(std::uint32_t newSeed) override {
             Generator::setSeed(newSeed);
-            generateGradients();
         }
 
         float noise(std::size_t x, std::size_t y) const override = 0;
@@ -88,18 +86,16 @@ namespace wgen {
         std::size_t gridWidth_;
         std::size_t gridHeight_;
         std::size_t dotsPerCell_;
-        HeightMap<glm::vec2> gradients_;
+        // virtual void generateGradients() {
+        //     std::mt19937 random{getSeed()};
 
-        virtual void generateGradients() {
-            std::mt19937 random{getSeed()};
-
-            for (std::size_t y = 0; y < gridHeight_; ++y) {
-                for (std::size_t x = 0; x < gridWidth_; ++x) {
-                    const std::size_t directionIndex = random() % GRADIENT_DIRECTIONS.size();
-                    gradients_.at(x, y) = GRADIENT_DIRECTIONS[directionIndex];
-                }
-            }
-        }
+        //     for (std::size_t y = 0; y < gridHeight_; ++y) {
+        //         for (std::size_t x = 0; x < gridWidth_; ++x) {
+        //             const std::size_t directionIndex = random() % GRADIENT_DIRECTIONS.size();
+        //             gradients_.at(x, y) = GRADIENT_DIRECTIONS[directionIndex];
+        //         }
+        //     }
+        // }
     };
 
 }

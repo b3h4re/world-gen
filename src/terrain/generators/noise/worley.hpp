@@ -34,7 +34,7 @@ namespace wgen {
         HeightMap<std::vector<glm::vec2>> featurePoints_;
 
         // here gradients are feature points
-        void generateGradients() override;
+        // void generateGradients() override;
         std::vector<glm::vec2> featurePointsAt(std::size_t i, std::size_t j) const;
 
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);

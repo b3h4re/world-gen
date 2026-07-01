@@ -11,6 +11,8 @@ class TerrainControlsWidget;
 
 namespace lve {
 
+class TerrainPipelineListModel;
+
 class TerrainControlsWidget : public QWidget {
     Q_OBJECT
 
@@ -31,6 +33,7 @@ public:
 
 private:
     std::unique_ptr<Ui::TerrainControlsWidget> ui_;
+    std::unique_ptr<TerrainPipelineListModel> pipelineModel_;
     Callbacks callbacks_;
 };
 

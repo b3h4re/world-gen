@@ -1,5 +1,6 @@
 #include "terrain_controls_widget.hpp"
 
+#include "terrain_pipeline_list_model.hpp"
 #include "ui_terrain_controls_widget.h"
 
 #include <utility>
@@ -15,6 +16,14 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
     ui_->toolBarWidget->setMaximumWidth(256);
 
+    pipelineModel_ = std::make_unique<TerrainPipelineListModel>(
+        wgen::GeneratorPipelineSpec{
+            wgen::GeneratorSpec{
+                .kind = wgen::GeneratorKind::PerlinNoise,
+                .config = wgen::PerlinNoiseGeneratorSpec{},
+            },
+        });
+    ui_->listView->setModel(pipelineModel_.get());
 
     connect(ui_->regenerateButton, &QPushButton::clicked, this, [this] {
         callbacks_.regenerateTerrain();

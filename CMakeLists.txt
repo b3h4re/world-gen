@@ -66,23 +66,40 @@ target_compile_definitions(world_gen PRIVATE
 
 find_program(GLSLC glslc REQUIRED)
 
+set(SHADER_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders/include")
+
 file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp"
 )
 
+# All include files
+file(GLOB_RECURSE SHADER_INCLUDES CONFIGURE_DEPENDS
+    "${SHADER_INCLUDE_DIR}/*.glsl"
+)
+
 set(SHADER_BINARY_FILES)
+
 foreach(SHADER ${SHADER_SOURCES})
     file(RELATIVE_PATH SHADER_RELATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "${SHADER}")
+
     set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_RELATIVE_PATH}.spv")
     get_filename_component(SPIRV_DIRECTORY "${SPIRV}" DIRECTORY)
 
     add_custom_command(
         OUTPUT "${SPIRV}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${SPIRV_DIRECTORY}"
-        COMMAND ${GLSLC} "${SHADER}" -o "${SPIRV}"
-        DEPENDS "${SHADER}"
+
+        COMMAND ${GLSLC}
+            -I "${SHADER_INCLUDE_DIR}"
+            "${SHADER}"
+            -o "${SPIRV}"
+
+        DEPENDS
+            "${SHADER}"
+            ${SHADER_INCLUDES}
+
         COMMENT "Compiling shader ${SHADER_RELATIVE_PATH}"
         VERBATIM
     )
@@ -225,8 +242,15 @@ if(BUILD_TESTING)
         src/model/buffer/lve_buffer.hpp
         src/pipeline/descriptors/lve_descriptors.cpp
         src/pipeline/descriptors/lve_descriptors.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/generators/generator.cpp
+        src/terrain/generators/generator.hpp
         src/terrain/generators/noise/value_noise.cpp
         src/terrain/generators/noise/value_noise.hpp
+        src/terrain/generators/noise/gradient_noise_interface.hpp
+        src/terrain/generators/noise/perlin.cpp
+        src/terrain/generators/noise/perlin.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp

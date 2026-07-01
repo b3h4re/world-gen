@@ -23,15 +23,16 @@ struct ValueNoiseComputeSpec {
 
 lve::LveComputeDevice* device;
 
-void testValueNoise() {
+template<class GenType>
+requires wgen::valid_generator<GenType>
+void testgenerator(GenType& gen, std::string& message) {
     const std::size_t width = 1000;
     const std::size_t height = 1000;
     wgen::SeedType seeds[10] = {0, 42, 12323, 12333214, 1287612763};
-
     lve::Computer computer{*device, "value_noise", ValueNoiseComputeSpec{}};
 
     for (const auto& seed : seeds) {
-        wgen::ValueNoiseGenerator gen{seed};
+        gen.setSeed(seed);
 
         lve::GpuHeightMap gpuHeightMap{*device, width, height};
         const ValueNoiseComputeSpec spec{
@@ -53,9 +54,20 @@ void testValueNoise() {
         wgen::HeightMap<float> heightMapGpu = gpuHeightMap.copyToCpu();
         wgen::HeightMap<float> heightMapCpu = gen.generateHeightMap(width, height);
 
-        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, EPS),
-            "Value Noise generated on cpu must be exactly the same as generated on GPU");
+        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, EPS), message);
     }
+}
+
+void testValueNoise() {
+    wgen::ValueNoiseGenerator gen{};
+    std::string message = "Value Noise generated on cpu must be exactly the same as generated on GPU";
+    testgenerator<wgen::ValueNoiseGenerator>(gen, message);
+}
+
+void testPerlinNoise() {
+    wgen::PerlinNoise2d gen{100, 100, 100};
+    std::string message = "Perlin Noise generated on cpu must be exactly the same as generated on GPU";
+    testgenerator<wgen::PerlinNoise2d>(gen, message);
 }
 
 
@@ -68,9 +80,10 @@ int main() {
         device = &computeDevice;
 
         wgen::tests::runTest("Value Noise Test", testValueNoise);
+        wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
-        return 77;
+        return 1;
     }
 
 

@@ -1,35 +1,17 @@
 #pragma once
 
 #include "terrain/generators/generator.hpp"
+#include "terrain/utils/hash_random.hpp"
 
 #include <cmath>
 #include <concepts>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <stdexcept>
-#include <type_traits>
-#include <utility>
 #include <vector>
 
 
 namespace wgen {
-
-    template <typename GenClass>
-    concept has_noise_function = requires (const GenClass& gen, std::size_t x, std::size_t y) {
-        { gen.noise(x, y) } -> std::convertible_to<float>;
-    };
-
-
-    template <typename GenClass>
-    concept valid_generator =
-        std::derived_from<GenClass, Generator> &&
-        has_noise_function<GenClass> &&
-        (
-            std::constructible_from<GenClass, SeedType> ||
-            std::constructible_from<GenClass, std::size_t, std::size_t, SeedType> ||
-            std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType>
-        );
 
 
     template <typename GenClass>

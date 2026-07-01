@@ -14,7 +14,8 @@ namespace wgen {
 
         float noise(std::size_t x, std::size_t y) const override;
         GeneratorCapabilities capabilities() const override;
-        GeneratorSpec spec() const override;
+        virtual std::string compShader() const override;
+        virtual std::size_t specSize() const override;
     };
 
 }

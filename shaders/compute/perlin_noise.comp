@@ -1,0 +1,54 @@
+#version 450
+#include "hash.glsl"
+#include "common.glsl"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint width;
+    uint height;
+    uint dots;
+    uint64_t seed;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+
+
+float perlinNoise(uint64_t seed, uint x, uint y, uint dots) {
+    uint gridX = x / dots;
+    uint gridY = y / dots;
+    float localX = float(x % dots) / float(dots);
+    float localY = float(y % dots) / float(dots);
+    vec2 point = {localX, localY};
+
+    vec2 randomDirXY = randomHashDir(gridX, gridY, seed);
+    vec2 randomDirX1Y = randomHashDir(gridX + 1, gridY, seed);
+    vec2 randomDirXY1 = randomHashDir(gridX, gridY + 1, seed);
+    vec2 randomDirX1Y1 = randomHashDir(gridX + 1, gridY + 1, seed);
+
+    float topLeft = dot(point, randomDirXY);
+    float topRight = dot(point - vec2(1.0F, 0.0F), randomDirX1Y);
+    float bottomLeft = dot(point - vec2(0.0F, 1.0F), randomDirXY1);
+    float bottomRight = dot(point - vec2(1.0F, 1.0F), randomDirX1Y1);
+
+    float fadeX = defaultPerlinInterp(localX);
+    float fadeY = defaultPerlinInterp(localY);
+    float top = lerp(topLeft, topRight, fadeX);
+    float bottom = lerp(bottomLeft, bottomRight, fadeX);
+    return lerp(top, bottom, fadeY);
+}
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+
+    if (x >= params.width || y >= params.height) {
+        return;
+    }
+
+    uint index = y * params.width + x;
+    heightMap.values[index] = perlinNoise(params.seed, x, y, params.dots);
+}

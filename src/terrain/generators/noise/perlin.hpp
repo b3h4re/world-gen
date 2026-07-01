@@ -3,7 +3,6 @@
 #include "terrain/generators/noise/gradient_noise_interface.hpp"
 
 #include <cstddef>
-#include <cstdint>
 
 namespace wgen {
 
@@ -18,6 +17,9 @@ namespace wgen {
                       FloatFunction funcInterpolate = defaultPerlinInterp);
 
         float noise(std::size_t x, std::size_t y) const override;
+        GeneratorCapabilities capabilities() const override;
+        virtual std::string compShader() const override;
+        virtual std::size_t specSize() const override;
 
     private:
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "terrain/terrain.hpp"
+#include "renderer/compute/computer.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -84,15 +85,21 @@ namespace wgen {
 
     enum class GeneratorType {
         ValueNoise,
+        PerlinNoise
     };
 
-    struct ValueNoiseGeneratorSpec {
+
+    struct ValueNoiseComputeSpec {
+        std::uint32_t width{};
+        std::uint32_t height{};
+        wgen::SeedType seed{};
+    };
+
+    struct PerlinNoiseComputeSpec {
+        std::uint32_t width{};
+        std::uint32_t height{};
+        std::uint32_t dots{};
         SeedType seed{};
-    };
-
-    struct GeneratorSpec {
-        GeneratorType type{};
-        ValueNoiseGeneratorSpec valueNoise{};
     };
 
 
@@ -112,8 +119,11 @@ namespace wgen {
         }
 
         virtual GeneratorCapabilities capabilities() const { return {}; }
-        virtual GeneratorSpec spec() const {
-            throw std::runtime_error("generator does not provide a serializable spec");
+        virtual std::string compShader() const {
+            throw std::runtime_error("generator does not have a .comp shader");
+        }
+        virtual std::size_t specSize() const {
+            throw std::runtime_error("generator does not provide a spec");
         }
 
 
@@ -124,5 +134,21 @@ namespace wgen {
     private:
         SeedType seed_{};
     };
+
+    template <typename GenClass>
+    concept has_noise_function = requires (const GenClass& gen, std::size_t x, std::size_t y) {
+        { gen.noise(x, y) } -> std::convertible_to<float>;
+    };
+
+
+    template <typename GenClass>
+    concept valid_generator =
+        std::derived_from<GenClass, Generator> &&
+        has_noise_function<GenClass> &&
+        (
+            std::constructible_from<GenClass, SeedType> ||
+            std::constructible_from<GenClass, std::size_t, std::size_t, SeedType> ||
+            std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType>
+        );
 
 }

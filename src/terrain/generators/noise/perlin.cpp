@@ -49,4 +49,18 @@ namespace wgen {
         return lerp(top, bottom, fadeY);
     }
 
+    GeneratorCapabilities PerlinNoise2d::capabilities() const {
+        return {
+            .cpu = true,
+            .vulkanCompute = true,
+        };
+    }
+
+    std::string PerlinNoise2d::compShader() const {
+        return "perlin_noise";
+    }
+
+    std::size_t PerlinNoise2d::specSize() const {
+        return sizeof(PerlinNoiseComputeSpec);
+    }
 }

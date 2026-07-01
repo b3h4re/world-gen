@@ -25,13 +25,12 @@ namespace wgen {
         };
     }
 
-    GeneratorSpec ValueNoiseGenerator::spec() const {
-        return {
-            .type = GeneratorType::ValueNoise,
-            .valueNoise = ValueNoiseGeneratorSpec{
-                .seed = getSeed(),
-            },
-        };
+    std::string ValueNoiseGenerator::compShader() const {
+        return "value_noise";
+    }
+
+    std::size_t ValueNoiseGenerator::specSize() const {
+        return sizeof(ValueNoiseComputeSpec);
     }
 
 }

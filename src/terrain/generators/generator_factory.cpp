@@ -35,7 +35,7 @@ std::unique_ptr<TerrainPipeline> makePipeline(const GeneratorPipelineSpec& specs
     auto pipeline = std::make_unique<TerrainPipeline>();
 
     for (const GeneratorSpec& spec : specs) {
-        pipeline->push_back(makeGenerator(spec, seed));
+        pipeline->push_back(makeGenerator(spec, seed), multiplyFunction(spec.scale));
     }
 
     pipeline->setSeed(seed);

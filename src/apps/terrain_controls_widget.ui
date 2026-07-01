@@ -126,6 +126,13 @@
        <item>
         <widget class="QListView" name="listView"/>
        </item>
+       <item>
+        <widget class="QPushButton" name="addGeneratorButton">
+         <property name="text">
+          <string>Add generator</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </widget>

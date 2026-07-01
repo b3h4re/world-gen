@@ -15,6 +15,10 @@ public:
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
+    const wgen::GeneratorSpec* generatorAt(int row) const;
+    void updateGenerator(int row, wgen::GeneratorSpec spec);
+    void appendGenerator(wgen::GeneratorSpec spec);
+    void removeGenerator(int row);
     const wgen::GeneratorPipelineSpec& pipeline() const { return pipeline_; }
 
 private:

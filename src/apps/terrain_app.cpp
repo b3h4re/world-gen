@@ -26,6 +26,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .switchColor = [this] { core_.rotateColorFunction(); },
               .pipelineChanged = [this](wgen::GeneratorPipelineSpec pipeline) {
                   core_.setPipeline(std::move(pipeline));
+                  reloadConfiguredSeed();
               },
               .currentPipeline = [this] {
                   return core_.currentPipeline();

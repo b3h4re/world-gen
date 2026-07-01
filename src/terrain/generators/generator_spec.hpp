@@ -22,6 +22,7 @@ using GeneratorConfig = std::variant<ValueNoiseGeneratorSpec, PerlinNoiseGenerat
 struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};
     GeneratorConfig config{ValueNoiseGeneratorSpec{}};
+    float scale{1.0F};
 };
 
 using GeneratorPipelineSpec = std::vector<GeneratorSpec>;

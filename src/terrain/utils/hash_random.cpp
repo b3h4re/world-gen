@@ -19,8 +19,8 @@ namespace wgen {
 
         h = splitmix64(h);
 
-        const float u = static_cast<double>(h >> 11) * (1.0 / 9007199254740992.0);
-        const float angle = u * 2.0 * std::numbers::pi_v<double>;
+        const float u = static_cast<float>(h >> 11) * (1.0 / 9007199254740992.0);
+        const float angle = u * 2.0 * std::numbers::pi_v<float>;
         return {
             std::cos(angle),
             std::sin(angle)

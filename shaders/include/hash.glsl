@@ -32,14 +32,14 @@ float hashUnitFloat(uint64_t hash) {
 
 vec2 randomHashDir(uint x, uint y, uint64_t seed) {
     uint64_t h = seed;
-    uint64_t c0x9E3779B97F4A7C15 = u64(0xBF58476Du, 0x1CE4E5B9u);
-    uint64_t c0xBF58476D1CE4E5B9 = u64(0x94D049BBu, 0x133111EBu);
+    uint64_t c0x9E3779B97F4A7C15 = u64(0x9E3779B9u, 0x7F4A7C15u);
+    uint64_t c0xBF58476D1CE4E5B9 = u64(0xBF58476Du, 0x1CE4E5B9u);
 
     h ^= splitmix64(uint64_t(x) + c0x9E3779B97F4A7C15);
     h ^= splitmix64(uint64_t(y) + c0xBF58476D1CE4E5B9);
     h = splitmix64(h);
 
-    float u = float(h >> 11ul) * (1.0f / 9007199254740992.0);
+    float u = float(h >> 11ul) * (1.0f / 9007199254740992.0f);
     float angle = u * 2.0f * PI;
     vec2 res = vec2(cos(angle), sin(angle));
     return res;

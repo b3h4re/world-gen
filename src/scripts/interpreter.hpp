@@ -135,6 +135,7 @@ namespace wgen {
             typename std::vector<Command>::const_reference getCurrentCommand() const;
 
             const Value& getVariableValue(const std::string& varName);
+            void setVariable(std::string name, wgen::Value value);
 
         protected:
             std::size_t currentLine;

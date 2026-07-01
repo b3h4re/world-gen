@@ -690,6 +690,10 @@ namespace wgen {
         return variables.at(varName);
     }
 
+    void Interpreter::setVariable(std::string name, wgen::Value value) {
+        variables[std::move(name)] = std::move(value);
+    }
+
     void Interpreter::executeDeclaration(const DeclCommand& command) {
         auto constructorIt = constructors.find(command.typeName);
 

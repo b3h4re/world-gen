@@ -1,4 +1,5 @@
 #include "simplex.hpp"
+#include "terrain/utils/hash_random.hpp"
 
 namespace wgen {
 

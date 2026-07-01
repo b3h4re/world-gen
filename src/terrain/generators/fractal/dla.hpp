@@ -2,6 +2,7 @@
 
 #include "terrain/generators/generator.hpp"
 #include "terrain/utils/kernel.hpp"
+#include "terrain/utils/hash_random.hpp"
 
 #include <algorithm>
 #include <cassert>

@@ -1,5 +1,6 @@
 #include "terrain/generators/noise/value_noise.hpp"
 #include "terrain/generators/terrain_pipeline.hpp"
+#include "terrain/utils/hash_random.hpp"
 
 #include <cmath>
 #include <iostream>

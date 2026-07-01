@@ -1,4 +1,5 @@
 #include "perlin.hpp"
+#include "terrain/utils/hash_random.hpp"
 
 #include <random>
 #include <stdexcept>

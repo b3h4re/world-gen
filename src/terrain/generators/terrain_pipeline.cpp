@@ -1,14 +1,7 @@
 #include "terrain_pipeline.hpp"
 
-#include "scripts/interpreter.hpp"
+#include "terrain/utils/hash_random.hpp"
 
-#include <algorithm>
-#include <cctype>
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <utility>
 
 
 namespace wgen {

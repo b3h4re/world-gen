@@ -122,6 +122,8 @@ enable_testing()
 if(BUILD_TESTING)
     add_executable(perlin_tests
         tests/perlin_tests.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
         src/terrain/generators/generator.cpp
         src/terrain/generators/generator.hpp
         src/terrain/generators/noise/gradient_noise_interface.hpp
@@ -149,6 +151,8 @@ if(BUILD_TESTING)
         src/scripts/interpreter.hpp
         src/files/file_path.cpp
         src/files/file_path.hpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
         src/terrain/generators/generator.cpp
         src/terrain/generators/noise/worley.cpp
         src/terrain/generators/noise/worley.hpp
@@ -171,6 +175,8 @@ if(BUILD_TESTING)
 
     add_executable(terrain_pipeline_tests
         tests/terrain_pipeline_tests.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
         src/terrain/generators/terrain_pipeline.cpp
         src/terrain/generators/terrain_pipeline.hpp
         src/terrain/generators/generator.cpp

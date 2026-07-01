@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <concepts>
 #include <cstddef>
 #include <functional>
 #include <initializer_list>

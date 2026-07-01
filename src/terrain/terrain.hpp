@@ -209,6 +209,26 @@ public:
     }
 
 
+    bool operator==(const HeightMap<T>& other) const {
+        if (this->width() != other.width() || this->height() != other.height()) {
+            return false;
+        }
+
+        for (std::size_t y = 0; y < other.height(); ++y) {
+            for (std::size_t x = 0; x < other.width(); ++x) {
+                if (this->at(x, y) != other.at(x, y)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool operator!=(const HeightMap<T>& other) const {
+        return !this->operator==(other);
+    }
+
 
     typename std::vector<T>::reference at(std::size_t x, std::size_t y) {
         return samples_.at(y * width_ + x);

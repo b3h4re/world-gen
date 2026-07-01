@@ -11,7 +11,7 @@
 
 namespace {
 
-constexpr float EPS = 0.00001;
+constexpr float EPS = 0.000001;
 constexpr std::uint32_t LOCAL_SIZE_X = 16;
 constexpr std::uint32_t LOCAL_SIZE_Y = 16;
 
@@ -26,7 +26,7 @@ lve::LveComputeDevice* device;
 
 template<class GenType, class GenSpec>
 requires wgen::valid_generator<GenType>
-void testGenerator(std::size_t width, std::size_t height, GenType& gen, GenSpec spec, const std::string& message) {
+void testGenerator(std::size_t width, std::size_t height, GenType& gen, GenSpec spec, const std::string& message, float epsilon = EPS) {
     wgen::SeedType seeds[10] = {0, 42, 12323, 12333214, 1287612763};
     lve::Computer computer{*device, gen.compShader(), gen.specSize()};
 
@@ -50,7 +50,7 @@ void testGenerator(std::size_t width, std::size_t height, GenType& gen, GenSpec 
         wgen::HeightMap<float> heightMapGpu = gpuHeightMap.copyToCpu();
         wgen::HeightMap<float> heightMapCpu = gen.generateHeightMap(width, height);
 
-        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, EPS), message);
+        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, epsilon), message);
     }
 
 }
@@ -81,7 +81,7 @@ void testPerlinNoise() {
         .dots = dots
     };
     std::string message = "Perlin Noise generated on cpu must be exactly the same as generated on GPU";
-    testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message);
+    testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message, 0.00001);
 }
 
 

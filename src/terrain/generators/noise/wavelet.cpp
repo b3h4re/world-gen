@@ -1,7 +1,8 @@
 #include "wavelet.hpp"
+#include "terrain/utils/hash_random.hpp"
 
-#include <random>
 #include <stdexcept>
+#include <random>
 
 
 namespace wgen {
@@ -11,9 +12,9 @@ namespace wgen {
 	    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel, frequency} {}
 
 	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::uint32_t seed,
-	                                   FloatFunction reconstructionKernel, float frequency)
-	    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, frequency_{frequency}, reconstructionKernel_{reconstructionKernel},
-	        kernelWidth_{1}, kernelHeight_{1}, randomValues{gridWidth, gridHeight} {
+		                                   FloatFunction reconstructionKernel, float frequency)
+		    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, frequency_{frequency}, reconstructionKernel_{reconstructionKernel},
+		        kernelWidth_{1}, kernelHeight_{1} {
 	        if (frequency_ <= 0.0F) {
 	            throw std::invalid_argument("Wavelet frequency must be positive");
 	        }
@@ -34,17 +35,6 @@ namespace wgen {
     std::size_t WaveletNoise2d::getKernelWidth() const { return kernelWidth_; }
     std::size_t WaveletNoise2d::getKernelHeight() const { return kernelHeight_; }
 
-    void WaveletNoise2d::generateRandomValues() {
-        std::mt19937 random{getSeed()};
-        std::uniform_real_distribution<float> noise{-1.0F, 1.0F};
-
-        for (std::size_t y = 0; y < gridHeight_; ++y) {
-            for (std::size_t x = 0; x < gridWidth_; ++x) {
-                randomValues.at(x, y) = noise(random);
-            }
-        }
-    }
-
     float WaveletNoise2d::separableFilter(int a, int b) const {
         return hFilter(a) * hFilter(b);
     }
@@ -61,10 +51,12 @@ namespace wgen {
     }
 
     float WaveletNoise2d::randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const {
-        return randomValues.at(
-                    wrapSignedIndex(i, gridWidth_),
-                    wrapSignedIndex(j, gridHeight_)
-                );
+        const auto x = wrapSignedIndex(i, gridWidth_);
+        const auto y = wrapSignedIndex(j, gridHeight_);
+        const auto key = hashValues(getSeed(), x, y);
+
+        HashUniformRealDistribution<float> noise{-1.0F, 1.0F};
+        return noise(key);
     }
 
     float WaveletNoise2d::smoothedGridAt(std::ptrdiff_t i, std::ptrdiff_t j) const {

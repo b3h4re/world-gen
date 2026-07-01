@@ -25,11 +25,6 @@ namespace wgen {
                         FloatFunction reconstructionKernel = defaultReconstructionKernel,
                         float frequency = DEFAULT_FREQUENCY);
 
-        void setSeed(std::uint32_t newSeed) override {
-            Generator::setSeed(newSeed);
-            generateRandomValues();
-        }
-
         void setKernelSize(std::size_t kernelWidth, std::size_t kernelHeight);
         void setKernelWidth(std::size_t kernelWidth);
         void setKernelHeight(std::size_t kernelHeight);
@@ -49,9 +44,7 @@ namespace wgen {
         std::size_t gridWidth_;
         std::size_t gridHeight_;
         float frequency_;
-        HeightMap<float> randomValues;
 
-        void generateRandomValues();
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);
         float randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const;
         inline constexpr static auto hFilter = &lowPassFilter<A, B, C>;

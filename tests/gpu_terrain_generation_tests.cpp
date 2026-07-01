@@ -1,6 +1,7 @@
 #include "device/lve_compute_device.hpp"
 #include "renderer/compute/computer.hpp"
 #include "renderer/compute/gpu_height_map.hpp"
+#include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 
 #include "helpers.hpp"
@@ -26,7 +27,15 @@ lve::LveComputeDevice* device;
 
 template<class GenType, class GenSpec>
 requires wgen::valid_generator<GenType>
-void testGenerator(std::size_t width, std::size_t height, GenType& gen, GenSpec spec, const std::string& message, float epsilon = EPS) {
+void testGenerator(
+        std::size_t width,
+        std::size_t height,
+        GenType& gen,
+        GenSpec spec,
+        const std::string& message,
+        float epsilon = EPS,
+        std::uint32_t localSizeX = LOCAL_SIZE_X,
+        std::uint32_t localSizeY = LOCAL_SIZE_Y) {
     wgen::SeedType seeds[10] = {0, 42, 12323, 12333214, 1287612763};
     lve::Computer computer{*device, gen.compShader(), gen.specSize()};
 
@@ -41,8 +50,8 @@ void testGenerator(std::size_t width, std::size_t height, GenType& gen, GenSpec 
             spec,
             gpuHeightMap.descriptorInfo(),
             lve::ComputeDispatchSize{
-                .groupCountX = lve::Computer::dispatchGroupCount(width, LOCAL_SIZE_X),
-                .groupCountY = lve::Computer::dispatchGroupCount(height, LOCAL_SIZE_Y),
+                .groupCountX = lve::Computer::dispatchGroupCount(width, localSizeX),
+                .groupCountY = lve::Computer::dispatchGroupCount(height, localSizeY),
                 .groupCountZ = 1,
             }
         );
@@ -74,14 +83,12 @@ void testPerlinNoise() {
     const std::size_t height = 1000;
     const std::size_t dots = 1000;
 
-    wgen::PerlinNoise2d gen{width, height, dots};
+    wgen::PerlinNoise2d gen{dots, 0};
     wgen::PerlinNoiseComputeSpec spec{
-        .width = width,
-        .height = height,
         .dots = dots
     };
     std::string message = "Perlin Noise generated on cpu must be exactly the same as generated on GPU";
-    testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message, 0.00001);
+    testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
 

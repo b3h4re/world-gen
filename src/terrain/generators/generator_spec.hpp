@@ -14,8 +14,6 @@ enum class GeneratorKind {
 struct ValueNoiseGeneratorSpec {};
 
 struct PerlinNoiseGeneratorSpec {
-    std::size_t gridWidth{100};
-    std::size_t gridHeight{100};
     std::size_t dotsPerCell{100};
 };
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <random>
 #include <utility>
 
 
@@ -53,7 +54,7 @@ namespace wgen {
         }
 
         if (typeName == "perlin") {
-            return {"width", "height", "dots", "seed"};
+            return {"dots", "seed"};
         }
 
         return {};
@@ -65,6 +66,10 @@ namespace wgen {
         }
 
         if (typeName == "worley" && (name == "dots_per_cell" || name == "dotsPerCell")) {
+            return "dots";
+        }
+
+        if (typeName == "perlin" && (name == "dots_per_cell" || name == "dotsPerCell")) {
             return "dots";
         }
 
@@ -225,25 +230,22 @@ namespace wgen {
         };
 
         constructors["perlin"] = [](const std::vector<Value>& args) -> Value {
-            if (args.size() < 3) {
-                throw std::runtime_error("Perlin must have at least three arguments: width, height and dots per cell");
+            if (args.size() < 1) {
+                throw std::runtime_error("Perlin must have at least one argument: dots per cell");
             }
 
-            const auto width = static_cast<std::size_t>(as<int>(args[0]));
-            const auto height = static_cast<std::size_t>(as<int>(args[1]));
-            const auto dots = static_cast<std::size_t>(as<int>(args[2]));
+            const auto dots = static_cast<std::size_t>(as<int>(args[0]));
 
-            if (args.size() == 3) {
-                return std::make_unique<wgen::PerlinNoise2d>(width, height, dots);
+            if (args.size() == 2) {
+                const auto seed = static_cast<SeedType>(as<int>(args[1]));
+                return std::make_unique<wgen::PerlinNoise2d>(dots, seed);
             }
 
-            const auto seed = static_cast<SeedType>(as<int>(args[3]));
-
-            if (args.size() == 4) {
-                return std::make_unique<wgen::PerlinNoise2d>(width, height, dots, seed);
+            if (args.size() == 1) {
+                return std::make_unique<wgen::PerlinNoise2d>(dots, std::random_device{}());
             }
 
-            throw std::runtime_error("Perlin expects width, height, dots, optional seed");
+            throw std::runtime_error("Perlin expects dots and optional seed");
         };
     }
     void Interpreter::registerMutatingOperators() {

@@ -1,28 +1,27 @@
 #include "perlin.hpp"
+
 #include "terrain/utils/hash_random.hpp"
 
-#include <random>
 #include <stdexcept>
 
 namespace wgen {
 
-    PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 FloatFunction funcInterpolate)
-    : PerlinNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), funcInterpolate} {}
-
-    PerlinNoise2d::PerlinNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 SeedType seed, FloatFunction funcInterpolate)
-    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, funcInterpolate_{funcInterpolate} {
+    PerlinNoise2d::PerlinNoise2d(
+            std::size_t dotsPerCell,
+            SeedType seed,
+            FloatFunction funcInterpolate)
+        : dotsPerCell_{dotsPerCell}, funcInterpolate_{funcInterpolate} {
+        if (dotsPerCell_ < 2) {
+            throw std::invalid_argument("dots per cell must be at least two");
+        }
         if (funcInterpolate_ == nullptr) {
             throw std::invalid_argument("Perlin interpolation function must not be null");
         }
+
+        setSeed(seed);
     }
 
     float PerlinNoise2d::noise(std::size_t x, std::size_t y) const {
-        if (x >= sampleWidth() || y >= sampleHeight()) {
-            throw std::invalid_argument("Perlin sample coordinate is outside the gradient grid");
-        }
-
         const std::size_t gridX = x / dotsPerCell_;
         const std::size_t gridY = y / dotsPerCell_;
         const float localX = static_cast<float>(x % dotsPerCell_) / static_cast<float>(dotsPerCell_);

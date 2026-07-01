@@ -215,8 +215,6 @@ void TerrainAppCore::initGenerators(
         wgen::GeneratorSpec{
             .kind = wgen::GeneratorKind::PerlinNoise,
             .config = wgen::PerlinNoiseGeneratorSpec{
-                .gridWidth = terrainConfig.perlin.gridWidth,
-                .gridHeight = terrainConfig.perlin.gridHeight,
                 .dotsPerCell = terrainConfig.perlin.dotsPerCell,
             },
         },
@@ -248,13 +246,8 @@ void TerrainAppCore::initGenerators(
     //     terrainConfig.simplex.dotsPerCell,
     //     seed
     // )));
-    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(wgen::PerlinNoise2d(
-    //     terrainConfig.perlin.gridWidth,
-    //     terrainConfig.perlin.gridHeight,
-    //     terrainConfig.perlin.dotsPerCell,
-    //     seed,
-    //     wgen::defaultPerlinInterp
-    // )));
+    // generators.push_back(std::make_unique<wgen::PerlinNoise2d>(
+    //     terrainConfig.perlin.dotsPerCell, seed, wgen::defaultPerlinInterp));
     // generators.push_back(std::make_unique<wgen::ValueNoiseGenerator>(wgen::ValueNoiseGenerator(seed)));
     // generators.push_back(std::make_unique<wgen::LayeredSinNoiseGenerator>(wgen::LayeredSinNoiseGenerator(seed)));
 }

@@ -2,11 +2,9 @@
 #include "hash.glsl"
 #include "common.glsl"
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(push_constant) uniform Params {
-    uint width;
-    uint height;
     uint dots;
     uint64_t seed;
 } params;
@@ -44,11 +42,12 @@ float perlinNoise(uint64_t seed, uint x, uint y, uint dots) {
 void main() {
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
 
-    if (x >= params.width || y >= params.height) {
+    uint index = y * width + x;
+    if (index >= heightMap.values.length()) {
         return;
     }
 
-    uint index = y * params.width + x;
     heightMap.values[index] = perlinNoise(params.seed, x, y, params.dots);
 }

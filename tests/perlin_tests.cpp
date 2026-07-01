@@ -16,8 +16,8 @@ int main() {
 
     try {
         constexpr wgen::SeedType seed = 12345;
-        wgen::PerlinNoise2d first{5, 4, 8, seed};
-        wgen::PerlinNoise2d second{5, 4, 8, seed};
+        wgen::PerlinNoise2d first{8, seed};
+        wgen::PerlinNoise2d second{8, seed};
 
         const auto firstMap = first.generateHeightMap(32, 24);
         const auto secondMap = second.generateHeightMap(32, 24);
@@ -33,31 +33,23 @@ int main() {
         wgen::tests::require(firstMap == reseededMap, "restoring a seed did not restore the map");
 
         std::unique_ptr<wgen::Generator> polymorphic =
-            std::make_unique<wgen::PerlinNoise2d>(5, 4, 8, seed + 2);
+            std::make_unique<wgen::PerlinNoise2d>(8, seed + 2);
         polymorphic->setSeed(seed);
         wgen::tests::require(
             firstMap == polymorphic->generateHeightMap(32, 24),
             "polymorphic reseeding produced a different map");
 
-        wgen::PerlinNoise2d minimal{2, 2, 2, seed};
-        const auto minimalMap = minimal.generateHeightMap(2, 2);
-        for (std::size_t y = 0; y < minimalMap.height(); ++y) {
-            for (std::size_t x = 0; x < minimalMap.width(); ++x) {
-                wgen::tests::require(std::isfinite(minimalMap.at(x, y)), "Perlin map contains a non-finite value");
+        wgen::PerlinNoise2d minimal{2, seed};
+        const auto arbitraryMap = minimal.generateHeightMap(33, 25);
+        for (std::size_t y = 0; y < arbitraryMap.height(); ++y) {
+            for (std::size_t x = 0; x < arbitraryMap.width(); ++x) {
+                wgen::tests::require(std::isfinite(arbitraryMap.at(x, y)), "Perlin map contains a non-finite value");
             }
         }
 
-        bool rejectedOversizedMap = false;
-        try {
-            static_cast<void>(minimal.generateHeightMap(3, 2));
-        } catch (const std::invalid_argument &) {
-            rejectedOversizedMap = true;
-        }
-        wgen::tests::require(rejectedOversizedMap, "oversized height map request was not rejected");
-
         bool rejectedUndersampledCells = false;
         try {
-            static_cast<void>(wgen::PerlinNoise2d{2, 2, 1, seed});
+            static_cast<void>(wgen::PerlinNoise2d{1, seed});
         } catch (const std::invalid_argument &) {
             rejectedUndersampledCells = true;
         }

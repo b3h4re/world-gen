@@ -96,8 +96,6 @@ namespace wgen {
     };
 
     struct PerlinNoiseComputeSpec {
-        std::uint32_t width{};
-        std::uint32_t height{};
         std::uint32_t dots{};
         SeedType seed{};
     };
@@ -147,6 +145,7 @@ namespace wgen {
         has_noise_function<GenClass> &&
         (
             std::constructible_from<GenClass, SeedType> ||
+            std::constructible_from<GenClass, std::size_t, SeedType> ||
             std::constructible_from<GenClass, std::size_t, std::size_t, SeedType> ||
             std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType>
         );

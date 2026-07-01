@@ -37,6 +37,22 @@ namespace wgen {
         }
 
         OctaveGenerator(
+            std::size_t dots,
+            SeedType seed,
+            std::size_t numOctaves = DEFAULT_NUM_OCTAVES,
+            float lacunarity = DEFAULT_LACUNARITY,
+            float persistance = DEFAULT_PERSISTANCE)
+        requires std::constructible_from<GenClass, std::size_t, SeedType>
+            : constructorKind_{ConstructorKind::Dots},
+              dots_{dots},
+              numOctaves_{numOctaves},
+              lacunarity_{lacunarity},
+              persistance_{persistance} {
+            validateConfig();
+            setSeed(seed);
+        }
+
+        OctaveGenerator(
             std::size_t width,
             std::size_t height,
             SeedType seed,
@@ -92,6 +108,7 @@ namespace wgen {
         enum class ConstructorKind {
             SeedOnly,
             Grid,
+            Dots,
             GridWithDots
         };
 
@@ -162,6 +179,16 @@ namespace wgen {
                         ));
                     } else {
                         throw std::logic_error("generator does not support grid construction");
+                    }
+                    break;
+                case ConstructorKind::Dots:
+                    if constexpr (std::constructible_from<GenClass, std::size_t, SeedType>) {
+                        octaves.push_back(std::make_unique<GenClass>(
+                            dots_,
+                            seed
+                        ));
+                    } else {
+                        throw std::logic_error("generator does not support dots-with-seed construction");
                     }
                     break;
                 case ConstructorKind::GridWithDots:

@@ -22,8 +22,6 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
             }
 
             return std::make_unique<PerlinNoise2d>(
-                config->gridWidth,
-                config->gridHeight,
                 config->dotsPerCell,
                 seed
             );

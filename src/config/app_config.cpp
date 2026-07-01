@@ -107,18 +107,6 @@ namespace wgen {
     PerlinConfig parse_perlin_config(const toml::table& root) {
         PerlinConfig config;
 
-        config.gridWidth = checked_uinteger<std::size_t>(
-            root["terrain"]["perlin"]["grid_width"],
-            config.gridWidth,
-            "terrain.perlin.grid_width"
-        );
-
-        config.gridHeight = checked_uinteger<std::size_t>(
-            root["terrain"]["perlin"]["grid_height"],
-            config.gridHeight,
-            "terrain.perlin.grid_height"
-        );
-
         config.dotsPerCell = checked_uinteger<std::size_t>(
             root["terrain"]["perlin"]["dots_per_cell"],
             config.dotsPerCell,

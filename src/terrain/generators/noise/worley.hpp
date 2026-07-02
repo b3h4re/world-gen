@@ -27,11 +27,13 @@ namespace wgen {
             std::size_t numPoints = 1
         );
         float noise(std::size_t x, std::size_t y) const override;
+        GeneratorCapabilities capabilities() const override;
+        virtual std::string compShader() const override;
+        virtual std::size_t specSize() const override;
 
     private:
         float p_;
         std::size_t numPoints_;
-        HeightMap<std::vector<glm::vec2>> featurePoints_;
 
         // here gradients are feature points
         // void generateGradients() override;

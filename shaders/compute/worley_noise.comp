@@ -1,0 +1,78 @@
+#version 450
+#include "hash.glsl"
+#include "common.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint dots;
+    float p;
+    uint64_t seed;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+uint64_t worleyFeatureHash(uint64_t seed, int cellX, int cellY, uint featureIndex, uint component) {
+    uint64_t hash = splitmix64(seed);
+    hash = splitmix64(hash ^ splitmix64(uint64_t(uint(cellX))));
+    hash = splitmix64(hash ^ splitmix64(uint64_t(uint(cellY))));
+    hash = splitmix64(hash ^ splitmix64(uint64_t(featureIndex)));
+    hash = splitmix64(hash ^ splitmix64(uint64_t(component)));
+    return hash;
+}
+
+vec2 worleyFeaturePoint(uint64_t seed, int cellX, int cellY, uint featureIndex) {
+    return vec2(
+        hashUnitFloat(worleyFeatureHash(seed, cellX, cellY, featureIndex, 0)),
+        hashUnitFloat(worleyFeatureHash(seed, cellX, cellY, featureIndex, 1))
+    );
+}
+
+float worleyNoise(uint64_t seed, uint x, uint y, uint dots, float p) {
+    uint i0 = x / dots;
+    uint j0 = y / dots;
+    float localX = float(x % dots) / float(dots);
+    float localY = float(y % dots) / float(dots);
+    float X = float(i0) + localX;
+    float Y = float(j0) + localY;
+    vec2 point = vec2(X, Y);
+
+    float dist0 = uintBitsToFloat(0x7F800000u);
+    float dist1 = uintBitsToFloat(0x7F800000u);
+
+    for (int i = -1; i <= 1; ++i) {
+        for (int j = -1; j <= 1; ++j) {
+            for (uint u = 0; u < NUM_POINTS; ++u) {
+                int cellX = int(i0) + i;
+                int cellY = int(j0) + j;
+                vec2 featurePointDelta = vec2(cellX, cellY) + worleyFeaturePoint(seed, cellX, cellY, u) - point;
+                float dist = minkowskiDistance(featurePointDelta, vec2(0, 0), p);
+                if (dist < dist0) {
+                    dist1 = dist0;
+                    dist0 = dist;
+                } else if (dist < dist1) {
+                    dist1 = dist;
+                }
+            }
+
+        }
+    }
+
+    return dist1 - dist0;
+}
+
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+    uint index = y * width + x;
+    if (index >= heightMap.values.length()) {
+        return;
+    }
+
+    heightMap.values[index] = worleyNoise(params.seed, x, y, params.dots, params.p);
+}

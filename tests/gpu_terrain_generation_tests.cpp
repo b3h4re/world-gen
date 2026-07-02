@@ -101,6 +101,22 @@ void testPerlinNoise() {
     testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testWorleyNoise() {
+    const std::size_t width = 1000;
+    const std::size_t height = 1000;
+    const std::size_t dots = 1000;
+    const std::size_t numPoints = 1;
+    const float p = 2.0F;
+
+    wgen::WorleyNoise2d gen{width, height, dots, 0, p, numPoints};
+    wgen::WorleyNoiseComputeSpec spec{
+        .dots = dots,
+        .p = p
+    };
+    std::string message = "Worley Noise generated on cpu must be exactly the same as generated on GPU";
+    testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
+}
+
 void testGpuTerrainPipeline() {
     const std::size_t width = 64;
     const std::size_t height = 64;
@@ -160,6 +176,7 @@ int main() {
 
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
+        wgen::tests::runTest("Perlin Noise Test", testWorleyNoise);
         wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";

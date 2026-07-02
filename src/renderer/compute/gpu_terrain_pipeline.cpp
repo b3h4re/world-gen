@@ -34,6 +34,11 @@ GpuGenerator& GpuTerrainPipeline::generatorFor(wgen::GeneratorKind kind) {
                 perlinNoiseGenerator_ = makeGpuGenerator(device_, kind);
             }
             return *perlinNoiseGenerator_;
+        case wgen::GeneratorKind::WorleyNoise:
+            if (worleyNoiseGenerator_ == nullptr) {
+                worleyNoiseGenerator_ = makeGpuGenerator(device_, kind);
+            }
+            return *worleyNoiseGenerator_;
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

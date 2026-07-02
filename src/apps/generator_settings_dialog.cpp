@@ -25,6 +25,11 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
         ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
             perlin->dotsPerCell,
             static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+    } else if (auto* worley = std::get_if<wgen::WorleyNoiseGeneratorSpec>(&spec_.config)) {
+        ui_->dotsPerCellSpinBox->setRange(2, std::numeric_limits<int>::max());
+        ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
+            worley->dotsPerCell,
+            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
     } else {
         ui_->dotsPerCellSpinBox->setVisible(false);
         if (QWidget* label = ui_->formLayout->labelForField(ui_->dotsPerCellSpinBox)) {
@@ -68,6 +73,8 @@ QString GeneratorSettingsDialog::generatorName(wgen::GeneratorKind kind) {
     switch (kind) {
         case wgen::GeneratorKind::PerlinNoise:
             return QStringLiteral("Perlin");
+        case wgen::GeneratorKind::WorleyNoise:
+            return QStringLiteral("Worley");
         case wgen::GeneratorKind::ValueNoise:
             return QStringLiteral("Value noise");
     }

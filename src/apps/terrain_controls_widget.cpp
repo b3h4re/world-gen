@@ -26,8 +26,8 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     } else {
         initialPipeline = wgen::GeneratorPipelineSpec{
             wgen::GeneratorSpec{
-                .kind = wgen::GeneratorKind::PerlinNoise,
-                .config = wgen::PerlinNoiseGeneratorSpec{},
+                .kind = wgen::GeneratorKind::WorleyNoise,
+                .config = wgen::WorleyNoiseGeneratorSpec{},
             },
         };
     }
@@ -60,6 +60,17 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .kind = wgen::GeneratorKind::PerlinNoise,
             .config = wgen::PerlinNoiseGeneratorSpec{
                 .dotsPerCell = 100,
+            },
+            .scale = 1.0F,
+        });
+    });
+    auto* addWorleyAction = addGeneratorMenu->addAction(QStringLiteral("Worley"));
+    connect(addWorleyAction, &QAction::triggered, this, [this] {
+        pipelineModel_->appendGenerator(wgen::GeneratorSpec{
+            .kind = wgen::GeneratorKind::WorleyNoise,
+            .config = wgen::WorleyNoiseGeneratorSpec{
+                .dotsPerCell = 100,
+                .p = 2.0F
             },
             .scale = 1.0F,
         });

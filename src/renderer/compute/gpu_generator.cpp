@@ -16,6 +16,17 @@ std::uint32_t checkedComputeDimension(std::size_t value, const char* name) {
     return static_cast<std::uint32_t>(value);
 }
 
+float checkedPowerDimension(float value, const char* name) {
+    if (value > std::numeric_limits<float>::max()) {
+        throw std::overflow_error(std::string{name} + " overflows flaot");
+    }
+    if (std::abs(value) < 0.01F) {
+        throw std::invalid_argument(std::string{name} + "power too small");
+    }
+
+    return value;
+}
+
 ValueNoiseGpuGenerator::ValueNoiseGpuGenerator(LveComputeDevice& device)
     : computer_{device, "value_noise", sizeof(wgen::ValueNoiseComputeSpec)} {}
 
@@ -71,12 +82,42 @@ void PerlinNoiseGpuGenerator::dispatch(
         });
 }
 
+WorleyNoiseGpuGenerator::WorleyNoiseGpuGenerator(LveComputeDevice& device)
+    : computer_{device, "worley_noise", sizeof(wgen::WorleyNoiseComputeSpec)} {}
+
+void WorleyNoiseGpuGenerator::dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) {
+    const auto* worleySpec = std::get_if<wgen::WorleyNoiseGeneratorSpec>(&spec.config);
+    if (spec.kind != wgen::GeneratorKind::WorleyNoise || worleySpec == nullptr) {
+        throw std::invalid_argument("worley GPU generator received wrong spec");
+    }
+
+    wgen::WorleyNoiseComputeSpec computeSpec{
+        .dots = checkedComputeDimension(worleySpec->dotsPerCell, "worley dots per cell"),
+        .p = checkedPowerDimension(worleySpec->p, "worley minkowsky distance power"),
+        .seed = seed,
+    };
+
+    computer_.dispatch(
+        computeSpec,
+        output.descriptorInfo(),
+        ComputeDispatchSize{
+            .groupCountX = checkedComputeDimension(output.width(), "GPU heightmap width"),
+            .groupCountY = checkedComputeDimension(output.height(), "GPU heightmap height"),
+            .groupCountZ = 1,
+        });
+}
+
 std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::GeneratorKind kind) {
     switch (kind) {
         case wgen::GeneratorKind::ValueNoise:
             return std::make_unique<ValueNoiseGpuGenerator>(device);
         case wgen::GeneratorKind::PerlinNoise:
             return std::make_unique<PerlinNoiseGpuGenerator>(device);
+        case wgen::GeneratorKind::WorleyNoise:
+            return std::make_unique<WorleyNoiseGpuGenerator>(device);
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

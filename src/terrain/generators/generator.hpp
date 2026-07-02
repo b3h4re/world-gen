@@ -100,6 +100,12 @@ namespace wgen {
         SeedType seed{};
     };
 
+    struct WorleyNoiseComputeSpec {
+        std::uint32_t dots{};
+        float p{2.0F};
+        SeedType seed{};
+    };
+
 
     class Generator {
     public:

@@ -30,6 +30,36 @@ float hashUnitFloat(uint64_t hash) {
     return float(value) * (1.0 / 16777216.0);
 }
 
+float toUnitFloat(uint64_t h)
+{
+    const float scale = 1.0 / 16777216.0; // 1 / 2^24
+
+    return float((h >> 40) & uint64_t(0xFFFFFFu)) * scale;
+}
+
+float toSignedFloat(uint64_t h) {
+    // [0, 1) -> [-1, 1)
+    return 2.0f * toUnitFloat(h) - 1.0f;
+}
+
+uint64_t makeKey(int i, int j) {
+    uint ui = uint(i);
+    uint uj = uint(j);
+    return (uint64_t(ui) << 32) | uint64_t(uj);
+}
+
+vec2 hash2(int i, int j) {
+    uint64_t key = makeKey(i, j);
+    uint64_t h1 = splitmix64(key);
+    uint64_t h2 = splitmix64(h1);
+    return vec2(toSignedFloat(h1), toSignedFloat(h2));
+}
+
+uint64_t hashSeed(uint64_t seed) {
+    uint64_t h = splitmix64(seed);
+    return h ^ (h >> 32);
+}
+
 vec2 randomHashDir(uint x, uint y, uint64_t seed) {
     uint64_t h = seed;
     uint64_t c0x9E3779B97F4A7C15 = u64(0x9E3779B9u, 0x7F4A7C15u);

@@ -92,6 +92,7 @@ foreach(SHADER ${SHADER_SOURCES})
         COMMAND ${CMAKE_COMMAND} -E make_directory "${SPIRV_DIRECTORY}"
 
         COMMAND ${GLSLC}
+            -DNUM_POINTS=1
             -I "${SHADER_INCLUDE_DIR}"
             "${SHADER}"
             -o "${SPIRV}"
@@ -248,6 +249,8 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/gradient_noise_interface.hpp
         src/terrain/generators/noise/perlin.cpp
         src/terrain/generators/noise/perlin.hpp
+        src/terrain/generators/noise/worley.cpp
+        src/terrain/generators/noise/worley.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp

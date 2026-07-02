@@ -11,6 +11,7 @@ namespace wgen {
 enum class GeneratorKind {
     ValueNoise,
     PerlinNoise,
+    WorleyNoise
 };
 
 struct ValueNoiseGeneratorSpec {};
@@ -19,7 +20,17 @@ struct PerlinNoiseGeneratorSpec {
     std::size_t dotsPerCell{100};
 };
 
-using GeneratorConfig = std::variant<ValueNoiseGeneratorSpec, PerlinNoiseGeneratorSpec>;
+struct WorleyNoiseGeneratorSpec {
+    std::size_t dotsPerCell{100};
+    std::size_t numPoints{1};
+    float p{2.0F};
+};
+
+using GeneratorConfig = std::variant<
+    ValueNoiseGeneratorSpec,
+    PerlinNoiseGeneratorSpec,
+    WorleyNoiseGeneratorSpec
+>;
 
 struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};

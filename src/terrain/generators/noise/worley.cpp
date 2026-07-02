@@ -3,6 +3,7 @@
 
 
 #include <algorithm>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 #include <utility>
@@ -10,14 +11,34 @@
 
 namespace wgen {
 
+    std::uint64_t worleyFeatureHash(
+            SeedType seed,
+            std::ptrdiff_t cellX,
+            std::ptrdiff_t cellY,
+            std::size_t featureIndex,
+            std::uint32_t component) {
+        std::uint64_t hash = splitmix64(seed);
+        hash = splitmix64(hash ^ splitmix64(static_cast<std::uint32_t>(cellX)));
+        hash = splitmix64(hash ^ splitmix64(static_cast<std::uint32_t>(cellY)));
+        hash = splitmix64(hash ^ splitmix64(static_cast<std::uint64_t>(featureIndex)));
+        hash = splitmix64(hash ^ splitmix64(component));
+        return hash;
+    }
+
+    glm::vec2 worleyFeaturePoint(SeedType seed, std::ptrdiff_t cellX, std::ptrdiff_t cellY, std::size_t featureIndex) {
+        return {
+            toUnitFloat(worleyFeatureHash(seed, cellX, cellY, featureIndex, 0)),
+            toUnitFloat(worleyFeatureHash(seed, cellX, cellY, featureIndex, 1)),
+        };
+    }
+
     WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
                                  float p, std::size_t numPoints)
     : WorleyNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), p, numPoints} {}
 
     WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
                                  SeedType seed, float p, std::size_t numPoints)
-    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, p_{p}, numPoints_{numPoints},
-        featurePoints_{gridWidth, gridHeight} {
+    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, p_{p}, numPoints_{numPoints} {
         if (p_ <= 0.0F) {
             throw std::invalid_argument("Worley distance exponent must be positive");
         }
@@ -45,17 +66,15 @@ namespace wgen {
     std::vector<glm::vec2> WorleyNoise2d::featurePointsAt(std::size_t i, std::size_t j) const {
         std::vector<glm::vec2> points{};
         points.reserve(numPoints_);
-        glm::vec2 cell{i, j};
-        SeedType seed = getSeed();
-
 
         for (std::size_t n = 0; n < numPoints_; ++n) {
-            seed = hashSeed(seed);
-            points.emplace_back(
-                (glm::vec2{1, 1} + hash2(static_cast<int>(cell.x + seed), static_cast<int>(cell.y + seed))) / 2.0F
-            );
+            points.emplace_back(worleyFeaturePoint(
+                getSeed(),
+                static_cast<std::ptrdiff_t>(i),
+                static_cast<std::ptrdiff_t>(j),
+                n));
         }
-\
+
         return points;
     }
 
@@ -73,21 +92,17 @@ namespace wgen {
     std::vector<glm::vec2> WorleyNoise2d::deltaToAdjacentFeaturePoints(std::size_t x, std::size_t y, std::ptrdiff_t i, std::ptrdiff_t j) const {
         const auto cellX = static_cast<std::ptrdiff_t>(x) + i;
         const auto cellY = static_cast<std::ptrdiff_t>(y) + j;
-        const auto wrappedX = wrapSignedIndex(cellX, gridWidth_);
-        const auto wrappedY = wrapSignedIndex(cellY, gridHeight_);
 
         std::vector<glm::vec2> points{};
-        for (auto& elem : featurePoints_.at(wrappedX, wrappedY)) {
-            points.emplace_back(glm::vec2{cellX, cellY} + elem);
+        points.reserve(numPoints_);
+        for (std::size_t n = 0; n < numPoints_; ++n) {
+            points.emplace_back(glm::vec2{cellX, cellY} + worleyFeaturePoint(getSeed(), cellX, cellY, n));
         }
 
         return points;
     }
 
     float WorleyNoise2d::noise(std::size_t x, std::size_t y) const {
-        if (x >= sampleWidth() || y >= sampleHeight()) {
-            throw std::invalid_argument("Worley sample coordinate is outside the gradient grid");
-        }
 
         const std::size_t i0 = x / dotsPerCell_;
         const std::size_t j0 = y / dotsPerCell_;
@@ -123,6 +138,21 @@ namespace wgen {
         );
 
         return distances[1].first - distances[0].first;
+    }
+
+    GeneratorCapabilities WorleyNoise2d::capabilities() const {
+        return {
+            .cpu = true,
+            .vulkanCompute = true,
+        };
+    }
+
+    std::string WorleyNoise2d::compShader() const {
+        return "worley_noise";
+    }
+
+    std::size_t WorleyNoise2d::specSize() const {
+        return sizeof(WorleyNoiseComputeSpec);
     }
 
 }

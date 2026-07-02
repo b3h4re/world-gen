@@ -1,5 +1,6 @@
 #include "generator_factory.hpp"
 
+#include "terrain/generators/noise/worley.hpp"
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 
@@ -9,12 +10,13 @@ namespace wgen {
 
 std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType seed) {
     switch (spec.kind) {
-        case GeneratorKind::ValueNoise:
+        case GeneratorKind::ValueNoise: {
             if (!std::holds_alternative<ValueNoiseGeneratorSpec>(spec.config)) {
                 throw std::invalid_argument("value noise generator spec has wrong config type");
             }
 
             return std::make_unique<ValueNoiseGenerator>(seed);
+        }
         case GeneratorKind::PerlinNoise: {
             const auto* config = std::get_if<PerlinNoiseGeneratorSpec>(&spec.config);
             if (config == nullptr) {
@@ -24,6 +26,20 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
             return std::make_unique<PerlinNoise2d>(
                 config->dotsPerCell,
                 seed
+            );
+        }
+        case GeneratorKind::WorleyNoise: {
+            const auto* config = std::get_if<WorleyNoiseGeneratorSpec>(&spec.config);
+            if (config == nullptr) {
+                throw std::invalid_argument("worley noise generator spec has wrong config type");
+            }
+
+            return std::make_unique<WorleyNoise2d>(
+                2, 2,
+                config->dotsPerCell,
+                seed,
+                config->p,
+                config->numPoints
             );
         }
     }

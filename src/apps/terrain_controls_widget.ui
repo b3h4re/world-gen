@@ -35,12 +35,12 @@
       </size>
      </property>
      <property name="cursor">
-      <cursorShape>BusyCursor</cursorShape>
+      <cursorShape>ArrowCursor</cursorShape>
      </property>
      <property name="autoFillBackground">
       <bool>true</bool>
      </property>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>0</x>

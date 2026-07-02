@@ -10,8 +10,9 @@ namespace lve {
 
 TerrainAppRenderer::TerrainAppRenderer() : TerrainAppRenderer(wgen::WindowConfig{}) {}
 
-TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig&)
-    : window_{WIDTH, HEIGHT, "World Generator"}, device_{window_}, renderer_{window_, device_} {
+TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig& config)
+    : window_{config.width, config.height, "World Generator"}, device_{window_},
+    renderer_{window_, device_, config.present_mode} {
     initDescriptorPool();
     window_.setSurfaceAboutToBeDestroyedCallback([this] {
         shutdownVulkanResources();

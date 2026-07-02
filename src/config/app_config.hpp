@@ -1,6 +1,7 @@
 #pragma once
 
 #include "files/file_path.hpp"
+#include "swap_chain/lve_swap_chain.hpp"
 #include "terrain/generators/generator.hpp"
 
 #include <string>
@@ -93,7 +94,8 @@ namespace wgen {
     struct WindowConfig {
         int width{1280};
         int height{720};
-        std::string title{"World Generator"};
+        lve::PresentMode present_mode = lve::PresentMode::VSync;
+        int fps_max{144};
     };
 
     struct PerlinConfig {
@@ -101,19 +103,14 @@ namespace wgen {
     };
 
     struct SimplexConfig {
-        std::size_t gridWidth{100};
-        std::size_t gridHeight{100};
         std::size_t dotsPerCell{100};
     };
 
     struct WaveletConfig {
-        std::size_t gridWidth{128};
-        std::size_t gridHeight{128};
+        float frequency{0.014231234F};
     };
 
     struct WorleyConfig {
-        std::size_t gridWidth{100};
-        std::size_t gridHeight{100};
         std::size_t dotsPerCell{100};
         float p{2.0F};
         std::size_t numPoints{1};

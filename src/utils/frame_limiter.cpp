@@ -7,6 +7,9 @@
 namespace lve {
 
 void FrameLimiter::wait() {
+    if (targetFps_ <= 0) {
+        return;
+    }
     using Clock = std::chrono::steady_clock;
 
     nextFrameTime += std::chrono::duration_cast<Clock::duration>(targetFrameTime);

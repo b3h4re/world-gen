@@ -6,13 +6,14 @@ namespace lve {
 
 class FrameLimiter {
 public:
-    explicit FrameLimiter(double targetFps)
-        : targetFrameTime{std::chrono::duration<double>{1.0 / targetFps}},
-          nextFrameTime{std::chrono::steady_clock::now()} {}
+    explicit FrameLimiter(int targetFps)
+        : targetFrameTime{std::chrono::duration<double>{1.0 / static_cast<double>(targetFps)}},
+          nextFrameTime{std::chrono::steady_clock::now()}, targetFps_{targetFps} {}
 
     void wait();
 
 private:
+    int targetFps_{0};
     std::chrono::duration<double> targetFrameTime;
     std::chrono::steady_clock::time_point nextFrameTime;
 };

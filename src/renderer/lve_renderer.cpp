@@ -7,8 +7,9 @@
 
 namespace lve {
 
-    LveRenderer::LveRenderer(WindowSurface& window, LveDevice& device) : lveWindow(window), lveDevice(device) {
-        recreateSwapChain();
+    LveRenderer::LveRenderer(WindowSurface& window, LveDevice& device, PresentMode desiredPresentMode)
+            : lveWindow(window), lveDevice(device), desiredPresentMode_{desiredPresentMode} {
+        recreateSwapChain(desiredPresentMode_);
         createCommandBuffers();
     }
 
@@ -28,7 +29,7 @@ namespace lve {
         }
     }
 
-    void LveRenderer::recreateSwapChain() {
+    void LveRenderer::recreateSwapChain(PresentMode desiredPresentMode) {
         auto extent = lveWindow.getExtent();
         while (extent.width == 0 || extent.height == 0) {
             extent = lveWindow.getExtent();
@@ -38,11 +39,11 @@ namespace lve {
         vkDeviceWaitIdle(lveDevice.device());
 
         if (lveSwapChain == nullptr) {
-            lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent);
+            lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent, desiredPresentMode);
         } else {
             std::shared_ptr<LveSwapChain> oldSwapChain = std::move(lveSwapChain);
 
-            lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent, oldSwapChain);
+            lveSwapChain = std::make_unique<LveSwapChain>(lveDevice, extent, oldSwapChain, desiredPresentMode);
 
             if (!oldSwapChain->compareSwapFormats(*lveSwapChain.get())) {
                 throw std::runtime_error("Swap chain image format has change");
@@ -50,6 +51,13 @@ namespace lve {
         }
 
         // TODO soon
+    }
+
+    void LveRenderer::setDesiredPresentMode(PresentMode desiredPresentMode) {
+        desiredPresentMode_ = desiredPresentMode;
+    }
+    PresentMode LveRenderer::getDesiredPresentMode() const {
+        return desiredPresentMode_;
     }
 
     void LveRenderer::createCommandBuffers() {

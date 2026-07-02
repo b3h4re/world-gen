@@ -4,6 +4,7 @@
 #include "apps/terrain_app_gui.hpp"
 #include "apps/terrain_app_renderer.hpp"
 #include "config/app_config.hpp"
+#include "utils/frame_limiter.hpp"
 
 namespace lve {
 
@@ -26,6 +27,7 @@ private:
     TerrainAppCore core_;
     TerrainAppRenderer renderer_;
     TerrainAppGui gui_;
+    FrameLimiter limiter_;
     bool render3d_{false};
 };
 

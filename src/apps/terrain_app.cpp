@@ -17,7 +17,7 @@ TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
     : core_{config},
-      renderer_{config.windowConfig},
+      renderer_{config.windowConfig}, limiter_{config.windowConfig.fps_max},
       gui_{
           renderer_.window().controlsWidget(),
           TerrainAppGui::Callbacks{
@@ -85,6 +85,7 @@ void TerrainApp::run() {
 
     while (!window.shouldClose()) {
         window.pollEvents();
+        limiter_.wait();
         if (window.shouldClose()) {
             break;
         }

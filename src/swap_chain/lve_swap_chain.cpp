@@ -394,13 +394,13 @@ namespace lve {
 
         switch (desiredPresentMode) {
             case PresentMode::Immediate: {
-                std::cout << "Present mode: FIFO / V-Sync\n";
+                std::cout << "Present mode: Immediate: FIFO / V-Sync\n";
                 return VK_PRESENT_MODE_FIFO_KHR;
 
             }
             case PresentMode::LowLatency: {
                 if (contains(VK_PRESENT_MODE_MAILBOX_KHR)) {
-                    std::cout << "Present mode: Mailbox\n";
+                    std::cout << "Present mode: LowLatency: Mailbox\n";
                     return VK_PRESENT_MODE_MAILBOX_KHR;
                 }
 
@@ -408,7 +408,7 @@ namespace lve {
                 return VK_PRESENT_MODE_FIFO_KHR;
             }
             case PresentMode::VSync: {
-                std::cout << "Present mode: FIFO / V-Sync\n";
+                std::cout << "Present mode: VSync: FIFO / V-Sync\n";
                 return VK_PRESENT_MODE_FIFO_KHR;
             }
         }

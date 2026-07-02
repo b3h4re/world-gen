@@ -1,13 +1,12 @@
 #include "gpu_height_map.hpp"
 
+#include <cstring>
 #include <limits>
 #include <stdexcept>
 
 namespace lve {
 
-namespace {
-
-VkDeviceSize checkedByteSize(std::size_t width, std::size_t height) {
+VkDeviceSize checkedGpuHeightMapByteSize(std::size_t width, std::size_t height) {
     if (width < 2 || height < 2) {
         throw std::invalid_argument("GPU heightmap dimensions must be at least 2x2");
     }
@@ -28,28 +27,26 @@ VkDeviceSize checkedByteSize(std::size_t width, std::size_t height) {
     return static_cast<VkDeviceSize>(sampleCount * sizeof(float));
 }
 
-} // namespace
-
 GpuHeightMap::GpuHeightMap(LveDevice& device, std::size_t width, std::size_t height)
-    : renderDevice_{&device}, width_{width}, height_{height}, byteSize_{checkedByteSize(width, height)} {
+    : renderDevice_{&device}, width_{width}, height_{height}, byteSize_{checkedGpuHeightMapByteSize(width, height)} {
     storageBuffer_ = std::make_unique<LveBuffer>(
-        device,
-        sizeof(float),
-        static_cast<std::uint32_t>(width_ * height_),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+	        device,
+	        sizeof(float),
+	        static_cast<std::uint32_t>(width_ * height_),
+	        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	    );
 }
 
 GpuHeightMap::GpuHeightMap(LveComputeDevice& device, std::size_t width, std::size_t height)
-    : computeDevice_{&device}, width_{width}, height_{height}, byteSize_{checkedByteSize(width, height)} {
+    : computeDevice_{&device}, width_{width}, height_{height}, byteSize_{checkedGpuHeightMapByteSize(width, height)} {
     storageBuffer_ = std::make_unique<LveBuffer>(
-        device,
-        sizeof(float),
-        static_cast<std::uint32_t>(width_ * height_),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    );
+	        device,
+	        sizeof(float),
+	        static_cast<std::uint32_t>(width_ * height_),
+	        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	    );
 }
 
 VkBuffer GpuHeightMap::buffer() const {
@@ -66,6 +63,51 @@ VkDescriptorBufferInfo GpuHeightMap::descriptorInfo() const {
 
 VkDescriptorBufferInfo GpuHeightMap::readOnlyDescriptorInfo() const {
     return descriptorInfo();
+}
+
+void GpuHeightMap::clear(float value) const {
+    static_assert(sizeof(float) == sizeof(std::uint32_t));
+
+    std::uint32_t bits{};
+    std::memcpy(&bits, &value, sizeof(float));
+
+    VkCommandBuffer commandBuffer{VK_NULL_HANDLE};
+    if (renderDevice_ != nullptr) {
+        commandBuffer = renderDevice_->beginSingleTimeCommands();
+    } else {
+        commandBuffer = computeDevice_->beginSingleTimeCommands();
+    }
+
+    vkCmdFillBuffer(commandBuffer, storageBuffer_->getBuffer(), 0, byteSize_, bits);
+
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = storageBuffer_->getBuffer();
+    barrier.offset = 0;
+    barrier.size = byteSize_;
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        nullptr,
+        1,
+        &barrier,
+        0,
+        nullptr
+    );
+
+    if (renderDevice_ != nullptr) {
+        renderDevice_->endSingleTimeCommands(commandBuffer);
+    } else {
+        computeDevice_->endSingleTimeCommands(commandBuffer);
+    }
 }
 
 wgen::HeightMap<float> GpuHeightMap::copyToCpu() const {

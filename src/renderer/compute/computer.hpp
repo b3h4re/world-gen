@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 #include <utility>
 #include <vulkan/vulkan.h>
@@ -20,10 +21,18 @@ struct ComputeDispatchSize {
 
 class Computer {
 public:
-    Computer(LveComputeDevice& device, std::string shaderName, std::size_t specSize);
+    Computer(
+        LveComputeDevice& device,
+        std::string shaderName,
+        std::size_t specSize,
+        std::uint32_t storageBufferCount = 1);
     template <typename Spec>
-    Computer(LveComputeDevice& device, std::string shaderName, const Spec&)
-        : Computer{device, std::move(shaderName), sizeof(Spec)} {}
+    Computer(
+        LveComputeDevice& device,
+        std::string shaderName,
+        const Spec&,
+        std::uint32_t storageBufferCount = 1)
+        : Computer{device, std::move(shaderName), sizeof(Spec), storageBufferCount} {}
     ~Computer();
 
     Computer(const Computer&) = delete;
@@ -36,6 +45,11 @@ public:
         std::size_t specSize,
         VkDescriptorBufferInfo outputBuffer,
         ComputeDispatchSize dispatchSize) const;
+    void dispatch(
+        const void* spec,
+        std::size_t specSize,
+        std::span<const VkDescriptorBufferInfo> storageBuffers,
+        ComputeDispatchSize dispatchSize) const;
 
     template <typename Spec>
     void dispatch(
@@ -44,6 +58,13 @@ public:
         ComputeDispatchSize dispatchSize) const {
         dispatch(&spec, sizeof(Spec), outputBuffer, dispatchSize);
     }
+    template <typename Spec>
+    void dispatch(
+        const Spec& spec,
+        std::span<const VkDescriptorBufferInfo> storageBuffers,
+        ComputeDispatchSize dispatchSize) const {
+        dispatch(&spec, sizeof(Spec), storageBuffers, dispatchSize);
+    }
 
 private:
     void createPipelineLayout();
@@ -51,6 +72,7 @@ private:
 
     LveComputeDevice& device_;
     std::size_t specSize_{};
+    std::uint32_t storageBufferCount_{1};
     std::unique_ptr<LveDescriptorSetLayout> descriptorSetLayout_{};
     std::unique_ptr<LveDescriptorPool> descriptorPool_{};
     VkPipelineLayout pipelineLayout_{VK_NULL_HANDLE};

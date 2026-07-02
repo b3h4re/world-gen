@@ -8,8 +8,6 @@
 
 namespace lve {
 
-namespace {
-
 std::vector<char> readFile(const std::string& filepath) {
     std::ifstream file{filepath, std::ios::ate | std::ios::binary};
     if (!file.is_open()) {
@@ -46,22 +44,29 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
     return shaderModule;
 }
 
-} // namespace
-
-Computer::Computer(LveComputeDevice& device, std::string shaderName, std::size_t specSize)
-    : device_{device}, specSize_{specSize} {
+Computer::Computer(
+        LveComputeDevice& device,
+        std::string shaderName,
+        std::size_t specSize,
+        std::uint32_t storageBufferCount)
+    : device_{device}, specSize_{specSize}, storageBufferCount_{storageBufferCount} {
     if (specSize_ > device_.properties.limits.maxPushConstantsSize) {
         throw std::runtime_error("compute spec is larger than max push constant size");
     }
+    if (storageBufferCount_ == 0) {
+        throw std::invalid_argument("compute pipeline must have at least one storage buffer");
+    }
 
-    descriptorSetLayout_ = LveDescriptorSetLayout::Builder{device_}
-        .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .build();
+    LveDescriptorSetLayout::Builder setLayoutBuilder{device_};
+    for (std::uint32_t binding = 0; binding < storageBufferCount_; ++binding) {
+        setLayoutBuilder.addBinding(binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    }
+    descriptorSetLayout_ = setLayoutBuilder.build();
 
     descriptorPool_ = LveDescriptorPool::Builder{device_}
         .setMaxSets(64)
         .setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)
-        .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 64 * storageBufferCount_)
         .build();
 
     createPipelineLayout();
@@ -96,14 +101,29 @@ void Computer::dispatch(
     std::size_t specSize,
     VkDescriptorBufferInfo outputBuffer,
     ComputeDispatchSize dispatchSize) const {
+    dispatch(spec, specSize, std::span<const VkDescriptorBufferInfo>{&outputBuffer, 1}, dispatchSize);
+}
+
+void Computer::dispatch(
+    const void* spec,
+    std::size_t specSize,
+    std::span<const VkDescriptorBufferInfo> storageBuffers,
+    ComputeDispatchSize dispatchSize) const {
     if (specSize != specSize_) {
         throw std::invalid_argument("compute spec size does not match pipeline layout");
     }
+    if (storageBuffers.size() != storageBufferCount_) {
+        throw std::invalid_argument("compute storage buffer count does not match pipeline layout");
+    }
+
+    std::vector<VkDescriptorBufferInfo> bufferInfos{storageBuffers.begin(), storageBuffers.end()};
+    LveDescriptorWriter writer{*descriptorSetLayout_, *descriptorPool_};
+    for (std::uint32_t binding = 0; binding < storageBufferCount_; ++binding) {
+        writer.writeBuffer(binding, &bufferInfos[binding]);
+    }
 
     VkDescriptorSet descriptorSet{VK_NULL_HANDLE};
-    if (!LveDescriptorWriter{*descriptorSetLayout_, *descriptorPool_}
-             .writeBuffer(0, &outputBuffer)
-             .build(descriptorSet)) {
+    if (!writer.build(descriptorSet)) {
         throw std::runtime_error("failed to allocate compute descriptor set");
     }
 
@@ -139,9 +159,9 @@ void Computer::dispatch(
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.buffer = outputBuffer.buffer;
-    barrier.offset = outputBuffer.offset;
-    barrier.size = outputBuffer.range;
+    barrier.buffer = storageBuffers.back().buffer;
+    barrier.offset = storageBuffers.back().offset;
+    barrier.size = storageBuffers.back().range;
 
     vkCmdPipelineBarrier(
         commandBuffer,

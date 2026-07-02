@@ -252,15 +252,22 @@ if(BUILD_TESTING)
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp
         src/renderer/compute/gpu_height_map.hpp
+        src/renderer/compute/gpu_generator.cpp
+        src/renderer/compute/gpu_generator.hpp
+        src/renderer/compute/gpu_height_map_accumulator.cpp
+        src/renderer/compute/gpu_height_map_accumulator.hpp
+        src/renderer/compute/gpu_terrain_pipeline.cpp
+        src/renderer/compute/gpu_terrain_pipeline.hpp
     )
     target_include_directories(gpu_terrain_generation_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(gpu_terrain_generation_tests PRIVATE cxx_std_20)
     target_compile_definitions(gpu_terrain_generation_tests PRIVATE
     WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"
 )
-    target_link_libraries(gpu_terrain_generation_tests PRIVATE
-        Vulkan::Vulkan
-    )
-    add_test(NAME gpu_terrain_generation_tests COMMAND gpu_terrain_generation_tests)
+	    target_link_libraries(gpu_terrain_generation_tests PRIVATE
+	        Vulkan::Vulkan
+	    )
+	    add_dependencies(gpu_terrain_generation_tests shaders)
+	    add_test(NAME gpu_terrain_generation_tests COMMAND gpu_terrain_generation_tests)
     set_tests_properties(gpu_terrain_generation_tests PROPERTIES SKIP_RETURN_CODE 77)
 endif()

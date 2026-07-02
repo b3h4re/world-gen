@@ -26,6 +26,7 @@ public:
     VkBuffer buffer() const;
     VkDescriptorBufferInfo descriptorInfo() const;
     VkDescriptorBufferInfo readOnlyDescriptorInfo() const;
+    void clear(float value = 0.0F) const;
     wgen::HeightMap<float> copyToCpu() const;
 
 private:

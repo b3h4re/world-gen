@@ -3,8 +3,10 @@
 #include "config/app_config.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
+#include "renderer/compute/gpu_terrain_pipeline.hpp"
 #include "terrain/generators/generator.hpp"
 #include "terrain/generators/generator_spec.hpp"
+#include "utils/thread_pool.hpp"
 
 #include <cstdint>
 #include <future>
@@ -70,11 +72,15 @@ private:
     static void setGeneratorSeeds(
         std::vector<std::unique_ptr<wgen::Generator>>& generators,
         wgen::SeedType seed);
+    static std::vector<wgen::SeedType> generatorSeeds(std::size_t count, wgen::SeedType seed);
     static wgen::GeneratorPipelineSpec defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig);
     wgen::SeedType activeSeed() const;
 
     wgen::HeightMap<float> generateHeightMap(const wgen::TerrainConfig& terrainConfig);
     wgen::HeightMap<float> generateHeightMapCpu(std::size_t generatorIndex, const wgen::TerrainConfig& terrainConfig);
+    wgen::HeightMap<float> generateHeightMapGpu(
+        const std::vector<GpuGeneratorRequest>& requests,
+        const wgen::TerrainConfig& terrainConfig);
 
     TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap);
     wgen::colorFromHeightFunc getActiveColorFunc() const;
@@ -90,6 +96,8 @@ private:
 
     std::size_t usedGenerator_{0};
     std::vector<std::unique_ptr<wgen::Generator>> generators_{};
+    std::unique_ptr<GpuTerrainPipeline> gpuPipeline_{};
+    wgen::ThreadPool threadPool_{};
     wgen::HeightMap<float> activeHeightMap_{};
 
     std::future<TerrainJobResult> terrainGenerationJob_{};

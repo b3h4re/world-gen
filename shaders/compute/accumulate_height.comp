@@ -1,0 +1,25 @@
+#version 450
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint sampleCount;
+    float scale;
+} params;
+
+layout(set = 0, binding = 0) readonly buffer InputHeightMap {
+    float values[];
+} inputHeightMap;
+
+layout(set = 0, binding = 1) buffer AccumulatedHeightMap {
+    float values[];
+} accumulatedHeightMap;
+
+void main() {
+    uint index = gl_GlobalInvocationID.x;
+    if (index >= params.sampleCount) {
+        return;
+    }
+
+    accumulatedHeightMap.values[index] += params.scale * inputHeightMap.values[index];
+}

@@ -1,6 +1,8 @@
 #include "device/lve_compute_device.hpp"
 #include "renderer/compute/computer.hpp"
 #include "renderer/compute/gpu_height_map.hpp"
+#include "renderer/compute/gpu_terrain_pipeline.hpp"
+#include "terrain/generators/generator_spec.hpp"
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 
@@ -9,6 +11,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <string>
 
 namespace {
 
@@ -23,6 +26,13 @@ struct ValueNoiseComputeSpec {
 };
 
 lve::LveComputeDevice* device;
+
+bool isVulkanUnavailableError(const std::exception& exception) {
+    const std::string message = exception.what();
+    return message.find("failed to create compute Vulkan instance") != std::string::npos ||
+           message.find("failed to find a Vulkan device with compute queue support") != std::string::npos ||
+           message.find("Found no drivers") != std::string::npos;
+}
 
 
 template<class GenType, class GenSpec>
@@ -91,6 +101,55 @@ void testPerlinNoise() {
     testGenerator<wgen::PerlinNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testGpuTerrainPipeline() {
+    const std::size_t width = 64;
+    const std::size_t height = 64;
+    const wgen::SeedType valueSeed = 42;
+    const wgen::SeedType perlinSeed = 711;
+    const float valueScale = 0.35F;
+    const float perlinScale = 1.75F;
+
+    const wgen::GeneratorSpec valueSpec{
+        .kind = wgen::GeneratorKind::ValueNoise,
+        .config = wgen::ValueNoiseGeneratorSpec{},
+        .scale = valueScale,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+    };
+    const wgen::GeneratorSpec perlinSpec{
+        .kind = wgen::GeneratorKind::PerlinNoise,
+        .config = wgen::PerlinNoiseGeneratorSpec{
+            .dotsPerCell = 16,
+        },
+        .scale = perlinScale,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+    };
+
+    lve::GpuTerrainPipeline pipeline;
+    const wgen::HeightMap<float> gpuHeightMap = pipeline.generateHeightMap(
+        {
+            lve::GpuGeneratorRequest{
+                .spec = valueSpec,
+                .seed = valueSeed,
+            },
+            lve::GpuGeneratorRequest{
+                .spec = perlinSpec,
+                .seed = perlinSeed,
+            },
+        },
+        width,
+        height);
+
+    wgen::ValueNoiseGenerator valueNoise{valueSeed};
+    wgen::PerlinNoise2d perlinNoise{16, perlinSeed};
+    const wgen::HeightMap<float> cpuHeightMap =
+        wgen::map(valueNoise.generateHeightMap(width, height), wgen::multiplyFunction(valueScale)) +
+        wgen::map(perlinNoise.generateHeightMap(width, height), wgen::multiplyFunction(perlinScale));
+
+    wgen::tests::require(
+        gpuHeightMap.isClose(cpuHeightMap, 0.00001F),
+        "GPU terrain pipeline must accumulate scaled generator outputs");
+}
+
 
 }
 
@@ -101,8 +160,12 @@ int main() {
 
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
+        wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
+        if (isVulkanUnavailableError(exception)) {
+            return 77;
+        }
         return 1;
     }
 

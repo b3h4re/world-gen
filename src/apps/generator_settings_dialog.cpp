@@ -1,5 +1,7 @@
 #include "generator_settings_dialog.hpp"
 
+#include "terrain/generators/generator_compute_capabilities.hpp"
+#include "terrain_compute_method_ui.hpp"
 #include "ui_generator_settings_dialog.h"
 
 #include <QComboBox>
@@ -10,31 +12,6 @@
 #include <utility>
 
 namespace lve {
-
-namespace {
-
-int computeMethodIndex(wgen::TerrainComputeMethod computeMethod) {
-    switch (computeMethod) {
-        case wgen::TerrainComputeMethod::Cpu:
-            return 0;
-        case wgen::TerrainComputeMethod::VulkanCompute:
-            return 1;
-    }
-
-    return 0;
-}
-
-wgen::TerrainComputeMethod computeMethodFromIndex(int index) {
-    switch (index) {
-        case 1:
-            return wgen::TerrainComputeMethod::VulkanCompute;
-        case 0:
-        default:
-            return wgen::TerrainComputeMethod::Cpu;
-    }
-}
-
-} // namespace
 
 GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidget* parent)
     : QDialog{parent}, ui_{std::make_unique<Ui::GeneratorSettingsDialog>()}, spec_{std::move(spec)} {
@@ -56,6 +33,14 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     }
 
     ui_->scaleSpinBox->setValue(spec_.scale);
+    if (!wgen::generatorSupportsComputeMethod(spec_.kind, spec_.computeMethod)) {
+        spec_.computeMethod = wgen::TerrainComputeMethod::Cpu;
+    }
+    bool supported = wgen::generatorSupportsComputeMethod(spec_.kind, wgen::TerrainComputeMethod::VulkanCompute);
+    ui_->computeMethodComboBox->setItemData(
+        computeMethodIndex(wgen::TerrainComputeMethod::VulkanCompute),
+        supported ? QVariant(Qt::ItemIsSelectable | Qt::ItemIsEnabled) : QVariant(Qt::NoItemFlags),
+        Qt::UserRole - 1);
     ui_->computeMethodComboBox->setCurrentIndex(computeMethodIndex(spec_.computeMethod));
     connect(ui_->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui_->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -66,6 +51,9 @@ GeneratorSettingsDialog::~GeneratorSettingsDialog() = default;
 void GeneratorSettingsDialog::accept() {
     spec_.scale = static_cast<float>(ui_->scaleSpinBox->value());
     spec_.computeMethod = computeMethodFromIndex(ui_->computeMethodComboBox->currentIndex());
+    if (!wgen::generatorSupportsComputeMethod(spec_.kind, spec_.computeMethod)) {
+        spec_.computeMethod = wgen::TerrainComputeMethod::Cpu;
+    }
 
     if (std::holds_alternative<wgen::PerlinNoiseGeneratorSpec>(spec_.config)) {
         spec_.config = wgen::PerlinNoiseGeneratorSpec{

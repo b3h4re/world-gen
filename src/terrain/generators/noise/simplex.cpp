@@ -7,7 +7,9 @@ namespace wgen {
     : SimplexNoise2d{dotsPerCell, std::random_device{}()} {}
 
     SimplexNoise2d::SimplexNoise2d(std::size_t dotsPerCell, SeedType seed)
-    : dotsPerCell_{dotsPerCell} {}
+    : dotsPerCell_{dotsPerCell} {
+        setSeed(seed);
+    }
 
     float SimplexNoise2d::noise(std::size_t x, std::size_t y) const {
         const float globalX = static_cast<float>(x) / static_cast<float>(dotsPerCell_);
@@ -76,6 +78,7 @@ namespace wgen {
         return {
             .cpu = true,
             .vulkanCompute = true,
+            .octaves = true,
         };
     }
 

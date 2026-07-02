@@ -70,6 +70,7 @@ namespace wgen {
     struct GeneratorCapabilities {
         bool cpu{true};
         bool vulkanCompute{false};
+        bool octaves{false};
 
         bool supports(GeneratorDeviceKind kind) const {
             switch (kind) {
@@ -81,6 +82,8 @@ namespace wgen {
 
             return false;
         }
+
+        bool supportsOctaves() const { return octaves; }
     };
 
     struct ValueNoiseComputeSpec {

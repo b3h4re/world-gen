@@ -52,6 +52,7 @@ namespace wgen {
         return {
             .cpu = true,
             .vulkanCompute = true,
+            .octaves = true,
         };
     }
 

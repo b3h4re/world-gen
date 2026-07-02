@@ -45,6 +45,8 @@ namespace wgen {
         if (numPoints_ == 0) {
             throw std::invalid_argument("Worley feature point count must be at least one");
         }
+
+        setSeed(seed);
     }
 
     // void WorleyNoise2d::generateGradients() {
@@ -144,6 +146,7 @@ namespace wgen {
         return {
             .cpu = true,
             .vulkanCompute = true,
+            .octaves = true,
         };
     }
 

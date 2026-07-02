@@ -243,6 +243,37 @@ if(BUILD_TESTING)
     target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
     add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
 
+    # Terrain Pipeline Octave Tests
+    add_executable(terrain_pipeline_octaves_tests
+        tests/terrain_pipeline_octaves_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/generators/coordinate_scaled_generator.cpp
+        src/terrain/generators/coordinate_scaled_generator.hpp
+        src/terrain/generators/generator.cpp
+        src/terrain/generators/generator.hpp
+        src/terrain/generators/generator_factory.cpp
+        src/terrain/generators/generator_factory.hpp
+        src/terrain/generators/generator_spec.hpp
+        src/terrain/generators/terrain_pipeline.cpp
+        src/terrain/generators/terrain_pipeline.hpp
+        src/terrain/generators/noise/gradient_noise_interface.hpp
+        src/terrain/generators/noise/noise_octaves.hpp
+        src/terrain/generators/noise/value_noise.cpp
+        src/terrain/generators/noise/value_noise.hpp
+        src/terrain/generators/noise/perlin.cpp
+        src/terrain/generators/noise/perlin.hpp
+        src/terrain/generators/noise/worley.cpp
+        src/terrain/generators/noise/worley.hpp
+        src/terrain/generators/noise/simplex.cpp
+        src/terrain/generators/noise/simplex.hpp
+    )
+    target_include_directories(terrain_pipeline_octaves_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_pipeline_octaves_tests PRIVATE cxx_std_20)
+    add_test(NAME terrain_pipeline_octaves_tests COMMAND terrain_pipeline_octaves_tests)
+
     # Hash random tests
     add_executable(hash_uniform_real_distribution_tests
         tests/hash_uniform_real_distribution_tests.cpp

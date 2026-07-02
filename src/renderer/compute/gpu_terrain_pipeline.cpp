@@ -16,7 +16,11 @@ wgen::HeightMap<float> GpuTerrainPipeline::generateHeightMap(
     GpuHeightMap generated{device_, width, height};
     for (const GpuGeneratorRequest& request : requests) {
         generatorFor(request.spec.kind).dispatch(generated, request.spec, request.seed);
-        accumulator_.accumulate(generated, accumulated, request.spec.scale);
+        accumulator_.accumulate(
+            generated,
+            accumulated,
+            request.spec.scale * wgen::generatorOctaveAmplitude(request.spec)
+        );
     }
 
     return accumulated.copyToCpu();

@@ -7,6 +7,7 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(push_constant) uniform Params {
     uint dots;
     float p;
+    float coordinateScale;
     uint64_t seed;
 } params;
 
@@ -74,5 +75,7 @@ void main() {
         return;
     }
 
-    heightMap.values[index] = worleyNoise(params.seed, x, y, params.dots, params.p);
+    uint sampleX = uint(float(x) * params.coordinateScale);
+    uint sampleY = uint(float(y) * params.coordinateScale);
+    heightMap.values[index] = worleyNoise(params.seed, sampleX, sampleY, params.dots, params.p);
 }

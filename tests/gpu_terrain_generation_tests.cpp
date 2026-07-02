@@ -2,6 +2,7 @@
 #include "renderer/compute/computer.hpp"
 #include "renderer/compute/gpu_height_map.hpp"
 #include "renderer/compute/gpu_terrain_pipeline.hpp"
+#include "terrain/generators/generator_factory.hpp"
 #include "terrain/generators/generator_spec.hpp"
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/simplex.hpp"
@@ -13,6 +14,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <string>
 
 namespace {
@@ -250,6 +252,44 @@ void testGpuTerrainPipelineWorleyTwoPoints() {
         "GPU terrain pipeline must choose the two-point Worley shader");
 }
 
+void testGpuTerrainPipelinePerlinOctave() {
+    const std::size_t width = 64;
+    const std::size_t height = 64;
+    const wgen::SeedType seed = 1234;
+
+    const wgen::GeneratorSpec perlinSpec{
+        .kind = wgen::GeneratorKind::PerlinNoise,
+        .config = wgen::PerlinNoiseGeneratorSpec{
+            .dotsPerCell = 16,
+        },
+        .scale = 1.25F,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 2,
+            .lacunarity = 2.0F,
+            .persistance = 0.5F,
+        },
+    };
+
+    lve::GpuTerrainPipeline gpuPipeline;
+    const wgen::HeightMap<float> gpuHeightMap = gpuPipeline.generateHeightMap(
+        {
+            lve::GpuGeneratorRequest{
+                .spec = perlinSpec,
+                .seed = seed,
+            },
+        },
+        width,
+        height);
+
+    const std::unique_ptr<wgen::TerrainPipeline> cpuPipeline = wgen::makePipeline({perlinSpec}, seed);
+    const wgen::HeightMap<float> cpuHeightMap = cpuPipeline->generateHeightMap(width, height);
+
+    wgen::tests::require(
+        gpuHeightMap.isClose(cpuHeightMap, 0.00001F),
+        "GPU terrain pipeline must apply octave coordinate scale and amplitude on GPU");
+}
+
 
 }
 
@@ -265,6 +305,7 @@ int main() {
         wgen::tests::runTest("Simplex Noise Test", testSimplexNoise);
         wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
         wgen::tests::runTest("GPU Terrain Pipeline Worley Two Points Test", testGpuTerrainPipelineWorleyTwoPoints);
+        wgen::tests::runTest("GPU Terrain Pipeline Perlin Octave Test", testGpuTerrainPipelinePerlinOctave);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
         if (isVulkanUnavailableError(exception)) {

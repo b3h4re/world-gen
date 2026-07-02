@@ -61,9 +61,6 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
 }
 
 void validateOctaveSettings(const GeneratorOctaveSettings& settings) {
-    if (settings.numOctaves == 0) {
-        throw std::invalid_argument("octave count must be at least one");
-    }
     if (settings.lacunarity <= 0.0F) {
         throw std::invalid_argument("octave lacunarity must be positive");
     }
@@ -72,32 +69,23 @@ void validateOctaveSettings(const GeneratorOctaveSettings& settings) {
     }
 }
 
-std::unique_ptr<TerrainPipeline> makeOctavePipeline(const GeneratorSpec& spec, SeedType seed) {
+std::unique_ptr<Generator> makeOctaveGenerator(const GeneratorSpec& spec, SeedType seed) {
     validateOctaveSettings(spec.octaveSettings);
-
-    auto pipeline = std::make_unique<TerrainPipeline>();
-    for (std::size_t octave = 0; octave < spec.octaveSettings.numOctaves; ++octave) {
-        auto generator = makeGenerator(spec, seed);
-        if (!generator->capabilities().supportsOctaves()) {
-            throw std::invalid_argument("generator spec requested octaves for a generator that does not support them");
-        }
-
-        const float frequency = std::pow(spec.octaveSettings.lacunarity, static_cast<float>(octave));
-        const float amplitude = std::pow(spec.octaveSettings.persistance, static_cast<float>(octave));
-        pipeline->push_back(
-            std::make_unique<CoordinateScaledGenerator>(std::move(generator), frequency),
-            multiplyFunction(amplitude)
-        );
+    auto generator = makeGenerator(spec, seed);
+    if (!generator->capabilities().supportsOctaves()) {
+        throw std::invalid_argument("generator spec requested octaves for a generator that does not support them");
     }
 
-    pipeline->setSeed(seed);
-    return pipeline;
+    return std::make_unique<CoordinateScaledGenerator>(
+        std::move(generator),
+        generatorOctaveFrequency(spec)
+    );
 }
 
 std::unique_ptr<Generator> makePipelineGenerator(const GeneratorSpec& spec, SeedType seed) {
     auto generator = makeGenerator(spec, seed);
     if (generator->capabilities().supportsOctaves()) {
-        generator = makeOctavePipeline(spec, seed);
+        generator = makeOctaveGenerator(spec, seed);
     }
 
     return generator;
@@ -107,7 +95,10 @@ std::unique_ptr<TerrainPipeline> makePipeline(const GeneratorPipelineSpec& specs
     auto pipeline = std::make_unique<TerrainPipeline>();
 
     for (const GeneratorSpec& spec : specs) {
-        pipeline->push_back(makePipelineGenerator(spec, seed), multiplyFunction(spec.scale));
+        pipeline->push_back(
+            makePipelineGenerator(spec, seed),
+            multiplyFunction(spec.scale * generatorOctaveAmplitude(spec))
+        );
     }
 
     pipeline->setSeed(seed);

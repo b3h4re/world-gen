@@ -15,10 +15,6 @@
 
 namespace lve {
 
-bool hasActiveOctaves(const wgen::GeneratorSpec& spec) {
-    return wgen::generatorSupportsOctaves(spec.kind) && spec.octaveSettings.numOctaves > 1;
-}
-
 void appendHeightMapMesh(
         const wgen::HeightMap<float>& heightMap,
         float minX,
@@ -278,8 +274,7 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMap(const wgen::TerrainConf
 
     for (std::size_t i = 0; i < pipelineSpec_.size(); ++i) {
         const wgen::GeneratorSpec& spec = pipelineSpec_[i];
-        if (!hasActiveOctaves(spec) &&
-                spec.computeMethod == wgen::TerrainComputeMethod::VulkanCompute &&
+        if (spec.computeMethod == wgen::TerrainComputeMethod::VulkanCompute &&
                 wgen::generatorSupportsComputeMethod(spec.kind, wgen::TerrainComputeMethod::VulkanCompute)) {
             gpuRequests.push_back({
                 .spec = spec,
@@ -289,7 +284,10 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMap(const wgen::TerrainConf
         }
 
         cpuFutures.push_back(threadPool_.submit([this, i, terrainConfig] {
-            return wgen::map(generateHeightMapCpu(i, terrainConfig), wgen::multiplyFunction(pipelineSpec_[i].scale));
+            return wgen::map(
+                generateHeightMapCpu(i, terrainConfig),
+                wgen::multiplyFunction(pipelineSpec_[i].scale * wgen::generatorOctaveAmplitude(pipelineSpec_[i]))
+            );
         }));
     }
 

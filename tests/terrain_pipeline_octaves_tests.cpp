@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -21,18 +22,35 @@ constexpr std::size_t WIDTH = 12;
 constexpr std::size_t HEIGHT = 10;
 constexpr wgen::SeedType SEED = 12345;
 constexpr float SCALE = 1.25F;
+constexpr std::size_t NUM_OCTAVES = 4;
 
-const wgen::GeneratorOctaveSettings OCTAVES{
-    .numOctaves = 4,
-    .lacunarity = 2.0F,
-    .persistance = 0.5F,
-};
+constexpr float LACUNARITY = 2.0F;
+constexpr float PERSISTANCE = 0.5F;
 
-void expectPipelineMatchesExpected(wgen::GeneratorSpec spec, const wgen::Generator& expected, std::string_view message) {
-    auto pipeline = wgen::makePipeline({spec}, SEED);
+std::vector<wgen::GeneratorSpec> makeOctavePipelineSpecs(wgen::GeneratorSpec baseSpec, std::size_t count) {
+    std::vector<wgen::GeneratorSpec> specs;
+    specs.reserve(count);
+    for (std::size_t octave = 0; octave < count; ++octave) {
+        wgen::GeneratorSpec spec = baseSpec;
+        spec.octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = octave,
+            .lacunarity = LACUNARITY,
+            .persistance = PERSISTANCE,
+        };
+        specs.push_back(std::move(spec));
+    }
+
+    return specs;
+}
+
+void expectPipelineMatchesExpected(
+        const std::vector<wgen::GeneratorSpec>& specs,
+        const wgen::Generator& expected,
+        std::string_view message) {
+    auto pipeline = wgen::makePipeline(specs, SEED);
     const wgen::HeightMap<float> actualHeightMap = pipeline->generateHeightMap(WIDTH, HEIGHT);
     const wgen::HeightMap<float> expectedHeightMap =
-        wgen::map(expected.generateHeightMap(WIDTH, HEIGHT), wgen::multiplyFunction(spec.scale));
+        wgen::map(expected.generateHeightMap(WIDTH, HEIGHT), wgen::multiplyFunction(SCALE));
 
     if (actualHeightMap.isClose(expectedHeightMap, 0.00001F)) {
         return;
@@ -65,16 +83,18 @@ void testValueNoiseOctavesMatchOctaveGenerator() {
         .config = wgen::ValueNoiseGeneratorSpec{},
         .scale = SCALE,
         .computeMethod = wgen::TerrainComputeMethod::Cpu,
-        .octaveSettings = OCTAVES,
     };
     const wgen::OctaveGenerator<wgen::ValueNoiseGenerator> expected{
         SEED,
-        OCTAVES.numOctaves,
-        OCTAVES.lacunarity,
-        OCTAVES.persistance,
+        NUM_OCTAVES,
+        LACUNARITY,
+        PERSISTANCE,
     };
 
-    expectPipelineMatchesExpected(spec, expected, "value noise pipeline octaves should match OctaveGenerator");
+    expectPipelineMatchesExpected(
+        makeOctavePipelineSpecs(spec, NUM_OCTAVES),
+        expected,
+        "value noise pipeline octaves should match OctaveGenerator");
 }
 
 void testPerlinOctavesMatchOctaveGenerator() {
@@ -86,17 +106,19 @@ void testPerlinOctavesMatchOctaveGenerator() {
         },
         .scale = SCALE,
         .computeMethod = wgen::TerrainComputeMethod::Cpu,
-        .octaveSettings = OCTAVES,
     };
     const wgen::OctaveGenerator<wgen::PerlinNoise2d> expected{
         dots,
         SEED,
-        OCTAVES.numOctaves,
-        OCTAVES.lacunarity,
-        OCTAVES.persistance,
+        NUM_OCTAVES,
+        LACUNARITY,
+        PERSISTANCE,
     };
 
-    expectPipelineMatchesExpected(spec, expected, "perlin pipeline octaves should match OctaveGenerator");
+    expectPipelineMatchesExpected(
+        makeOctavePipelineSpecs(spec, NUM_OCTAVES),
+        expected,
+        "perlin pipeline octaves should match OctaveGenerator");
 }
 
 void testWorleyOctavesMatchOctaveGenerator() {
@@ -108,17 +130,19 @@ void testWorleyOctavesMatchOctaveGenerator() {
         },
         .scale = SCALE,
         .computeMethod = wgen::TerrainComputeMethod::Cpu,
-        .octaveSettings = OCTAVES,
     };
     const wgen::OctaveGenerator<wgen::WorleyNoise2d> expected{
         dots,
         SEED,
-        OCTAVES.numOctaves,
-        OCTAVES.lacunarity,
-        OCTAVES.persistance,
+        NUM_OCTAVES,
+        LACUNARITY,
+        PERSISTANCE,
     };
 
-    expectPipelineMatchesExpected(spec, expected, "worley pipeline octaves should match OctaveGenerator");
+    expectPipelineMatchesExpected(
+        makeOctavePipelineSpecs(spec, NUM_OCTAVES),
+        expected,
+        "worley pipeline octaves should match OctaveGenerator");
 }
 
 void testSimplexOctavesMatchOctaveGenerator() {
@@ -130,17 +154,19 @@ void testSimplexOctavesMatchOctaveGenerator() {
         },
         .scale = SCALE,
         .computeMethod = wgen::TerrainComputeMethod::Cpu,
-        .octaveSettings = OCTAVES,
     };
     const wgen::OctaveGenerator<wgen::SimplexNoise2d> expected{
         dots,
         SEED,
-        OCTAVES.numOctaves,
-        OCTAVES.lacunarity,
-        OCTAVES.persistance,
+        NUM_OCTAVES,
+        LACUNARITY,
+        PERSISTANCE,
     };
 
-    expectPipelineMatchesExpected(spec, expected, "simplex pipeline octaves should match OctaveGenerator");
+    expectPipelineMatchesExpected(
+        makeOctavePipelineSpecs(spec, NUM_OCTAVES),
+        expected,
+        "simplex pipeline octaves should match OctaveGenerator");
 }
 
 } // namespace

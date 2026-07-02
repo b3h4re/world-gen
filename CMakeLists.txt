@@ -302,8 +302,15 @@ if(BUILD_TESTING)
         src/pipeline/descriptors/lve_descriptors.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
+        src/terrain/generators/coordinate_scaled_generator.cpp
+        src/terrain/generators/coordinate_scaled_generator.hpp
         src/terrain/generators/generator.cpp
         src/terrain/generators/generator.hpp
+        src/terrain/generators/generator_factory.cpp
+        src/terrain/generators/generator_factory.hpp
+        src/terrain/generators/generator_spec.hpp
+        src/terrain/generators/terrain_pipeline.cpp
+        src/terrain/generators/terrain_pipeline.hpp
         src/terrain/generators/noise/value_noise.cpp
         src/terrain/generators/noise/value_noise.hpp
         src/terrain/generators/noise/gradient_noise_interface.hpp

@@ -197,22 +197,22 @@
    <item>
     <layout class="QFormLayout" name="octaveFormLayout">
      <item row="0" column="0">
-      <widget class="QLabel" name="numOctavesLabel">
+      <widget class="QLabel" name="numOctaveLabel">
        <property name="text">
-        <string>Num octave</string>
+        <string>Octave</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QSpinBox" name="numOctavesSpinBox">
+      <widget class="QSpinBox" name="numOctaveSpinBox">
        <property name="minimum">
-        <number>1</number>
+        <number>0</number>
        </property>
        <property name="maximum">
         <number>2147483647</number>
        </property>
        <property name="value">
-        <number>1</number>
+        <number>0</number>
        </property>
       </widget>
      </item>

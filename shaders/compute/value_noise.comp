@@ -6,6 +6,7 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(push_constant) uniform Params {
     uint width;
     uint height;
+    float coordinateScale;
     uint64_t seed;
 } params;
 
@@ -26,6 +27,8 @@ void main() {
         return;
     }
 
+    uint sampleX = uint(float(x) * params.coordinateScale);
+    uint sampleY = uint(float(y) * params.coordinateScale);
     uint index = y * params.width + x;
-    heightMap.values[index] = valueNoise(params.seed, x, y);
+    heightMap.values[index] = valueNoise(params.seed, sampleX, sampleY);
 }

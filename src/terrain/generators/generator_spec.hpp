@@ -2,6 +2,7 @@
 
 #include "terrain/terrain_compute_method.hpp"
 
+#include <cmath>
 #include <cstddef>
 #include <variant>
 #include <vector>
@@ -70,10 +71,18 @@ using GeneratorConfig = std::variant<
 >;
 
 struct GeneratorOctaveSettings {
-    std::size_t numOctaves{1};
+    std::size_t numOctave{0};
     float lacunarity{1.0F};
     float persistance{1.0F};
 };
+
+inline float octaveFrequency(const GeneratorOctaveSettings& settings) {
+    return std::pow(settings.lacunarity, static_cast<float>(settings.numOctave));
+}
+
+inline float octaveAmplitude(const GeneratorOctaveSettings& settings) {
+    return std::pow(settings.persistance, static_cast<float>(settings.numOctave));
+}
 
 struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};
@@ -82,6 +91,22 @@ struct GeneratorSpec {
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator(kind)};
     GeneratorOctaveSettings octaveSettings{};
 };
+
+inline float generatorOctaveFrequency(const GeneratorSpec& spec) {
+    if (!generatorSupportsOctaves(spec.kind)) {
+        return 1.0F;
+    }
+
+    return octaveFrequency(spec.octaveSettings);
+}
+
+inline float generatorOctaveAmplitude(const GeneratorSpec& spec) {
+    if (!generatorSupportsOctaves(spec.kind)) {
+        return 1.0F;
+    }
+
+    return octaveAmplitude(spec.octaveSettings);
+}
 
 using GeneratorPipelineSpec = std::vector<GeneratorSpec>;
 

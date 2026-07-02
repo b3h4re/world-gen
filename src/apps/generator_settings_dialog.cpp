@@ -65,11 +65,11 @@ void GeneratorSettingsDialog::enableOctaveSettings(const wgen::GeneratorOctaveSe
     ui_->octaveSettingsLine->setVisible(true);
     ui_->octaveSettingsLabel->setVisible(true);
     setupSpinBox(
-        ui_->numOctavesSpinBox,
-        1,
+        ui_->numOctaveSpinBox,
+        0,
         std::numeric_limits<int>::max(),
         static_cast<int>(std::min<std::size_t>(
-            settings.numOctaves,
+            settings.numOctave,
             static_cast<std::size_t>(std::numeric_limits<int>::max())))
     );
     setupSpinBox(
@@ -89,7 +89,7 @@ void GeneratorSettingsDialog::enableOctaveSettings(const wgen::GeneratorOctaveSe
 void GeneratorSettingsDialog::disableOctaveSettings() {
     ui_->octaveSettingsLine->setVisible(false);
     ui_->octaveSettingsLabel->setVisible(false);
-    disableSpinBox(ui_->numOctavesSpinBox);
+    disableSpinBox(ui_->numOctaveSpinBox);
     disableSpinBox(ui_->lacunaritySpinBox);
     disableSpinBox(ui_->persistanceSpinBox);
 }
@@ -146,7 +146,7 @@ void GeneratorSettingsDialog::accept() {
     }
     if (wgen::generatorSupportsOctaves(spec_.kind)) {
         spec_.octaveSettings = wgen::GeneratorOctaveSettings{
-            .numOctaves = static_cast<std::size_t>(ui_->numOctavesSpinBox->value()),
+            .numOctave = static_cast<std::size_t>(ui_->numOctaveSpinBox->value()),
             .lacunarity = static_cast<float>(ui_->lacunaritySpinBox->value()),
             .persistance = static_cast<float>(ui_->persistanceSpinBox->value()),
         };

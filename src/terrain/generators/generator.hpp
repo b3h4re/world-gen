@@ -89,22 +89,26 @@ namespace wgen {
     struct ValueNoiseComputeSpec {
         std::uint32_t width{};
         std::uint32_t height{};
+        float coordinateScale{1.0F};
         wgen::SeedType seed{};
     };
 
     struct PerlinNoiseComputeSpec {
         std::uint32_t dots{};
+        float coordinateScale{1.0F};
         SeedType seed{};
     };
 
     struct WorleyNoiseComputeSpec {
         std::uint32_t dots{};
         float p{2.0F};
+        float coordinateScale{1.0F};
         SeedType seed{};
     };
 
     struct SimplexNoiseComputeSpec {
         std::uint32_t dots{};
+        float coordinateScale{1.0F};
         SeedType seed{};
     };
 

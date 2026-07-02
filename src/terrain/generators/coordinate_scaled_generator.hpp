@@ -9,7 +9,9 @@ namespace wgen {
 
 class CoordinateScaledGenerator final : public Generator {
 public:
-    CoordinateScaledGenerator(std::unique_ptr<Generator> generator, float coordinateScale);
+    CoordinateScaledGenerator(
+        std::unique_ptr<Generator> generator,
+        float coordinateScale);
 
     void setSeed(SeedType newSeed) override;
     GeneratorCapabilities capabilities() const override;

@@ -5,7 +5,9 @@
 
 namespace wgen {
 
-CoordinateScaledGenerator::CoordinateScaledGenerator(std::unique_ptr<Generator> generator, float coordinateScale)
+CoordinateScaledGenerator::CoordinateScaledGenerator(
+        std::unique_ptr<Generator> generator,
+        float coordinateScale)
     : generator_{std::move(generator)}, coordinateScale_{coordinateScale} {
     if (generator_ == nullptr) {
         throw std::invalid_argument("coordinate-scaled generator cannot wrap null generator");

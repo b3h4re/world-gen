@@ -44,6 +44,7 @@ void ValueNoiseGpuGenerator::dispatch(
     wgen::ValueNoiseComputeSpec computeSpec{
         .width = checkedComputeDimension(output.width(), "GPU heightmap width"),
         .height = checkedComputeDimension(output.height(), "GPU heightmap height"),
+        .coordinateScale = wgen::generatorOctaveFrequency(spec),
         .seed = seed,
     };
 
@@ -71,6 +72,7 @@ void PerlinNoiseGpuGenerator::dispatch(
 
     wgen::PerlinNoiseComputeSpec computeSpec{
         .dots = checkedComputeDimension(perlinSpec->dotsPerCell, "perlin dots per cell"),
+        .coordinateScale = wgen::generatorOctaveFrequency(spec),
         .seed = seed,
     };
 
@@ -116,6 +118,7 @@ void WorleyNoiseGpuGenerator::dispatch(
     wgen::WorleyNoiseComputeSpec computeSpec{
         .dots = checkedComputeDimension(worleySpec->dotsPerCell, "worley dots per cell"),
         .p = checkedPowerDimension(worleySpec->p, "worley minkowsky distance power"),
+        .coordinateScale = wgen::generatorOctaveFrequency(spec),
         .seed = seed,
     };
 
@@ -143,6 +146,7 @@ void SimplexNoiseGpuGenerator::dispatch(
 
     wgen::SimplexNoiseComputeSpec computeSpec{
         .dots = checkedComputeDimension(simplexSpec->dotsPerCell, "simplex dots per cell"),
+        .coordinateScale = wgen::generatorOctaveFrequency(spec),
         .seed = seed,
     };
 

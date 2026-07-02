@@ -2,9 +2,9 @@
 
 namespace lve {
 
-TerrainRenderSystem::TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass)
-    : renderSystem2d_{device, renderPass},
-      renderSystem3d_{device, renderPass} {}
+TerrainRenderSystem::TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
+    : renderSystem2d_{device, renderPass, globalSetLayout},
+      renderSystem3d_{device, renderPass, globalSetLayout} {}
 
 void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
     if (frameInfo.render3d) {

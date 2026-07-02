@@ -33,12 +33,11 @@ void appendHeightMapMesh(
             const float top = minY + (maxY - minY) * static_cast<float>(y) / static_cast<float>(height - 1);
             const float bottom = minY + (maxY - minY) * static_cast<float>(y + 1) / static_cast<float>(height - 1);
             const float sample = heightMap.at(x, y);
-            const glm::vec3 color = colorFunc(sample);
             const auto base = static_cast<std::uint32_t>(vertices.size());
 
             vertices.insert(
                 vertices.end(),
-                {{{left, top}, color}, {{right, top}, color}, {{right, bottom}, color}, {{left, bottom}, color}});
+                {{{left, top}, sample}, {{right, top}, sample}, {{right, bottom}, sample}, {{left, bottom}, sample}});
             indices.insert(indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
         }
     }
@@ -62,7 +61,7 @@ void appendHeightMapMesh3d(
             const float sample = heightMap.at(x, y);
             vertices.push_back({
                 {xPos, 0.1F * sample, zPos},
-                colorFunc(sample)
+                sample
             });
         }
     }
@@ -140,39 +139,39 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
 }
 
 void TerrainAppCore::rotateColorFunction() {
-    if (terrainJobRunning_) {
-        return;
-    }
+    // if (terrainJobRunning_) {
+    //     return;
+    // }
 
     activeColorFuncId_ = (activeColorFuncId_ + 1) % NUM_COLOR_FUNCTIONS;
 
-    const auto colorFunc = getActiveColorFunc();
-    const auto heightMap = activeHeightMap_;
-    terrainJobRunning_ = true;
+    // const auto colorFunc = getActiveColorFunc();
+    // const auto heightMap = activeHeightMap_;
+    // terrainJobRunning_ = true;
 
-    terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc] {
-        TerrainMeshData data;
+    // terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc] {
+    //     TerrainMeshData data;
 
-        appendHeightMapMesh(
-            heightMap,
-            -1.0F,
-            1.0F,
-            -1.0F,
-            1.0F,
-            data.vertices2d,
-            data.indices2d,
-            colorFunc
-        );
+    //     appendHeightMapMesh(
+    //         heightMap,
+    //         -1.0F,
+    //         1.0F,
+    //         -1.0F,
+    //         1.0F,
+    //         data.vertices2d,
+    //         data.indices2d,
+    //         colorFunc
+    //     );
 
-        appendHeightMapMesh3d(
-            heightMap,
-            data.vertices3d,
-            data.indices3d,
-            colorFunc
-        );
+    //     appendHeightMapMesh3d(
+    //         heightMap,
+    //         data.vertices3d,
+    //         data.indices3d,
+    //         colorFunc
+    //     );
 
-        return data;
-    });
+    //     return data;
+    // });
 }
 
 void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
@@ -202,13 +201,6 @@ void TerrainAppCore::setComputeMethod(wgen::TerrainComputeMethod computeMethod) 
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (!terrainJobRunning_) {
         return std::nullopt;
-    }
-
-    if (terrainReappendJob_.valid() && terrainReappendJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
-        TerrainJobResult result;
-        result.data = terrainReappendJob_.get();
-        terrainJobRunning_ = false;
-        return result;
     }
 
     if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {

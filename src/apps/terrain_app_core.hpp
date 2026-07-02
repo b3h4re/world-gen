@@ -63,6 +63,8 @@ public:
 
     const wgen::AppConfig& config() const { return config_; }
 
+    std::size_t getActiveColorFuncID() const { return activeColorFuncId_; }
+
 private:
     static void initGenerators(
         std::vector<std::unique_ptr<wgen::Generator>>& generators,
@@ -91,7 +93,6 @@ private:
     std::vector<std::unique_ptr<wgen::Generator>> generators_{};
     wgen::HeightMap<float> activeHeightMap_{};
 
-    std::future<TerrainMeshData> terrainReappendJob_{};
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};
     std::mutex generatorsMutex_{};

@@ -9,7 +9,7 @@ namespace lve {
 
 class TerrainRenderSystem {
 public:
-    TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass);
+    TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout = VK_NULL_HANDLE);
 
     TerrainRenderSystem(const TerrainRenderSystem &) = delete;
     TerrainRenderSystem &operator=(const TerrainRenderSystem &) = delete;

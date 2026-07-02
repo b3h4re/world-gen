@@ -61,7 +61,9 @@ void TerrainApp::run() {
             sizeof(GlobalUbo),
             1,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+            device.properties.limits.minUniformBufferOffsetAlignment
+        );
         uboBuffers[i]->map();
     }
 
@@ -77,7 +79,7 @@ void TerrainApp::run() {
             .build(globalDescriptorSets[i]);
     }
 
-    TerrainRenderSystem terrainRenderSystem{device, lveRenderer.getSwapChainRenderPass()};
+    TerrainRenderSystem terrainRenderSystem{device, lveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
     Camera2d camera2d{};
     Camera3d camera3d{};
     AppInputSystem appInputSystem{};
@@ -134,6 +136,7 @@ void TerrainApp::run() {
             };
 
             GlobalUbo ubo{};
+            ubo.colorFuncID = core_.getActiveColorFuncID();
             if (render3d_) {
                 ubo.projection = camera3d.projection();
                 ubo.view = camera3d.view();

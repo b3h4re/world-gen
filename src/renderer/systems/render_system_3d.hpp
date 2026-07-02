@@ -13,7 +13,10 @@ namespace lve {
 
 class RenderSystem3d {
 public:
-    RenderSystem3d(LveDevice &device, VkRenderPass renderPass);
+    RenderSystem3d(
+        LveDevice &device,
+        VkRenderPass renderPass,
+        VkDescriptorSetLayout globalSetLayout = VK_NULL_HANDLE);
     ~RenderSystem3d();
 
     RenderSystem3d(const RenderSystem3d &) = delete;
@@ -22,15 +25,17 @@ public:
     void render(
         VkCommandBuffer commandBuffer,
         const Camera3d &camera,
-        const std::vector<GameObject3d> &objects) const;
+        const std::vector<GameObject3d> &objects,
+        VkDescriptorSet globalDescriptorSet = VK_NULL_HANDLE) const;
     void render(FrameInfo &frameInfo) const;
 
 private:
-    void createPipelineLayout();
+    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);
 
     LveDevice &device_;
     VkPipelineLayout pipelineLayout_{};
+    bool hasGlobalSetLayout_{false};
     std::unique_ptr<LvePipeline> pipeline_;
 };
 

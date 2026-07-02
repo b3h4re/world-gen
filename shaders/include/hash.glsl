@@ -2,7 +2,7 @@
 #extension GL_ARB_gpu_shader_int64 : require
 #extension GL_ARB_gpu_shader_fp64 : require
 
-const float PI = 3.1415926535897932384626433832795;
+#include "constants.glsl"
 
 
 uint64_t u64(uint hi, uint lo)

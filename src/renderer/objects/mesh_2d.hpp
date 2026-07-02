@@ -12,7 +12,7 @@ namespace lve {
 
 struct Vertex2d {
     glm::vec2 position;
-    glm::vec3 color;
+    float height;
 
     static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();

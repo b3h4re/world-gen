@@ -12,7 +12,7 @@ std::vector<VkVertexInputBindingDescription> Vertex2d::getBindingDescriptions() 
 std::vector<VkVertexInputAttributeDescription> Vertex2d::getAttributeDescriptions() {
     return {
         {0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex2d, position)},
-        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex2d, color)},
+        {1, 0, VK_FORMAT_R32_SFLOAT, offsetof(Vertex2d, height)},
     };
 }
 

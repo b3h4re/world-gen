@@ -5,17 +5,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 
 namespace lve {
 
-    LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent) : device{deviceRef}, windowExtent{extent} {
+    LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent, PresentMode presentMode)
+            : device{deviceRef}, windowExtent{extent}, desiredPresentMode{presentMode} {
         init();
     }
 
-    LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent, std::shared_ptr<LveSwapChain> previousSwapChain)
-                            : device{deviceRef}, windowExtent{extent}, oldSwapchain{previousSwapChain} {
+    LveSwapChain::LveSwapChain(LveDevice &deviceRef, VkExtent2D extent, std::shared_ptr<LveSwapChain> previousSwapChain, PresentMode presentMode)
+            : device{deviceRef}, windowExtent{extent}, oldSwapchain{previousSwapChain}, desiredPresentMode{presentMode} {
         init();
 
         oldSwapchain = nullptr;
@@ -135,7 +137,7 @@ namespace lve {
         VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
         VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
 
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        uint32_t imageCount = std::max(3u, swapChainSupport.capabilities.minImageCount);
         if (swapChainSupport.capabilities.maxImageCount > 0 &&
             imageCount > swapChainSupport.capabilities.maxImageCount) {
             imageCount = swapChainSupport.capabilities.maxImageCount;
@@ -382,12 +384,42 @@ namespace lve {
     }
 
     VkPresentModeKHR LveSwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) {
-        for (const auto &availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                // std::cout << "Present mode: Mailbox" << "\n";
-                return availablePresentMode;
+        auto contains = [&](VkPresentModeKHR mode) {
+            return std::find(
+                availablePresentModes.begin(),
+                availablePresentModes.end(),
+                mode
+            ) != availablePresentModes.end();
+        };
+
+        switch (desiredPresentMode) {
+            case PresentMode::Immediate: {
+                std::cout << "Present mode: Immediate: FIFO / V-Sync\n";
+                return VK_PRESENT_MODE_FIFO_KHR;
+
+            }
+            case PresentMode::LowLatency: {
+                if (contains(VK_PRESENT_MODE_MAILBOX_KHR)) {
+                    std::cout << "Present mode: LowLatency: Mailbox\n";
+                    return VK_PRESENT_MODE_MAILBOX_KHR;
+                }
+
+                std::cout << "Present mode: FIFO fallback\n";
+                return VK_PRESENT_MODE_FIFO_KHR;
+            }
+            case PresentMode::VSync: {
+                std::cout << "Present mode: VSync: FIFO / V-Sync\n";
+                return VK_PRESENT_MODE_FIFO_KHR;
             }
         }
+        return VK_PRESENT_MODE_FIFO_KHR;
+
+        // for (const auto &availablePresentMode : availablePresentModes) {
+        //     if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+        //         // std::cout << "Present mode: Mailbox" << "\n";
+        //         return availablePresentMode;
+        //     }
+        // }
 
         // for (const auto &availablePresentMode : availablePresentModes) {
         //   if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
@@ -396,8 +428,8 @@ namespace lve {
         //   }
         // }
 
-        std::cout << "Present mode: V-Sync" << "\n";
-        return VK_PRESENT_MODE_FIFO_KHR;
+        // std::cout << "Present mode: V-Sync" << "\n";
+        // return VK_PRESENT_MODE_FIFO_KHR;
     }
 
     VkExtent2D LveSwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {

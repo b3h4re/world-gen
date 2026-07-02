@@ -95,10 +95,26 @@ namespace wgen {
             "window.height"
         );
 
-        config.title = checked_string(
-            root["window"]["title"],
-            config.title,
-            "window.title"
+        std::string mode = checked_string(
+            root["window"]["present_mode"],
+            "vsync",
+            "window.present_mode"
+        );
+        if (mode == "vsync") {
+            config.present_mode = lve::PresentMode::VSync;
+        }
+        if (mode == "immediate") {
+            config.present_mode = lve::PresentMode::Immediate;
+        }
+        if (mode == "mailbox") {
+            config.present_mode = lve::PresentMode::LowLatency;
+        }
+
+
+        config.fps_max = checked_integer<int>(
+            root["window"]["fps_max"],
+            config.fps_max,
+            "window.fps_max"
         );
 
         return config;
@@ -119,18 +135,6 @@ namespace wgen {
     SimplexConfig parse_simplex_config(const toml::table& root) {
         SimplexConfig config;
 
-        config.gridWidth = checked_uinteger<std::size_t>(
-            root["terrain"]["simplex"]["grid_width"],
-            config.gridWidth,
-            "terrain.simplex.grid_width"
-        );
-
-        config.gridHeight = checked_uinteger<std::size_t>(
-            root["terrain"]["simplex"]["grid_height"],
-            config.gridHeight,
-            "terrain.simplex.grid_height"
-        );
-
         config.dotsPerCell = checked_uinteger<std::size_t>(
             root["terrain"]["simplex"]["dots_per_cell"],
             config.dotsPerCell,
@@ -143,16 +147,10 @@ namespace wgen {
     WaveletConfig parse_wavelet_config(const toml::table& root) {
         WaveletConfig config;
 
-        config.gridWidth = checked_uinteger<std::size_t>(
-            root["terrain"]["wavelet"]["grid_width"],
-            config.gridWidth,
-            "terrain.wavelet.grid_width"
-        );
-
-        config.gridHeight = checked_uinteger<std::size_t>(
-            root["terrain"]["wavelet"]["grid_height"],
-            config.gridHeight,
-            "terrain.wavelet.grid_height"
+        config.frequency = checked_float(
+            root["terrain"]["wavelet"]["frequency"],
+            config.frequency,
+            "terrain.wavelet.frequency"
         );
 
         return config;
@@ -160,18 +158,6 @@ namespace wgen {
 
     WorleyConfig parse_worley_config(const toml::table& root) {
         WorleyConfig config;
-
-        config.gridWidth = checked_uinteger<std::size_t>(
-            root["terrain"]["worley"]["grid_width"],
-            config.gridWidth,
-            "terrain.worley.grid_width"
-        );
-
-        config.gridHeight = checked_uinteger<std::size_t>(
-            root["terrain"]["worley"]["grid_height"],
-            config.gridHeight,
-            "terrain.worley.grid_height"
-        );
 
         config.dotsPerCell = checked_uinteger<std::size_t>(
             root["terrain"]["worley"]["dots_per_cell"],

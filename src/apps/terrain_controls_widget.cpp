@@ -1,6 +1,7 @@
 #include "terrain_controls_widget.hpp"
 
 #include "generator_settings_dialog.hpp"
+#include "app_settings.hpp"
 #include "terrain_pipeline_list_model.hpp"
 #include "ui_terrain_controls_widget.h"
 
@@ -157,6 +158,21 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     });
     connect(ui_->generatorSettingsButton, &QPushButton::clicked, this, [this](bool checked) {
         ui_->generatorSettingsWidget->setVisible(checked);
+    });
+
+
+    auto openAppSettings = [this]() {
+        wgen::WindowConfig config = callbacks_.getConfig().windowConfig;
+
+        AppSettingsDialog dialog{config, this};
+        if (dialog.exec() == QDialog::Accepted) {
+            config = dialog.appSettings();
+            callbacks_.configChanged(config);
+        }
+    };
+
+    connect(ui_->appSettingsButton, &QPushButton::clicked, this, [openAppSettings]{
+        openAppSettings();
     });
 }
 

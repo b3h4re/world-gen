@@ -1,6 +1,8 @@
 #pragma once
 
 #include "terrain/generators/generator_spec.hpp"
+#include "config/app_config.hpp"
+#include "gui_helpers.hpp"
 
 #include <QWidget>
 
@@ -19,14 +21,6 @@ class TerrainControlsWidget : public QWidget {
     Q_OBJECT
 
 public:
-    struct Callbacks {
-        std::function<void()> regenerateTerrain;
-        std::function<void()> reloadTerrain;
-        std::function<void()> switchColor;
-        std::function<void(wgen::GeneratorPipelineSpec)> pipelineChanged;
-        std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
-    };
-
     explicit TerrainControlsWidget(Callbacks callbacks, QWidget* parent = nullptr);
     ~TerrainControlsWidget() override;
 

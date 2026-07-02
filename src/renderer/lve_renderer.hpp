@@ -13,7 +13,7 @@ namespace lve {
     class LveRenderer {
         public:
 
-            LveRenderer(WindowSurface& window, LveDevice& device);
+            LveRenderer(WindowSurface& window, LveDevice& device, PresentMode desiredPresentMode = PresentMode::VSync);
             ~LveRenderer();
 
             LveRenderer(const LveRenderer&) = delete;
@@ -39,6 +39,9 @@ namespace lve {
             void endFrame();
             void abortFrame();
 
+            void setDesiredPresentMode(PresentMode desiredPresentMode);
+            PresentMode getDesiredPresentMode() const;
+
 
             void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
             void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
@@ -48,6 +51,7 @@ namespace lve {
             void createCommandBuffers();
             void freeCommandBuffers();
             void recreateSwapChain();
+            PresentMode desiredPresentMode_{PresentMode::VSync};
 
             WindowSurface& lveWindow;
             LveDevice& lveDevice;
@@ -57,6 +61,7 @@ namespace lve {
             uint32_t currentImageIndex;
             int currentFrameIndex{0};
             bool isFrameStarted{false};
+            bool isSwapChainDirty{false};
 
     };
 

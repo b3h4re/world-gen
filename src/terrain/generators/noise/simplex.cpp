@@ -3,17 +3,13 @@
 
 namespace wgen {
 
-    SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell)
-    : SimplexNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}()} {}
+    SimplexNoise2d::SimplexNoise2d(std::size_t dotsPerCell)
+    : SimplexNoise2d{dotsPerCell, std::random_device{}()} {}
 
-    SimplexNoise2d::SimplexNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell, SeedType seed)
-    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed} {}
+    SimplexNoise2d::SimplexNoise2d(std::size_t dotsPerCell, SeedType seed)
+    : dotsPerCell_{dotsPerCell} {}
 
     float SimplexNoise2d::noise(std::size_t x, std::size_t y) const {
-        if (x >= sampleWidth() || y >= sampleHeight()) {
-            throw std::invalid_argument("Simplex sample coordinate is outside the gradient grid");
-        }
-
         const float globalX = static_cast<float>(x) / static_cast<float>(dotsPerCell_);
         const float globalY = static_cast<float>(y) / static_cast<float>(dotsPerCell_);
 
@@ -38,18 +34,18 @@ namespace wgen {
         // Now we have three corners in skewed coords: (i, j), (i + i1, j + j1), (i + 1, j + 1)
         // get gradients for those corners and then get points in real coordinates
         const glm::vec2 g0 = randomHashDir(
-            wrapIndex(skewed_i, gridWidth_),
-            wrapIndex(skewed_j, gridHeight_),
+            skewed_i,
+            skewed_j,
             getSeed()
         );
         const glm::vec2 g1 = randomHashDir(
-            wrapIndex(skewed_i + i1, gridWidth_),
-            wrapIndex(skewed_j + j1, gridHeight_),
+            skewed_i + i1,
+            skewed_j + j1,
             getSeed()
         );
         const glm::vec2 g2 = randomHashDir(
-            wrapIndex(skewed_i + 1, gridWidth_),
-            wrapIndex(skewed_j + 1, gridHeight_),
+            skewed_i + 1,
+            skewed_j + 1,
             getSeed()
         );
 

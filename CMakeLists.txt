@@ -80,8 +80,13 @@ file(GLOB_RECURSE SHADER_INCLUDES CONFIGURE_DEPENDS
 )
 
 set(SHADER_BINARY_FILES)
+set(WORLEY_NOISE_COMPUTE_SHADER "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compute/worley_noise.comp")
 
 foreach(SHADER ${SHADER_SOURCES})
+    if(SHADER STREQUAL WORLEY_NOISE_COMPUTE_SHADER)
+        continue()
+    endif()
+
     file(RELATIVE_PATH SHADER_RELATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "${SHADER}")
 
     set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_RELATIVE_PATH}.spv")
@@ -102,6 +107,30 @@ foreach(SHADER ${SHADER_SOURCES})
             ${SHADER_INCLUDES}
 
         COMMENT "Compiling shader ${SHADER_RELATIVE_PATH}"
+        VERBATIM
+    )
+
+    list(APPEND SHADER_BINARY_FILES "${SPIRV}")
+endforeach()
+
+foreach(WORLEY_NUM_POINTS RANGE 1 8)
+    set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/compute/worley_noise_${WORLEY_NUM_POINTS}.comp.spv")
+
+    add_custom_command(
+        OUTPUT "${SPIRV}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/shaders/compute"
+
+        COMMAND ${GLSLC}
+            -DNUM_POINTS=${WORLEY_NUM_POINTS}
+            -I "${SHADER_INCLUDE_DIR}"
+            "${WORLEY_NOISE_COMPUTE_SHADER}"
+            -o "${SPIRV}"
+
+        DEPENDS
+            "${WORLEY_NOISE_COMPUTE_SHADER}"
+            ${SHADER_INCLUDES}
+
+        COMMENT "Compiling shader compute/worley_noise_${WORLEY_NUM_POINTS}.comp"
         VERBATIM
     )
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <utility>
 
@@ -147,7 +148,11 @@ namespace wgen {
     }
 
     std::string WorleyNoise2d::compShader() const {
-        return "worley_noise";
+        if (numPoints_ < MIN_GPU_FEATURE_POINT_COUNT || numPoints_ > MAX_GPU_FEATURE_POINT_COUNT) {
+            throw std::runtime_error("Worley GPU shader supports 1 to 8 feature points");
+        }
+
+        return "worley_noise_" + std::to_string(numPoints_);
     }
 
     std::size_t WorleyNoise2d::specSize() const {

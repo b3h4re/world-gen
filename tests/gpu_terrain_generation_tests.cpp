@@ -6,6 +6,7 @@
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
+#include "terrain/generators/noise/worley.hpp"
 
 #include "helpers.hpp"
 
@@ -118,6 +119,22 @@ void testWorleyNoise() {
     testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testWorleyNoiseTwoPoints() {
+    const std::size_t width = 1000;
+    const std::size_t height = 1000;
+    const std::size_t dots = 1000;
+    const std::size_t numPoints = 2;
+    const float p = 2.0F;
+
+    wgen::WorleyNoise2d gen{dots, 0, p, numPoints};
+    wgen::WorleyNoiseComputeSpec spec{
+        .dots = dots,
+        .p = p
+    };
+    std::string message = "Worley Noise with two feature points generated on cpu must be exactly the same as generated on GPU";
+    testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
+}
+
 void testSimplexNoise() {
     const std::size_t width = 1000;
     const std::size_t height = 1000;
@@ -180,6 +197,59 @@ void testGpuTerrainPipeline() {
         "GPU terrain pipeline must accumulate scaled generator outputs");
 }
 
+void testGpuTerrainPipelineWorleyTwoPoints() {
+    const std::size_t width = 64;
+    const std::size_t height = 64;
+    const wgen::SeedType worleySeed = 123;
+    const float worleyScale = 1.0F;
+    const std::size_t dots = 16;
+    const std::size_t numPoints = 2;
+    const float p = 2.0F;
+
+    const wgen::GeneratorSpec worleySpec{
+        .kind = wgen::GeneratorKind::WorleyNoise,
+        .config = wgen::WorleyNoiseGeneratorSpec{
+            .dotsPerCell = dots,
+            .numPoints = numPoints,
+            .p = p,
+        },
+        .scale = worleyScale,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+    };
+
+    lve::GpuTerrainPipeline pipeline;
+    const wgen::HeightMap<float> gpuHeightMap = pipeline.generateHeightMap(
+        {
+            lve::GpuGeneratorRequest{
+                .spec = worleySpec,
+                .seed = worleySeed,
+            },
+        },
+        width,
+        height);
+
+    lve::GpuHeightMap directGpuHeightMap{*device, width, height};
+    const wgen::WorleyNoiseComputeSpec computeSpec{
+        .dots = dots,
+        .p = p,
+        .seed = worleySeed,
+    };
+    lve::Computer computer{*device, "worley_noise_2", sizeof(wgen::WorleyNoiseComputeSpec)};
+    computer.dispatch(
+        computeSpec,
+        directGpuHeightMap.descriptorInfo(),
+        lve::ComputeDispatchSize{
+            .groupCountX = width,
+            .groupCountY = height,
+            .groupCountZ = 1,
+        });
+    const wgen::HeightMap<float> directGpuWorleyHeightMap = directGpuHeightMap.copyToCpu();
+
+    wgen::tests::require(
+        gpuHeightMap.isClose(directGpuWorleyHeightMap, 0.00001F),
+        "GPU terrain pipeline must choose the two-point Worley shader");
+}
+
 
 }
 
@@ -191,8 +261,10 @@ int main() {
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
         wgen::tests::runTest("Worley Noise Test", testWorleyNoise);
+        wgen::tests::runTest("Worley Noise Two Points Test", testWorleyNoiseTwoPoints);
         wgen::tests::runTest("Simplex Noise Test", testSimplexNoise);
         wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
+        wgen::tests::runTest("GPU Terrain Pipeline Worley Two Points Test", testGpuTerrainPipelineWorleyTwoPoints);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
         if (isVulkanUnavailableError(exception)) {

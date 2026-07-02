@@ -6,6 +6,8 @@
 #include "terrain/generators/generator_spec.hpp"
 #include "terrain/generators/generator.hpp"
 
+#include <array>
+#include <cstddef>
 #include <memory>
 
 namespace lve {
@@ -56,7 +58,10 @@ public:
         wgen::SeedType seed) override;
 
 private:
-    Computer computer_;
+    Computer& computerForFeaturePointCount(std::size_t numPoints);
+
+    LveComputeDevice& device_;
+    std::array<std::unique_ptr<Computer>, 8> computers_{};
 };
 
 class SimplexNoiseGpuGenerator final : public GpuGenerator {

@@ -1,5 +1,7 @@
 #include "gpu_generator.hpp"
 
+#include "terrain/generators/noise/worley.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -83,7 +85,24 @@ void PerlinNoiseGpuGenerator::dispatch(
 }
 
 WorleyNoiseGpuGenerator::WorleyNoiseGpuGenerator(LveComputeDevice& device)
-    : computer_{device, "worley_noise", sizeof(wgen::WorleyNoiseComputeSpec)} {}
+    : device_{device} {}
+
+Computer& WorleyNoiseGpuGenerator::computerForFeaturePointCount(std::size_t numPoints) {
+    if (numPoints < wgen::WorleyNoise2d::MIN_GPU_FEATURE_POINT_COUNT ||
+            numPoints > wgen::WorleyNoise2d::MAX_GPU_FEATURE_POINT_COUNT) {
+        throw std::invalid_argument("Worley GPU generator supports 1 to 8 feature points");
+    }
+
+    const std::size_t index = numPoints - wgen::WorleyNoise2d::MIN_GPU_FEATURE_POINT_COUNT;
+    if (computers_[index] == nullptr) {
+        computers_[index] = std::make_unique<Computer>(
+            device_,
+            "worley_noise_" + std::to_string(numPoints),
+            sizeof(wgen::WorleyNoiseComputeSpec));
+    }
+
+    return *computers_[index];
+}
 
 void WorleyNoiseGpuGenerator::dispatch(
         GpuHeightMap& output,
@@ -100,7 +119,7 @@ void WorleyNoiseGpuGenerator::dispatch(
         .seed = seed,
     };
 
-    computer_.dispatch(
+    computerForFeaturePointCount(worleySpec->numPoints).dispatch(
         computeSpec,
         output.descriptorInfo(),
         ComputeDispatchSize{

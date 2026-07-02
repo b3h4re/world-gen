@@ -15,6 +15,10 @@
 
 namespace lve {
 
+bool hasActiveOctaves(const wgen::GeneratorSpec& spec) {
+    return wgen::generatorSupportsOctaves(spec.kind) && spec.octaveSettings.numOctaves > 1;
+}
+
 void appendHeightMapMesh(
         const wgen::HeightMap<float>& heightMap,
         float minX,
@@ -215,7 +219,7 @@ void TerrainAppCore::initGenerators(
     generators.clear();
     generators.reserve(pipelineSpec.size());
     for (const wgen::GeneratorSpec& spec : pipelineSpec) {
-        generators.push_back(wgen::makeGenerator(spec, seed));
+        generators.push_back(wgen::makePipelineGenerator(spec, seed));
     }
     setGeneratorSeeds(generators, seed);
 }
@@ -274,7 +278,8 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMap(const wgen::TerrainConf
 
     for (std::size_t i = 0; i < pipelineSpec_.size(); ++i) {
         const wgen::GeneratorSpec& spec = pipelineSpec_[i];
-        if (spec.computeMethod == wgen::TerrainComputeMethod::VulkanCompute &&
+        if (!hasActiveOctaves(spec) &&
+                spec.computeMethod == wgen::TerrainComputeMethod::VulkanCompute &&
                 wgen::generatorSupportsComputeMethod(spec.kind, wgen::TerrainComputeMethod::VulkanCompute)) {
             gpuRequests.push_back({
                 .spec = spec,

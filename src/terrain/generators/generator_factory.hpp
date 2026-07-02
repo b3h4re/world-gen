@@ -9,6 +9,7 @@
 namespace wgen {
 
 std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType seed);
+std::unique_ptr<Generator> makePipelineGenerator(const GeneratorSpec& spec, SeedType seed);
 std::unique_ptr<TerrainPipeline> makePipeline(const GeneratorPipelineSpec& specs, SeedType seed);
 
 } // namespace wgen

@@ -94,16 +94,20 @@ std::unique_ptr<TerrainPipeline> makeOctavePipeline(const GeneratorSpec& spec, S
     return pipeline;
 }
 
+std::unique_ptr<Generator> makePipelineGenerator(const GeneratorSpec& spec, SeedType seed) {
+    auto generator = makeGenerator(spec, seed);
+    if (generator->capabilities().supportsOctaves()) {
+        generator = makeOctavePipeline(spec, seed);
+    }
+
+    return generator;
+}
+
 std::unique_ptr<TerrainPipeline> makePipeline(const GeneratorPipelineSpec& specs, SeedType seed) {
     auto pipeline = std::make_unique<TerrainPipeline>();
 
     for (const GeneratorSpec& spec : specs) {
-        auto generator = makeGenerator(spec, seed);
-        if (generator->capabilities().supportsOctaves()) {
-            generator = makeOctavePipeline(spec, seed);
-        }
-
-        pipeline->push_back(std::move(generator), multiplyFunction(spec.scale));
+        pipeline->push_back(makePipelineGenerator(spec, seed), multiplyFunction(spec.scale));
     }
 
     pipeline->setSeed(seed);

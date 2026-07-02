@@ -15,6 +15,24 @@ enum class GeneratorKind {
     SimplexNoise
 };
 
+constexpr bool generatorSupportsVulkanCompute(GeneratorKind kind) {
+    switch (kind) {
+        case GeneratorKind::ValueNoise:
+        case GeneratorKind::PerlinNoise:
+        case GeneratorKind::WorleyNoise:
+        case GeneratorKind::SimplexNoise:
+            return true;
+    }
+
+    return false;
+}
+
+constexpr TerrainComputeMethod defaultComputeMethodForGenerator(GeneratorKind kind) {
+    return generatorSupportsVulkanCompute(kind)
+        ? TerrainComputeMethod::VulkanCompute
+        : TerrainComputeMethod::Cpu;
+}
+
 struct ValueNoiseGeneratorSpec {};
 
 struct PerlinNoiseGeneratorSpec {
@@ -43,7 +61,7 @@ struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};
     GeneratorConfig config{ValueNoiseGeneratorSpec{}};
     float scale{1.0F};
-    TerrainComputeMethod computeMethod{TerrainComputeMethod::Cpu};
+    TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator(kind)};
 };
 
 using GeneratorPipelineSpec = std::vector<GeneratorSpec>;

@@ -124,6 +124,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         QMenu menu{this};
         QAction* openSettingsAction = menu.addAction(QStringLiteral("Open generator settings"));
         QAction* removeGeneratorAction = menu.addAction(QStringLiteral("Remove generator"));
+        QAction* duplicateGeneratorAction = menu.addAction(QStringLiteral("Duplicate"));
 
         const QAction* selectedAction = menu.exec(ui_->listView->viewport()->mapToGlobal(pos));
         if (selectedAction == openSettingsAction) {
@@ -132,6 +133,16 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         }
         if (selectedAction == removeGeneratorAction) {
             pipelineModel_->removeGenerator(index.row());
+        }
+        if (selectedAction == duplicateGeneratorAction) {
+            auto gen = pipelineModel_->generatorAt(index.row());
+            pipelineModel_->appendGenerator(wgen::GeneratorSpec{
+                .kind = gen->kind,
+                .config = gen->config,
+                .scale = gen->scale,
+                .computeMethod = gen->computeMethod,
+                .octaveSettings = gen->octaveSettings
+            });
         }
     });
 

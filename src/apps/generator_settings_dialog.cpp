@@ -18,9 +18,14 @@ QWidget* GeneratorSettingsDialog::getLabelForField(QWidget *field) {
 }
 
 void GeneratorSettingsDialog::enableDotsPerCell(std::size_t val) {
-    setupSpinBox(ui_->dotsPerCellSpinBox, 2, std::numeric_limits<int>::max(), static_cast<int>(std::min<std::size_t>(
+    setupSpinBox(
+        ui_->dotsPerCellSpinBox,
+        2,
+        std::numeric_limits<int>::max(),
+        static_cast<int>(std::min<std::size_t>(
             val,
-            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+            static_cast<std::size_t>(std::numeric_limits<int>::max())))
+    );
 }
 
 void GeneratorSettingsDialog::enableFrequency(float f) {
@@ -29,6 +34,26 @@ void GeneratorSettingsDialog::enableFrequency(float f) {
         0.0F,
         std::numeric_limits<float>::max(),
         f
+    );
+}
+
+void GeneratorSettingsDialog::enablePower(float p) {
+    setupSpinBox(
+        ui_->powerSpinBox,
+        0.01F,
+        std::numeric_limits<float>::max(),
+        p
+    );
+}
+
+void GeneratorSettingsDialog::enableNumPoints(std::size_t numPoints) {
+    setupSpinBox(
+        ui_->numPointsSpinBox,
+        1,
+        8,
+        static_cast<int>(std::min<std::size_t>(
+            numPoints,
+            static_cast<std::size_t>(std::numeric_limits<int>::max())))
     );
 }
 
@@ -41,12 +66,16 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
 
     disableSpinBox(ui_->dotsPerCellSpinBox);
     disableSpinBox(ui_->frequencySpinBox);
+    disableSpinBox(ui_->powerSpinBox);
+    disableSpinBox(ui_->numPointsSpinBox);
 
     if (auto* perlin = std::get_if<wgen::PerlinNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(perlin->dotsPerCell);
     }
     if (auto* worley = std::get_if<wgen::WorleyNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(worley->dotsPerCell);
+        enablePower(worley->p);
+        enableNumPoints(worley->numPoints);
     }
     if (auto* simplex = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(simplex->dotsPerCell);
@@ -81,6 +110,14 @@ void GeneratorSettingsDialog::accept() {
         };
     }
 
+    if (std::holds_alternative<wgen::WorleyNoiseGeneratorSpec>(spec_.config)) {
+        spec_.config = wgen::WorleyNoiseGeneratorSpec{
+            .dotsPerCell = static_cast<std::size_t>(ui_->dotsPerCellSpinBox->value()),
+            .numPoints = static_cast<std::size_t>(ui_->numPointsSpinBox->value()),
+            .p = static_cast<float>(ui_->powerSpinBox->value())
+        };
+    }
+
     QDialog::accept();
 }
 
@@ -88,6 +125,8 @@ QString GeneratorSettingsDialog::generatorName(wgen::GeneratorKind kind) {
     switch (kind) {
         case wgen::GeneratorKind::PerlinNoise:
             return QStringLiteral("Perlin");
+        case wgen::GeneratorKind::SimplexNoise:
+            return QStringLiteral("Simplex");
         case wgen::GeneratorKind::WorleyNoise:
             return QStringLiteral("Worley");
         case wgen::GeneratorKind::ValueNoise:

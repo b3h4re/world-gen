@@ -67,6 +67,8 @@ private:
 
     void enableDotsPerCell(std::size_t val = 100);
     void enableFrequency(float f = 0.014231234F);
+    void enablePower(float p = 2.0F);
+    void enableNumPoints(std::size_t numPoints = 1);
 
 };
 

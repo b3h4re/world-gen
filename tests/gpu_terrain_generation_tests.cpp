@@ -108,7 +108,7 @@ void testWorleyNoise() {
     const std::size_t numPoints = 1;
     const float p = 2.0F;
 
-    wgen::WorleyNoise2d gen{width, height, dots, 0, p, numPoints};
+    wgen::WorleyNoise2d gen{dots, 0, p, numPoints};
     wgen::WorleyNoiseComputeSpec spec{
         .dots = dots,
         .p = p

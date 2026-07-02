@@ -6,7 +6,9 @@
 
 #include <QAbstractItemModel>
 #include <QAction>
+#include <QListView>
 #include <QMenu>
+#include <QPoint>
 #include <utility>
 
 namespace lve {
@@ -84,7 +86,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         });
     });
 
-    connect(ui_->listView, &QListView::doubleClicked, this, [this](const QModelIndex& index) {
+    auto openGeneratorSettings = [this](const QModelIndex& index) {
         const wgen::GeneratorSpec* spec = pipelineModel_->generatorAt(index.row());
         if (spec == nullptr) {
             return;
@@ -93,6 +95,33 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         GeneratorSettingsDialog dialog{*spec, this};
         if (dialog.exec() == QDialog::Accepted) {
             pipelineModel_->updateGenerator(index.row(), dialog.generatorSpec());
+        }
+    };
+
+    connect(ui_->listView, &QListView::doubleClicked, this, [openGeneratorSettings](const QModelIndex& index) {
+        openGeneratorSettings(index);
+    });
+
+    ui_->listView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_->listView, &QListView::customContextMenuRequested, this, [this, openGeneratorSettings](const QPoint& pos) {
+        const QModelIndex index = ui_->listView->indexAt(pos);
+        if (!index.isValid() || pipelineModel_->generatorAt(index.row()) == nullptr) {
+            return;
+        }
+
+        ui_->listView->setCurrentIndex(index);
+
+        QMenu menu{this};
+        QAction* openSettingsAction = menu.addAction(QStringLiteral("Open generator settings"));
+        QAction* removeGeneratorAction = menu.addAction(QStringLiteral("Remove generator"));
+
+        const QAction* selectedAction = menu.exec(ui_->listView->viewport()->mapToGlobal(pos));
+        if (selectedAction == openSettingsAction) {
+            openGeneratorSettings(index);
+            return;
+        }
+        if (selectedAction == removeGeneratorAction) {
+            pipelineModel_->removeGenerator(index.row());
         }
     });
 

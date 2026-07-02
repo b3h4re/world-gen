@@ -32,13 +32,12 @@ namespace wgen {
         };
     }
 
-    WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
-                                 float p, std::size_t numPoints)
-    : WorleyNoise2d{gridWidth, gridHeight, dotsPerCell, std::random_device{}(), p, numPoints} {}
+    WorleyNoise2d::WorleyNoise2d(std::size_t dotsPerCell, float p, std::size_t numPoints)
+    : WorleyNoise2d{dotsPerCell, std::random_device{}(), p, numPoints} {}
 
-    WorleyNoise2d::WorleyNoise2d(std::size_t gridWidth, std::size_t gridHeight, std::size_t dotsPerCell,
+    WorleyNoise2d::WorleyNoise2d(std::size_t dotsPerCell,
                                  SeedType seed, float p, std::size_t numPoints)
-    : GradientNoise{gridWidth, gridHeight, dotsPerCell, seed}, p_{p}, numPoints_{numPoints} {
+    : dotsPerCell_{dotsPerCell}, p_{p}, numPoints_{numPoints} {
         if (p_ <= 0.0F) {
             throw std::invalid_argument("Worley distance exponent must be positive");
         }

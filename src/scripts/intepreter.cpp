@@ -122,31 +122,29 @@ namespace wgen {
 
         // Constructors for generators
         constructors["worley"] = [](const std::vector<Value>& args) -> Value {
-            if (args.size() < 3) {
-                throw std::runtime_error("Worley must have at least three arguments: width, height and dots per cell");
+            if (args.size() < 1) {
+                throw std::runtime_error("Worley must have at least one argument:  dots per cell");
             }
 
-            const auto width = static_cast<std::size_t>(as<int>(args[0]));
-            const auto height = static_cast<std::size_t>(as<int>(args[1]));
-            const auto dots = static_cast<std::size_t>(as<int>(args[2]));
+            const auto dots = static_cast<std::size_t>(as<int>(args[0]));
+
+            if (args.size() == 1) {
+                return std::make_unique<wgen::WorleyNoise2d>(dots);
+            }
+
+            const auto seed = static_cast<SeedType>(as<int>(args[1]));
+
+            if (args.size() == 2) {
+                return std::make_unique<wgen::WorleyNoise2d>(dots, seed);
+            }
+
+            const auto p = static_cast<float>(as<float>(args[2]));
 
             if (args.size() == 3) {
-                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots);
+                return std::make_unique<wgen::WorleyNoise2d>(dots, seed, p);
             }
 
-            const auto seed = static_cast<SeedType>(as<int>(args[3]));
-
-            if (args.size() == 4) {
-                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots, seed);
-            }
-
-            const auto p = static_cast<float>(as<float>(args[4]));
-
-            if (args.size() == 5) {
-                return std::make_unique<wgen::WorleyNoise2d>(width, height, dots, seed, p);
-            }
-
-            throw std::runtime_error("Worley expects width, height, dots, optional seed, and optional p");
+            throw std::runtime_error("Worley expects dots, optional seed, and optional p");
         };
 
         constructors["wavelet"] = [](const std::vector<Value>& args) -> Value {

@@ -8,20 +8,16 @@
 
 namespace wgen {
 
-    class WorleyNoise2d : public GradientNoise {
+    class WorleyNoise2d : public Generator {
     public:
 
         WorleyNoise2d(
-            std::size_t gridWidth,
-            std::size_t gridHeight,
             std::size_t dotsPerCell,
             SeedType seed,
             float p = 2,
             std::size_t numPoints = 1
         );
         WorleyNoise2d(
-            std::size_t gridWidth,
-            std::size_t gridHeight,
             std::size_t dotsPerCell,
             float p = 2,
             std::size_t numPoints = 1
@@ -33,6 +29,7 @@ namespace wgen {
 
     private:
         float p_;
+        std::size_t dotsPerCell_;
         std::size_t numPoints_;
 
         // here gradients are feature points

@@ -35,7 +35,6 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
             }
 
             return std::make_unique<WorleyNoise2d>(
-                2, 2,
                 config->dotsPerCell,
                 seed,
                 config->p,

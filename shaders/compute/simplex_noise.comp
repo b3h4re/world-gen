@@ -1,0 +1,84 @@
+#version 450
+#include "hash.glsl"
+#include "common.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint dots;
+    uint64_t seed;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+float simplexNoise(uint64_t seed, uint x, uint y, uint dots) {
+    float globalX = float(x) / float(dots);
+    float globalY = float(y) / float(dots);
+
+    float skewing = (globalX + globalY) * SKEWING_CONSTANT_F2;
+    uint skewed_i = uint(floor(globalX + skewing));
+    uint skewed_j = uint(floor(globalY + skewing));
+
+    float unskewing = float(skewed_i + skewed_j) * UNSKEWING_CONSTANT_G2;
+    float simplex_cell_X0 = float(skewed_i) - unskewing;
+    float simplex_cell_Y0 = float(skewed_j) - unskewing;
+
+    vec2 simplex_corner = vec2(simplex_cell_X0, simplex_cell_Y0);
+
+    float x0 = globalX - simplex_cell_X0;
+    float y0 = globalY - simplex_cell_Y0;
+
+    const uint i1 = x0 > y0 ? 1 : 0;
+    const uint j1 = x0 > y0 ? 0 : 1;
+
+    const vec2 g0 = randomHashDir(
+        skewed_i,
+        skewed_j,
+        seed
+    );
+    const vec2 g1 = randomHashDir(
+        skewed_i + i1,
+        skewed_j + j1,
+        seed
+    );
+    const vec2 g2 = randomHashDir(
+        skewed_i + 1,
+        skewed_j + 1,
+        seed
+    );
+
+    const vec2 d0 = vec2(x0, y0);
+    const vec2 d1 = vec2(
+        x0 - float(i1) + UNSKEWING_CONSTANT_G2,
+        y0 - float(j1) + UNSKEWING_CONSTANT_G2
+    );
+    const vec2 d2 = vec2(
+        x0 - 1.0F + 2.0F * UNSKEWING_CONSTANT_G2,
+        y0 - 1.0F + 2.0F * UNSKEWING_CONSTANT_G2
+    );
+
+    const float t0 = 0.5F - d0.x*d0.x - d0.y*d0.y;
+    const float t1 = 0.5F - d1.x*d1.x - d1.y*d1.y;
+    const float t2 = 0.5F - d2.x*d2.x - d2.y*d2.y;
+
+    const float n0 = t0 > 0.0F ? t0*t0*t0*t0 * dot(g0, d0) : 0.0F;
+    const float n1 = t1 > 0.0F ? t1*t1*t1*t1 * dot(g1, d1) : 0.0F;
+    const float n2 = t2 > 0.0F ? t2*t2*t2*t2 * dot(g2, d2) : 0.0F;
+
+    return NORMALIZATION_CONSTANT * (n0 + n1 + n2);
+}
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+    uint index = y * width + x;
+    if (index >= heightMap.values.length()) {
+        return;
+    }
+
+    heightMap.values[index] = simplexNoise(params.seed, x, y, params.dots);
+}

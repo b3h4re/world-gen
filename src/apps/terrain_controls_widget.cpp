@@ -66,6 +66,16 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .scale = 1.0F,
         });
     });
+    auto* addSimplexAction = addGeneratorMenu->addAction(QStringLiteral("Simplex"));
+    connect(addSimplexAction, &QAction::triggered, this, [this] {
+        pipelineModel_->appendGenerator(wgen::GeneratorSpec{
+            .kind = wgen::GeneratorKind::SimplexNoise,
+            .config = wgen::SimplexNoiseGeneratorSpec{
+                .dotsPerCell = 100,
+            },
+            .scale = 1.0F,
+        });
+    });
     auto* addWorleyAction = addGeneratorMenu->addAction(QStringLiteral("Worley"));
     connect(addWorleyAction, &QAction::triggered, this, [this] {
         pipelineModel_->appendGenerator(wgen::GeneratorSpec{

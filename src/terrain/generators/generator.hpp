@@ -83,12 +83,6 @@ namespace wgen {
         }
     };
 
-    enum class GeneratorType {
-        ValueNoise,
-        PerlinNoise
-    };
-
-
     struct ValueNoiseComputeSpec {
         std::uint32_t width{};
         std::uint32_t height{};
@@ -103,6 +97,11 @@ namespace wgen {
     struct WorleyNoiseComputeSpec {
         std::uint32_t dots{};
         float p{2.0F};
+        SeedType seed{};
+    };
+
+    struct SimplexNoiseComputeSpec {
+        std::uint32_t dots{};
         SeedType seed{};
     };
 

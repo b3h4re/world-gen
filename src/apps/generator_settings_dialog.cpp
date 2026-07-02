@@ -30,6 +30,11 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
         ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
             worley->dotsPerCell,
             static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+    } else if (auto* simplex = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec_.config)) {
+        ui_->dotsPerCellSpinBox->setRange(2, std::numeric_limits<int>::max());
+        ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
+            simplex->dotsPerCell,
+            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
     } else {
         ui_->dotsPerCellSpinBox->setVisible(false);
         if (QWidget* label = ui_->formLayout->labelForField(ui_->dotsPerCellSpinBox)) {

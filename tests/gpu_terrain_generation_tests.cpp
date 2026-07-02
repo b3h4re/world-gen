@@ -4,6 +4,7 @@
 #include "renderer/compute/gpu_terrain_pipeline.hpp"
 #include "terrain/generators/generator_spec.hpp"
 #include "terrain/generators/noise/perlin.hpp"
+#include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 
 #include "helpers.hpp"
@@ -117,6 +118,19 @@ void testWorleyNoise() {
     testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testSimplexNoise() {
+    const std::size_t width = 1000;
+    const std::size_t height = 1000;
+    const std::size_t dots = 1000;
+
+    wgen::SimplexNoise2d gen{dots, 0};
+    wgen::SimplexNoiseComputeSpec spec{
+        .dots = dots,
+    };
+    std::string message = "Worley Noise generated on cpu must be exactly the same as generated on GPU";
+    testGenerator<wgen::SimplexNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
+}
+
 void testGpuTerrainPipeline() {
     const std::size_t width = 64;
     const std::size_t height = 64;
@@ -176,7 +190,8 @@ int main() {
 
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
-        wgen::tests::runTest("Perlin Noise Test", testWorleyNoise);
+        wgen::tests::runTest("Worley Noise Test", testWorleyNoise);
+        wgen::tests::runTest("Simplex Noise Test", testSimplexNoise);
         wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";

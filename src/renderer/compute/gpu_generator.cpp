@@ -110,6 +110,33 @@ void WorleyNoiseGpuGenerator::dispatch(
         });
 }
 
+SimplexNoiseGpuGenerator::SimplexNoiseGpuGenerator(LveComputeDevice& device)
+    : computer_{device, "simplex_noise", sizeof(wgen::SimplexNoiseComputeSpec)} {}
+
+void SimplexNoiseGpuGenerator::dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) {
+    const auto* simplexSpec = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec.config);
+    if (spec.kind != wgen::GeneratorKind::SimplexNoise || simplexSpec == nullptr) {
+        throw std::invalid_argument("simplex GPU generator received wrong spec");
+    }
+
+    wgen::SimplexNoiseComputeSpec computeSpec{
+        .dots = checkedComputeDimension(simplexSpec->dotsPerCell, "simplex dots per cell"),
+        .seed = seed,
+    };
+
+    computer_.dispatch(
+        computeSpec,
+        output.descriptorInfo(),
+        ComputeDispatchSize{
+            .groupCountX = checkedComputeDimension(output.width(), "GPU heightmap width"),
+            .groupCountY = checkedComputeDimension(output.height(), "GPU heightmap height"),
+            .groupCountZ = 1,
+        });
+}
+
 std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::GeneratorKind kind) {
     switch (kind) {
         case wgen::GeneratorKind::ValueNoise:
@@ -118,6 +145,8 @@ std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::G
             return std::make_unique<PerlinNoiseGpuGenerator>(device);
         case wgen::GeneratorKind::WorleyNoise:
             return std::make_unique<WorleyNoiseGpuGenerator>(device);
+        case wgen::GeneratorKind::SimplexNoise:
+            return std::make_unique<SimplexNoiseGpuGenerator>(device);
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

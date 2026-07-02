@@ -16,6 +16,9 @@ namespace wgen {
         SimplexNoise2d(std::size_t dotsPerCell, SeedType seed);
         SimplexNoise2d(std::size_t dotsPerCell);
         float noise(std::size_t x, std::size_t y) const override;
+        GeneratorCapabilities capabilities() const override;
+        virtual std::string compShader() const override;
+        virtual std::size_t specSize() const override;
 
     private:
         std::size_t dotsPerCell_;

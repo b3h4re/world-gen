@@ -39,6 +39,11 @@ GpuGenerator& GpuTerrainPipeline::generatorFor(wgen::GeneratorKind kind) {
                 worleyNoiseGenerator_ = makeGpuGenerator(device_, kind);
             }
             return *worleyNoiseGenerator_;
+        case wgen::GeneratorKind::SimplexNoise:
+            if (simplexNoiseGenerator_ == nullptr) {
+                simplexNoiseGenerator_ = makeGpuGenerator(device_, kind);
+            }
+            return *simplexNoiseGenerator_;
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

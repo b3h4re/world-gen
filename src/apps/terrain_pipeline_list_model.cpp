@@ -77,6 +77,8 @@ QString TerrainPipelineListModel::displayName(const wgen::GeneratorSpec& spec) {
     switch (spec.kind) {
         case wgen::GeneratorKind::PerlinNoise:
             return QStringLiteral("Perlin");
+        case wgen::GeneratorKind::SimplexNoise:
+            return QStringLiteral("Simplex");
         case wgen::GeneratorKind::WorleyNoise:
             return QStringLiteral("Worley");
         case wgen::GeneratorKind::ValueNoise:

@@ -72,4 +72,19 @@ namespace wgen {
         return NORMALIZATION_CONSTANT * (n0 + n1 + n2);
     }
 
+    GeneratorCapabilities SimplexNoise2d::capabilities() const {
+        return {
+            .cpu = true,
+            .vulkanCompute = true,
+        };
+    }
+
+    std::string SimplexNoise2d::compShader() const {
+        return "simplex_noise";
+    }
+
+    std::size_t SimplexNoise2d::specSize() const {
+        return sizeof(SimplexNoiseComputeSpec);
+    }
+
 }

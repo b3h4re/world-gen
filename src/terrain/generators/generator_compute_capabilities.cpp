@@ -10,6 +10,7 @@ bool generatorSupportsComputeMethod(GeneratorKind kind, TerrainComputeMethod com
     switch (kind) {
         case GeneratorKind::PerlinNoise:
         case GeneratorKind::WorleyNoise:
+        case GeneratorKind::SimplexNoise:
         case GeneratorKind::ValueNoise:
             return computeMethod == TerrainComputeMethod::VulkanCompute;
     }

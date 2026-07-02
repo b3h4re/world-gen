@@ -14,7 +14,11 @@
 namespace lve {
 
 QWidget* GeneratorSettingsDialog::getLabelForField(QWidget *field) {
-    return ui_->formLayout->labelForField(field);
+    if (QWidget* label = ui_->formLayout->labelForField(field)) {
+        return label;
+    }
+
+    return ui_->octaveFormLayout->labelForField(field);
 }
 
 void GeneratorSettingsDialog::enableDotsPerCell(std::size_t val) {
@@ -57,6 +61,39 @@ void GeneratorSettingsDialog::enableNumPoints(std::size_t numPoints) {
     );
 }
 
+void GeneratorSettingsDialog::enableOctaveSettings(const wgen::GeneratorOctaveSettings& settings) {
+    ui_->octaveSettingsLine->setVisible(true);
+    ui_->octaveSettingsLabel->setVisible(true);
+    setupSpinBox(
+        ui_->numOctavesSpinBox,
+        1,
+        std::numeric_limits<int>::max(),
+        static_cast<int>(std::min<std::size_t>(
+            settings.numOctaves,
+            static_cast<std::size_t>(std::numeric_limits<int>::max())))
+    );
+    setupSpinBox(
+        ui_->lacunaritySpinBox,
+        0.0F,
+        std::numeric_limits<float>::max(),
+        settings.lacunarity
+    );
+    setupSpinBox(
+        ui_->persistanceSpinBox,
+        0.0F,
+        std::numeric_limits<float>::max(),
+        settings.persistance
+    );
+}
+
+void GeneratorSettingsDialog::disableOctaveSettings() {
+    ui_->octaveSettingsLine->setVisible(false);
+    ui_->octaveSettingsLabel->setVisible(false);
+    disableSpinBox(ui_->numOctavesSpinBox);
+    disableSpinBox(ui_->lacunaritySpinBox);
+    disableSpinBox(ui_->persistanceSpinBox);
+}
+
 GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidget* parent)
     : QDialog{parent}, ui_{std::make_unique<Ui::GeneratorSettingsDialog>()}, spec_{std::move(spec)} {
     ui_->setupUi(this);
@@ -68,6 +105,7 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     disableSpinBox(ui_->frequencySpinBox);
     disableSpinBox(ui_->powerSpinBox);
     disableSpinBox(ui_->numPointsSpinBox);
+    disableOctaveSettings();
 
     if (auto* perlin = std::get_if<wgen::PerlinNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(perlin->dotsPerCell);
@@ -79,6 +117,9 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     }
     if (auto* simplex = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(simplex->dotsPerCell);
+    }
+    if (wgen::generatorSupportsOctaves(spec_.kind)) {
+        enableOctaveSettings(spec_.octaveSettings);
     }
 
     ui_->scaleSpinBox->setValue(spec_.scale);
@@ -102,6 +143,13 @@ void GeneratorSettingsDialog::accept() {
     spec_.computeMethod = computeMethodFromIndex(ui_->computeMethodComboBox->currentIndex());
     if (!wgen::generatorSupportsComputeMethod(spec_.kind, spec_.computeMethod)) {
         spec_.computeMethod = wgen::TerrainComputeMethod::Cpu;
+    }
+    if (wgen::generatorSupportsOctaves(spec_.kind)) {
+        spec_.octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctaves = static_cast<std::size_t>(ui_->numOctavesSpinBox->value()),
+            .lacunarity = static_cast<float>(ui_->lacunaritySpinBox->value()),
+            .persistance = static_cast<float>(ui_->persistanceSpinBox->value()),
+        };
     }
 
     if (std::holds_alternative<wgen::PerlinNoiseGeneratorSpec>(spec_.config)) {

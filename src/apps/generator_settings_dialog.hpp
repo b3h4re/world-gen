@@ -69,6 +69,8 @@ private:
     void enableFrequency(float f = 0.014231234F);
     void enablePower(float p = 2.0F);
     void enableNumPoints(std::size_t numPoints = 1);
+    void enableOctaveSettings(const wgen::GeneratorOctaveSettings& settings);
+    void disableOctaveSettings();
 
 };
 

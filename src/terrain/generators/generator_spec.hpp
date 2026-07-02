@@ -33,6 +33,18 @@ constexpr TerrainComputeMethod defaultComputeMethodForGenerator(GeneratorKind ki
         : TerrainComputeMethod::Cpu;
 }
 
+constexpr bool generatorSupportsOctaves(GeneratorKind kind) {
+    switch (kind) {
+        case GeneratorKind::ValueNoise:
+        case GeneratorKind::PerlinNoise:
+        case GeneratorKind::WorleyNoise:
+        case GeneratorKind::SimplexNoise:
+            return true;
+    }
+
+    return false;
+}
+
 struct ValueNoiseGeneratorSpec {};
 
 struct PerlinNoiseGeneratorSpec {
@@ -57,11 +69,18 @@ using GeneratorConfig = std::variant<
     SimplexNoiseGeneratorSpec
 >;
 
+struct GeneratorOctaveSettings {
+    std::size_t numOctaves{1};
+    float lacunarity{1.0F};
+    float persistance{1.0F};
+};
+
 struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};
     GeneratorConfig config{ValueNoiseGeneratorSpec{}};
     float scale{1.0F};
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator(kind)};
+    GeneratorOctaveSettings octaveSettings{};
 };
 
 using GeneratorPipelineSpec = std::vector<GeneratorSpec>;

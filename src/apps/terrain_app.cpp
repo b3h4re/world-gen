@@ -16,11 +16,11 @@ namespace lve {
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
-    : core_{config},
+    : core_{config}, config_{config},
       renderer_{config.windowConfig}, limiter_{config.windowConfig.fps_max},
       gui_{
           renderer_.window().controlsWidget(),
-          TerrainAppGui::Callbacks{
+          Callbacks{
               .regenerateTerrain = [this] { regenerateWithRandomSeed(); },
               .reloadTerrain = [this] { reloadConfiguredSeed(); },
               .switchColor = [this] { core_.rotateColorFunction(); },
@@ -30,6 +30,12 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .currentPipeline = [this] {
                   return core_.currentPipeline();
               },
+              .getConfig = [this] {
+                  return this->getConfig();
+              },
+              .configChanged = [this](wgen::AppConfig config) {
+
+              }
           }
       } {
     renderer_.window().setRenderParent(gui_.vulkanWidget());
@@ -39,6 +45,10 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
 TerrainApp::~TerrainApp() {
     renderer_.shutdownVulkanResources();
     renderer_.window().detachRenderParent();
+}
+
+wgen::AppConfig TerrainApp::getConfig() const {
+    return config_;
 }
 
 void TerrainApp::run() {

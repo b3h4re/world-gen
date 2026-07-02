@@ -19,6 +19,8 @@ public:
 
     void run();
 
+    wgen::AppConfig getConfig() const;
+
 private:
     void applyFinishedTerrainJob(int frameIndex);
     void regenerateWithRandomSeed();
@@ -28,6 +30,7 @@ private:
     TerrainAppRenderer renderer_;
     TerrainAppGui gui_;
     FrameLimiter limiter_;
+    wgen::AppConfig config_;
     bool render3d_{false};
 };
 

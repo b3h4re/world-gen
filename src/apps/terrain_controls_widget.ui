@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>919</width>
-    <height>641</height>
+    <height>625</height>
    </rect>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
@@ -46,7 +46,7 @@
         <x>0</x>
         <y>10</y>
         <width>101</width>
-        <height>404</height>
+        <height>401</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -93,6 +93,13 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="appSettingsButton">
+         <property name="text">
+          <string>Settings</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

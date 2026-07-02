@@ -1,4 +1,5 @@
 #include "terrain_app_gui.hpp"
+#include "gui_helpers.hpp"
 
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QWidget>
@@ -11,15 +12,7 @@ TerrainAppGui::TerrainAppGui(QWidget& parent, Callbacks callbacks) : parent_{par
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    controls_ = std::make_unique<TerrainControlsWidget>(
-        TerrainControlsWidget::Callbacks{
-            .regenerateTerrain = std::move(callbacks.regenerateTerrain),
-            .reloadTerrain = std::move(callbacks.reloadTerrain),
-            .switchColor = std::move(callbacks.switchColor),
-            .pipelineChanged = std::move(callbacks.pipelineChanged),
-            .currentPipeline = std::move(callbacks.currentPipeline),
-        },
-        &parent_);
+    controls_ = std::make_unique<TerrainControlsWidget>(callbacks, &parent_);
     layout->addWidget(controls_.get());
 }
 

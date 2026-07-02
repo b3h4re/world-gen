@@ -241,14 +241,24 @@ std::vector<wgen::SeedType> TerrainAppCore::generatorSeeds(std::size_t count, wg
 }
 
 wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig) {
-    return wgen::GeneratorPipelineSpec{
-        wgen::GeneratorSpec{
+    wgen::GeneratorPipelineSpec spec{};
+    const float lacunarity = 2.5F;
+    const float persistance = 0.5F;
+    for (std::size_t n = 0; n < 5; ++n) {
+        wgen::GeneratorSpec genSpec{
             .kind = wgen::GeneratorKind::PerlinNoise,
             .config = wgen::PerlinNoiseGeneratorSpec{
                 .dotsPerCell = terrainConfig.perlin.dotsPerCell,
             },
-        },
-    };
+            .octaveSettings = wgen::GeneratorOctaveSettings{
+                .numOctave = n,
+                .lacunarity = lacunarity,
+                .persistance = persistance
+            }
+        };
+        spec.push_back(genSpec);
+    }
+    return spec;
 }
 
 wgen::SeedType TerrainAppCore::activeSeed() const {

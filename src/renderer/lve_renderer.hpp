@@ -50,7 +50,7 @@ namespace lve {
         private:
             void createCommandBuffers();
             void freeCommandBuffers();
-            void recreateSwapChain(PresentMode desiredPresentMode = PresentMode::VSync);
+            void recreateSwapChain();
             PresentMode desiredPresentMode_{PresentMode::VSync};
 
             WindowSurface& lveWindow;
@@ -61,6 +61,7 @@ namespace lve {
             uint32_t currentImageIndex;
             int currentFrameIndex{0};
             bool isFrameStarted{false};
+            bool isSwapChainDirty{false};
 
     };
 

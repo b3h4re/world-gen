@@ -14,7 +14,7 @@ struct Callbacks {
     std::function<void(wgen::GeneratorPipelineSpec)> pipelineChanged;
     std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
     std::function<wgen::AppConfig()> getConfig;
-    std::function<void(wgen::AppConfig)> configChanged;
+    std::function<void(wgen::WindowConfig)> configChanged;
 };
 
 

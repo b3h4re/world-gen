@@ -167,6 +167,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         AppSettingsDialog dialog{config, this};
         if (dialog.exec() == QDialog::Accepted) {
             config = dialog.appSettings();
+            callbacks_.configChanged(config);
         }
     };
 

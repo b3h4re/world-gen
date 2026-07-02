@@ -24,6 +24,11 @@ TerrainAppRenderer::~TerrainAppRenderer() {
     shutdownVulkanResources();
 }
 
+void TerrainAppRenderer::setDesiredPresentMode(PresentMode desiredPresentMode) {
+    desiredPresentMode_ = desiredPresentMode;
+    renderer_.setDesiredPresentMode(desiredPresentMode);
+}
+
 void TerrainAppRenderer::setTerrainMesh(TerrainMeshData data) {
     vkDeviceWaitIdle(device_.device());
     objects2d_ = makeObjects2d(data);

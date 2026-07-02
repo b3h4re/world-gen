@@ -11,6 +11,7 @@ public:
           nextFrameTime{std::chrono::steady_clock::now()}, targetFps_{targetFps} {}
 
     void wait();
+    void settargetFps(int targetFps);
 
 private:
     int targetFps_{0};

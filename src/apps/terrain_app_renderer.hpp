@@ -42,6 +42,7 @@ public:
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
     void shutdownVulkanResources();
+    void setDesiredPresentMode(PresentMode desiredPresentMode);
 
     QtWindowBackend& window() { return window_; }
     WindowSurface& windowSurface() { return window_; }
@@ -60,6 +61,7 @@ private:
     QtWindowBackend window_;
     LveDevice device_;
     LveRenderer renderer_;
+    PresentMode desiredPresentMode_{PresentMode::VSync};
     std::unique_ptr<LveDescriptorPool> globalPool_{};
     std::vector<GameObject2d> objects2d_{};
     std::vector<GameObject3d> objects3d_{};

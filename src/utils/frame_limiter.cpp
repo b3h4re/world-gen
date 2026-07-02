@@ -23,5 +23,11 @@ void FrameLimiter::wait() {
     }
 }
 
+void FrameLimiter::settargetFps(int targetFps) {
+    targetFps_ = targetFps;
+    targetFrameTime = std::chrono::duration<double>{1.0 / static_cast<double>(targetFps)};
+    nextFrameTime = std::chrono::steady_clock::now();
+}
+
 
 }

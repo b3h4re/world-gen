@@ -33,13 +33,20 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .getConfig = [this] {
                   return this->getConfig();
               },
-              .configChanged = [this](wgen::AppConfig config) {
-
+              .configChanged = [this](wgen::WindowConfig config) {
+                this->applyWindowConfig(config);
               }
           }
       } {
     renderer_.window().setRenderParent(gui_.vulkanWidget());
     renderer_.setTerrainMesh(core_.loadTerrain());
+}
+
+
+void TerrainApp::applyWindowConfig(const wgen::WindowConfig& cfg) {
+    config_.windowConfig = cfg;
+    limiter_.settargetFps(cfg.fps_max);
+    renderer_.setDesiredPresentMode(cfg.present_mode);
 }
 
 TerrainApp::~TerrainApp() {

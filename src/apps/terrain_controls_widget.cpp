@@ -6,37 +6,10 @@
 
 #include <QAbstractItemModel>
 #include <QAction>
-#include <QComboBox>
 #include <QMenu>
-#include <QSignalBlocker>
 #include <utility>
 
 namespace lve {
-
-namespace {
-
-int computeMethodIndex(wgen::TerrainComputeMethod computeMethod) {
-    switch (computeMethod) {
-        case wgen::TerrainComputeMethod::Cpu:
-            return 0;
-        case wgen::TerrainComputeMethod::VulkanCompute:
-            return 1;
-    }
-
-    return 0;
-}
-
-wgen::TerrainComputeMethod computeMethodFromIndex(int index) {
-    switch (index) {
-        case 1:
-            return wgen::TerrainComputeMethod::VulkanCompute;
-        case 0:
-        default:
-            return wgen::TerrainComputeMethod::Cpu;
-    }
-}
-
-} // namespace
 
 TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* parent)
     : QWidget{parent}, ui_{std::make_unique<Ui::TerrainControlsWidget>()}, callbacks_{std::move(callbacks)} {
@@ -46,16 +19,6 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     ui_->generatorSettingsButton->setCheckable(true);
 
     ui_->toolBarWidget->setMaximumWidth(256);
-
-    if (callbacks_.currentComputeMethod) {
-        const QSignalBlocker blocker{ui_->computeMethodComboBox};
-        ui_->computeMethodComboBox->setCurrentIndex(computeMethodIndex(callbacks_.currentComputeMethod()));
-    }
-    connect(ui_->computeMethodComboBox, &QComboBox::currentIndexChanged, this, [this](int index) {
-        if (callbacks_.computeMethodChanged) {
-            callbacks_.computeMethodChanged(computeMethodFromIndex(index));
-        }
-    });
 
     wgen::GeneratorPipelineSpec initialPipeline;
     if (callbacks_.currentPipeline) {

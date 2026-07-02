@@ -2,6 +2,7 @@
 
 #include "ui_generator_settings_dialog.h"
 
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <algorithm>
@@ -9,6 +10,31 @@
 #include <utility>
 
 namespace lve {
+
+namespace {
+
+int computeMethodIndex(wgen::TerrainComputeMethod computeMethod) {
+    switch (computeMethod) {
+        case wgen::TerrainComputeMethod::Cpu:
+            return 0;
+        case wgen::TerrainComputeMethod::VulkanCompute:
+            return 1;
+    }
+
+    return 0;
+}
+
+wgen::TerrainComputeMethod computeMethodFromIndex(int index) {
+    switch (index) {
+        case 1:
+            return wgen::TerrainComputeMethod::VulkanCompute;
+        case 0:
+        default:
+            return wgen::TerrainComputeMethod::Cpu;
+    }
+}
+
+} // namespace
 
 GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidget* parent)
     : QDialog{parent}, ui_{std::make_unique<Ui::GeneratorSettingsDialog>()}, spec_{std::move(spec)} {
@@ -30,6 +56,7 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     }
 
     ui_->scaleSpinBox->setValue(spec_.scale);
+    ui_->computeMethodComboBox->setCurrentIndex(computeMethodIndex(spec_.computeMethod));
     connect(ui_->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui_->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
@@ -38,6 +65,7 @@ GeneratorSettingsDialog::~GeneratorSettingsDialog() = default;
 
 void GeneratorSettingsDialog::accept() {
     spec_.scale = static_cast<float>(ui_->scaleSpinBox->value());
+    spec_.computeMethod = computeMethodFromIndex(ui_->computeMethodComboBox->currentIndex());
 
     if (std::holds_alternative<wgen::PerlinNoiseGeneratorSpec>(spec_.config)) {
         spec_.config = wgen::PerlinNoiseGeneratorSpec{

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "terrain/generators/generator_spec.hpp"
-#include "terrain/terrain_compute_method.hpp"
 
 #include <QWidget>
 
@@ -26,8 +25,6 @@ public:
         std::function<void()> switchColor;
         std::function<void(wgen::GeneratorPipelineSpec)> pipelineChanged;
         std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
-        std::function<void(wgen::TerrainComputeMethod)> computeMethodChanged;
-        std::function<wgen::TerrainComputeMethod()> currentComputeMethod;
     };
 
     explicit TerrainControlsWidget(Callbacks callbacks, QWidget* parent = nullptr);

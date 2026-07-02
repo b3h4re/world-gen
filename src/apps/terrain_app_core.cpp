@@ -1,6 +1,7 @@
 #include "terrain_app_core.hpp"
 
 #include "terrain/generators/generator_factory.hpp"
+#include "terrain/utils/hash_random.hpp"
 #include "terrain/terrain.hpp"
 
 #include <chrono>
@@ -88,7 +89,7 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
 }
 
 TerrainMeshData TerrainAppCore::loadTerrain() {
-    activeHeightMap_ = generateHeightMap(usedGenerator_, config_.terrainConfig).normal();
+    activeHeightMap_ = generateHeightMap(config_.terrainConfig).normal();
     return buildMeshData(activeHeightMap_);
 }
 
@@ -100,17 +101,16 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
     config_.terrainConfig.seed = seed;
     const auto terrainConfig = config_.terrainConfig;
     const auto colorFunc = getActiveColorFunc();
-    const std::size_t genToUse = usedGenerator_;
 
     terrainJobRunning_ = true;
-    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, colorFunc, genToUse] {
+    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, colorFunc] {
         wgen::HeightMap<float> heightMap;
 
         {
             std::lock_guard lock{generatorsMutex_};
 
-            generators_[genToUse]->setSeed(terrainConfig.seed);
-            heightMap = generateHeightMap(genToUse, terrainConfig).normal();
+            setGeneratorSeeds(generators_, terrainConfig.seed);
+            heightMap = generateHeightMap(terrainConfig).normal();
         }
 
         TerrainJobResult result;
@@ -190,14 +190,6 @@ wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
     return pipelineSpec_;
 }
 
-void TerrainAppCore::setComputeMethod(wgen::TerrainComputeMethod computeMethod) {
-    if (terrainJobRunning_) {
-        return;
-    }
-
-    computeMethod_ = computeMethod;
-}
-
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (!terrainJobRunning_) {
         return std::nullopt;
@@ -218,7 +210,20 @@ void TerrainAppCore::initGenerators(
         const wgen::GeneratorPipelineSpec& pipelineSpec,
         wgen::SeedType seed) {
     generators.clear();
-    generators.push_back(wgen::makePipeline(pipelineSpec, seed));
+    generators.reserve(pipelineSpec.size());
+    for (const wgen::GeneratorSpec& spec : pipelineSpec) {
+        generators.push_back(wgen::makeGenerator(spec, seed));
+    }
+    setGeneratorSeeds(generators, seed);
+}
+
+void TerrainAppCore::setGeneratorSeeds(
+        std::vector<std::unique_ptr<wgen::Generator>>& generators,
+        wgen::SeedType seed) {
+    for (std::size_t i = 0; i < generators.size(); ++i) {
+        generators[i]->setSeed(seed);
+        seed = wgen::hashSeed(seed);
+    }
 }
 
 wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig) {
@@ -245,17 +250,23 @@ wgen::SeedType TerrainAppCore::activeSeed() const {
     return rd();
 }
 
-wgen::HeightMap<float> TerrainAppCore::generateHeightMap(
-        std::size_t generatorIndex,
-        const wgen::TerrainConfig& terrainConfig) {
-    switch (computeMethod_) {
-        case wgen::TerrainComputeMethod::Cpu:
-            return generateHeightMapCpu(generatorIndex, terrainConfig);
-        case wgen::TerrainComputeMethod::VulkanCompute:
-            return generateHeightMapCpu(generatorIndex, terrainConfig);
+wgen::HeightMap<float> TerrainAppCore::generateHeightMap(const wgen::TerrainConfig& terrainConfig) {
+    wgen::HeightMap<float> result{terrainConfig.width, terrainConfig.height};
+    for (std::size_t i = 0; i < generators_.size(); ++i) {
+        wgen::HeightMap<float> generatorHeightMap;
+        switch (pipelineSpec_[i].computeMethod) {
+            case wgen::TerrainComputeMethod::Cpu:
+                generatorHeightMap = generateHeightMapCpu(i, terrainConfig);
+                break;
+            case wgen::TerrainComputeMethod::VulkanCompute:
+                generatorHeightMap = generateHeightMapCpu(i, terrainConfig);
+                break;
+        }
+
+        result += wgen::map(generatorHeightMap, wgen::multiplyFunction(pipelineSpec_[i].scale));
     }
 
-    return generateHeightMapCpu(generatorIndex, terrainConfig);
+    return result;
 }
 
 wgen::HeightMap<float> TerrainAppCore::generateHeightMapCpu(

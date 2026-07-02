@@ -18,8 +18,6 @@ TerrainAppGui::TerrainAppGui(QWidget& parent, Callbacks callbacks) : parent_{par
             .switchColor = std::move(callbacks.switchColor),
             .pipelineChanged = std::move(callbacks.pipelineChanged),
             .currentPipeline = std::move(callbacks.currentPipeline),
-            .computeMethodChanged = std::move(callbacks.computeMethodChanged),
-            .currentComputeMethod = std::move(callbacks.currentComputeMethod),
         },
         &parent_);
     layout->addWidget(controls_.get());

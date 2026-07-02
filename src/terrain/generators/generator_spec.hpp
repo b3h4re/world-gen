@@ -1,5 +1,7 @@
 #pragma once
 
+#include "terrain/terrain_compute_method.hpp"
+
 #include <cstddef>
 #include <variant>
 #include <vector>
@@ -23,6 +25,7 @@ struct GeneratorSpec {
     GeneratorKind kind{GeneratorKind::ValueNoise};
     GeneratorConfig config{ValueNoiseGeneratorSpec{}};
     float scale{1.0F};
+    TerrainComputeMethod computeMethod{TerrainComputeMethod::Cpu};
 };
 
 using GeneratorPipelineSpec = std::vector<GeneratorSpec>;

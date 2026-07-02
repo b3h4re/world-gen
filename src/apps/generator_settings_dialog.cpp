@@ -13,6 +13,25 @@
 
 namespace lve {
 
+QWidget* GeneratorSettingsDialog::getLabelForField(QWidget *field) {
+    return ui_->formLayout->labelForField(field);
+}
+
+void GeneratorSettingsDialog::enableDotsPerCell(std::size_t val) {
+    setupSpinBox(ui_->dotsPerCellSpinBox, 2, std::numeric_limits<int>::max(), static_cast<int>(std::min<std::size_t>(
+            val,
+            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+}
+
+void GeneratorSettingsDialog::enableFrequency(float f) {
+    setupSpinBox(
+        ui_->frequencySpinBox,
+        0.0F,
+        std::numeric_limits<float>::max(),
+        f
+    );
+}
+
 GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidget* parent)
     : QDialog{parent}, ui_{std::make_unique<Ui::GeneratorSettingsDialog>()}, spec_{std::move(spec)} {
     ui_->setupUi(this);
@@ -20,26 +39,17 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
 
     ui_->generatorValueLabel->setText(generatorName(spec_.kind));
 
+    disableSpinBox(ui_->dotsPerCellSpinBox);
+    disableSpinBox(ui_->frequencySpinBox);
+
     if (auto* perlin = std::get_if<wgen::PerlinNoiseGeneratorSpec>(&spec_.config)) {
-        ui_->dotsPerCellSpinBox->setRange(2, std::numeric_limits<int>::max());
-        ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
-            perlin->dotsPerCell,
-            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
-    } else if (auto* worley = std::get_if<wgen::WorleyNoiseGeneratorSpec>(&spec_.config)) {
-        ui_->dotsPerCellSpinBox->setRange(2, std::numeric_limits<int>::max());
-        ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
-            worley->dotsPerCell,
-            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
-    } else if (auto* simplex = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec_.config)) {
-        ui_->dotsPerCellSpinBox->setRange(2, std::numeric_limits<int>::max());
-        ui_->dotsPerCellSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
-            simplex->dotsPerCell,
-            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
-    } else {
-        ui_->dotsPerCellSpinBox->setVisible(false);
-        if (QWidget* label = ui_->formLayout->labelForField(ui_->dotsPerCellSpinBox)) {
-            label->setVisible(false);
-        }
+        enableDotsPerCell(perlin->dotsPerCell);
+    }
+    if (auto* worley = std::get_if<wgen::WorleyNoiseGeneratorSpec>(&spec_.config)) {
+        enableDotsPerCell(worley->dotsPerCell);
+    }
+    if (auto* simplex = std::get_if<wgen::SimplexNoiseGeneratorSpec>(&spec_.config)) {
+        enableDotsPerCell(simplex->dotsPerCell);
     }
 
     ui_->scaleSpinBox->setValue(spec_.scale);

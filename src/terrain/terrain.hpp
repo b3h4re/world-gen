@@ -15,10 +15,6 @@ namespace wgen {
 
 using colorFromHeightFunc = glm::vec3 (*)(float);
 
-glm::vec3 terrainColor(float height);
-
-glm::vec3 terrainBlackAndWhite(float height);
-
 template<class T>
 class HeightMap;
 

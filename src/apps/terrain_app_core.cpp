@@ -22,8 +22,7 @@ void appendHeightMapMesh(
         float minY,
         float maxY,
         std::vector<Vertex2d>& vertices,
-        std::vector<std::uint32_t>& indices,
-        wgen::colorFromHeightFunc colorFunc) {
+        std::vector<std::uint32_t>& indices) {
     const std::size_t width = heightMap.width();
     const std::size_t height = heightMap.height();
 
@@ -50,8 +49,7 @@ void appendHeightMapMesh(
 void appendHeightMapMesh3d(
         const wgen::HeightMap<float>& heightMap,
         std::vector<Vertex3d>& vertices,
-        std::vector<std::uint32_t>& indices,
-        wgen::colorFromHeightFunc colorFunc) {
+        std::vector<std::uint32_t>& indices) {
     const std::size_t width = heightMap.width();
     const std::size_t height = heightMap.height();
 
@@ -126,15 +124,13 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
             -1.0F,
             1.0F,
             result.data.vertices2d,
-            result.data.indices2d,
-            colorFunc
+            result.data.indices2d
         );
 
         appendHeightMapMesh3d(
             result.heightMap,
             result.data.vertices3d,
-            result.data.indices3d,
-            colorFunc
+            result.data.indices3d
         );
 
         return result;
@@ -142,39 +138,15 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
 }
 
 void TerrainAppCore::rotateColorFunction() {
-    // if (terrainJobRunning_) {
-    //     return;
-    // }
-
-    activeColorFuncId_ = (activeColorFuncId_ + 1) % NUM_COLOR_FUNCTIONS;
-
-    // const auto colorFunc = getActiveColorFunc();
-    // const auto heightMap = activeHeightMap_;
-    // terrainJobRunning_ = true;
-
-    // terrainReappendJob_ = std::async(std::launch::async, [heightMap, colorFunc] {
-    //     TerrainMeshData data;
-
-    //     appendHeightMapMesh(
-    //         heightMap,
-    //         -1.0F,
-    //         1.0F,
-    //         -1.0F,
-    //         1.0F,
-    //         data.vertices2d,
-    //         data.indices2d,
-    //         colorFunc
-    //     );
-
-    //     appendHeightMapMesh3d(
-    //         heightMap,
-    //         data.vertices3d,
-    //         data.indices3d,
-    //         colorFunc
-    //     );
-
-    //     return data;
-    // });
+    // -> TerrainColorStandard -> BlackAndWhite ->
+    switch (activeColorFuncId_) {
+        case ColorFunctions::TerrainColorStandard:
+            activeColorFuncId_ = ColorFunctions::BlackAndWhite;
+            return;
+        case ColorFunctions::BlackAndWhite:
+            activeColorFuncId_ = ColorFunctions::TerrainColorStandard;
+            return;
+    }
 }
 
 void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
@@ -336,13 +308,13 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMapGpu(
 
 TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap) {
     TerrainMeshData data;
-    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d, getActiveColorFunc());
-    appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d, getActiveColorFunc());
+    appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
+    appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
     return data;
 }
 
-wgen::colorFromHeightFunc TerrainAppCore::getActiveColorFunc() const {
-    return COLOR_FUNCTIONS[activeColorFuncId_];
+std::function<glm::vec3(float)> TerrainAppCore::getActiveColorFunc() const {
+    return ColorMapper::getColorFunction(activeColorFuncId_);
 }
 
 } // namespace lve

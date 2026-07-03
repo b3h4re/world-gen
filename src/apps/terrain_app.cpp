@@ -6,6 +6,7 @@
 #include "renderer/systems/terrain_render_system.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <chrono>
 #include <random>
 #include <utility>
@@ -146,7 +147,17 @@ void TerrainApp::run() {
             };
 
             GlobalUbo ubo{};
-            ubo.colorFuncID = core_.getActiveColorFuncID();
+            const auto colorFunc = core_.getActiveColorFuncID();
+            switch (colorFunc) {
+                case ColorFunctions::TerrainColorStandard: {
+                    ubo.colorFuncID = 0;
+                    break;
+                }
+                case ColorFunctions::BlackAndWhite:{
+                    ubo.colorFuncID = 1;
+                    break;
+                }
+            }
             if (render3d_) {
                 ubo.projection = camera3d.projection();
                 ubo.view = camera3d.view();

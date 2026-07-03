@@ -1,14 +1,14 @@
-#include "terrain.hpp"
+#include "color_map.hpp"
+#include "terrain/generators/generator.hpp"
 
 #include <glm/gtc/constants.hpp>
 
-#include <algorithm>
 #include <cmath>
-#include <random>
 #include <stdexcept>
 #include <stdexcept>
 
-namespace wgen {
+namespace lve {
+
 
 /*
 So first map [-1; 1] to half circle in complex plain
@@ -70,6 +70,38 @@ glm::vec3 terrainBlackAndWhite(float height) {
     }
 
     return glm::vec3{(height + 1) / 2};
+}
+
+std::vector<std::uint8_t> ColorMapper::generateTerrainColorMapRGBA8(ColorMapParams params) {
+    std::vector<std::uint8_t> pixels(params.resolution * 4);
+    auto colorFunc = getColorFunction(params.mapping);
+    for (std::uint32_t i = 0; i < params.resolution; ++i) {
+        float t = static_cast<float>(i) /
+                  static_cast<float>(params.resolution - 1);
+
+        float height = wgen::lerp(params.minHeight, params.maxHeight, t);
+
+        glm::vec3 color = colorFunc(height);
+
+        color = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f));
+
+        pixels[i * 4 + 0] = static_cast<std::uint8_t>(color.r * 255.0f);
+        pixels[i * 4 + 1] = static_cast<std::uint8_t>(color.g * 255.0f);
+        pixels[i * 4 + 2] = static_cast<std::uint8_t>(color.b * 255.0f);
+        pixels[i * 4 + 3] = 255;
+    }
+    return pixels;
+}
+
+std::function<glm::vec3(float)> ColorMapper::getColorFunction(ColorFunctions f) {
+    switch (f) {
+        case ColorFunctions::BlackAndWhite:
+            return terrainBlackAndWhite;
+        case ColorFunctions::TerrainColorStandard:
+            return terrainColor;
+    }
+
+    throw std::runtime_error("Unsupported color function encountered.");
 }
 
 }

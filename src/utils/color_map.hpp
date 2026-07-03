@@ -43,6 +43,10 @@ public:
     void recreateColorMap();
     ColorMapParams getCurrentParams() const { return params_; }
 
+    void uploadNewPixels(ColorFunctions f);
+
+    void destroyColorMap();
+
 
 
 private:
@@ -99,6 +103,8 @@ private:
         VkFormat format,
         VkImageAspectFlags aspectFlags
     );
+
+    void uploadPixels(std::vector<std::uint8_t>& pixels);
 
 
 };

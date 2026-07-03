@@ -104,6 +104,24 @@ ColorMapper::ColorMapper(LveDevice& device) : device_{device} {
     });
 }
 
+
+void ColorMapper::destroyColorMap() {
+    if (imageView_ != VK_NULL_HANDLE) {
+        vkDestroyImageView(device_.device(), imageView_, nullptr);
+        imageView_ = VK_NULL_HANDLE;
+    }
+
+    if (image_ != VK_NULL_HANDLE) {
+        vkDestroyImage(device_.device(), image_, nullptr);
+        image_ = VK_NULL_HANDLE;
+    }
+
+    if (imageMemory_ != VK_NULL_HANDLE) {
+        vkFreeMemory(device_.device(), imageMemory_, nullptr);
+        imageMemory_ = VK_NULL_HANDLE;
+    }
+}
+
 ColorMapper::~ColorMapper() {
     clear();
 }
@@ -121,12 +139,67 @@ void ColorMapper::init() {
     initSampler(device_);
 }
 
+void ColorMapper::uploadNewPixels(ColorFunctions f) {
+    params_.mapping = f;
+    auto newPixels = generateTerrainColorMapRGBA8(params_);
+    vkDeviceWaitIdle(device_.device());
+    uploadPixels(newPixels);
+}
+
+void ColorMapper::uploadPixels(std::vector<std::uint8_t>& pixels) {
+    VkDeviceSize imageSize = pixels.size();
+
+    LveBuffer stagingBuffer{
+        device_,
+        imageSize,
+        1,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    };
+
+    stagingBuffer.map();
+    stagingBuffer.writeToBuffer(pixels.data());
+    const uint32_t width = params_.resolution;
+    const uint32_t height = 1;
+
+    transitionImageLayout(
+        device_.device(),
+        device_.getCommandPool(),
+        device_.graphicsQueue(),
+        image_,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    );
+
+    copyBufferToImage(
+        device_.device(),
+        device_.getCommandPool(),
+        device_.graphicsQueue(),
+        stagingBuffer.getBuffer(),
+        image_,
+        width,
+        height
+    );
+
+    transitionImageLayout(
+        device_.device(),
+        device_.getCommandPool(),
+        device_.graphicsQueue(),
+        image_,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    );
+}
+
 void ColorMapper::recreateColorMap() {
-    clear();
-    createColorMap(params_);
+    recreateColorMap(params_);
 }
 
 void ColorMapper::recreateColorMap(ColorMapParams params) {
+    vkDeviceWaitIdle(device_.device());
     clear();
     createColorMap(params);
 }

@@ -24,7 +24,10 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
           Callbacks{
               .regenerateTerrain = [this] { regenerateWithRandomSeed(); },
               .reloadTerrain = [this] { reloadConfiguredSeed(); },
-              .switchColor = [this] { core_.rotateColorFunction(); },
+              .switchColor = [this] {
+                core_.rotateColorFunction();
+                renderer_.colorMapper().uploadNewPixels(core_.getActiveColorFuncID());
+              },
               .pipelineChanged = [this](wgen::GeneratorPipelineSpec pipeline) {
                   core_.setPipeline(std::move(pipeline));
               },

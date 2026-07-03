@@ -41,15 +41,16 @@ namespace lve {
 
         VkCommandPool getCommandPool() { return commandPool; }
         VkDevice device() { return device_; }
+        VkPhysicalDevice physicalDevice() { return physicalDevice_; }
         VkSurfaceKHR surface() { return surface_; }
         VkQueue graphicsQueue() { return graphicsQueue_; }
         VkQueue presentQueue() { return presentQueue_; }
         bool graphicsQueueSupportsCompute() const { return graphicsQueueSupportsCompute_; }
         bool supportsShaderInt64() const { return supportedFeatures_.shaderInt64 == VK_TRUE; }
 
-        SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }
+        SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice_); }
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-        QueueFamilyIndices findPhysicalQueueFamilies() { return findQueueFamilies(physicalDevice); }
+        QueueFamilyIndices findPhysicalQueueFamilies() { return findQueueFamilies(physicalDevice_); }
         VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
         // Buffer Helper Functions
@@ -94,7 +95,7 @@ namespace lve {
 
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
         VkPhysicalDeviceFeatures supportedFeatures_{};
         WindowSurface &window;
         VkCommandPool commandPool;

@@ -115,22 +115,22 @@ namespace lve {
 
         for (const auto &device : devices) {
             if (isDeviceSuitable(device)) {
-                physicalDevice = device;
+                physicalDevice_ = device;
                 break;
             }
         }
 
-        if (physicalDevice == VK_NULL_HANDLE) {
+        if (physicalDevice_ == VK_NULL_HANDLE) {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 
-        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures_);
-        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+        vkGetPhysicalDeviceFeatures(physicalDevice_, &supportedFeatures_);
+        vkGetPhysicalDeviceProperties(physicalDevice_, &properties);
         std::cout << "physical device: " << properties.deviceName << "\n";
     }
 
     void LveDevice::createLogicalDevice() {
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice_);
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
@@ -167,7 +167,7 @@ namespace lve {
             createInfo.enabledLayerCount = 0;
         }
 
-        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) {
+        if (vkCreateDevice(physicalDevice_, &createInfo, nullptr, &device_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create logical device!");
         }
 
@@ -367,7 +367,7 @@ namespace lve {
     VkFormat LveDevice::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
         for (VkFormat format : candidates) {
             VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+            vkGetPhysicalDeviceFormatProperties(physicalDevice_, format, &props);
 
             if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
                 return format;
@@ -380,7 +380,7 @@ namespace lve {
 
     uint32_t LveDevice::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
         VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &memProperties);
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
             if ((typeFilter & (1 << i)) &&
             (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {

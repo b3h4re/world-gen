@@ -49,6 +49,7 @@ public:
     LveDevice& device() { return device_; }
     LveRenderer& renderer() { return renderer_; }
     LveDescriptorPool& descriptorPool() { return *globalPool_; }
+    ColorMapper& colorMapper() { return colorMapper_; }
 
     const std::vector<GameObject2d>& objects2d() const { return objects2d_; }
     const std::vector<GameObject3d>& objects3d() const { return objects3d_; }
@@ -61,6 +62,7 @@ private:
     QtWindowBackend window_;
     LveDevice device_;
     LveRenderer renderer_;
+    ColorMapper colorMapper_;
     PresentMode desiredPresentMode_{PresentMode::VSync};
     std::unique_ptr<LveDescriptorPool> globalPool_{};
     std::vector<GameObject2d> objects2d_{};

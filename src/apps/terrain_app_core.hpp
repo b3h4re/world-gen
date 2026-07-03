@@ -7,6 +7,7 @@
 #include "terrain/generators/generator.hpp"
 #include "terrain/generators/generator_spec.hpp"
 #include "utils/thread_pool.hpp"
+#include "utils/color_map.hpp"
 
 #include <cstdint>
 #include <future>
@@ -36,14 +37,12 @@ void appendHeightMapMesh(
     float minY,
     float maxY,
     std::vector<Vertex2d>& vertices,
-    std::vector<std::uint32_t>& indices,
-    wgen::colorFromHeightFunc colorFunc);
+    std::vector<std::uint32_t>& indices);
 
 void appendHeightMapMesh3d(
     const wgen::HeightMap<float>& heightMap,
     std::vector<Vertex3d>& vertices,
-    std::vector<std::uint32_t>& indices,
-    wgen::colorFromHeightFunc colorFunc);
+    std::vector<std::uint32_t>& indices);
 
 class TerrainAppCore {
 public:
@@ -62,7 +61,7 @@ public:
 
     const wgen::AppConfig& config() const { return config_; }
 
-    std::size_t getActiveColorFuncID() const { return activeColorFuncId_; }
+    ColorFunctions getActiveColorFuncID() const { return activeColorFuncId_; }
 
 private:
     static void initGenerators(
@@ -83,16 +82,11 @@ private:
         const wgen::TerrainConfig& terrainConfig);
 
     TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap);
-    wgen::colorFromHeightFunc getActiveColorFunc() const;
+    std::function<glm::vec3(float)> getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
     wgen::GeneratorPipelineSpec pipelineSpec_{};
-    std::size_t activeColorFuncId_{0};
-    static constexpr std::size_t NUM_COLOR_FUNCTIONS = 2;
-    static constexpr wgen::colorFromHeightFunc COLOR_FUNCTIONS[NUM_COLOR_FUNCTIONS] = {
-        wgen::terrainColor,
-        wgen::terrainBlackAndWhite
-    };
+    ColorFunctions activeColorFuncId_{ColorFunctions::TerrainColorStandard};
 
     std::size_t usedGenerator_{0};
     std::vector<std::unique_ptr<wgen::Generator>> generators_{};

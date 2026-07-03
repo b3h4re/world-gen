@@ -29,8 +29,6 @@ struct ColorMapParams {
     ColorFunctions mapping;
 };
 
-VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
-void endSingleTimeCommands(VkDevice device, VkCommandPool commandPool, VkQueue queue, VkCommandBuffer commandBuffer);
 
 class ColorMapper {
 public:
@@ -40,26 +38,26 @@ public:
 
     static std::function<glm::vec3(float)> getColorFunction(ColorFunctions f);
 
-    VkSampler& sampler() { return sampler_; }
-    void createColorMap(ColorMapParams params);
-
     VkDescriptorImageInfo descriptorInfo() const;
+    void recreateColorMap(ColorMapParams params);
 
 
 
 private:
     void init();
+    void clear();
 
-    VkImage image_;
-    VkImageView imageView_;
-    VkDeviceMemory imageMemory_;
-
-    VkSampler sampler_;
+    VkImage image_ = VK_NULL_HANDLE;
+    VkImageView imageView_ = VK_NULL_HANDLE;
+    VkDeviceMemory imageMemory_ = VK_NULL_HANDLE;
+    VkSampler sampler_ = VK_NULL_HANDLE;
     LveDevice& device_;
     static VkSamplerCreateInfo samplerInfo();
     static VkImageCreateInfo imageCreateInfo(uint32_t width, uint32_t height, VkFormat format,
             VkImageTiling tiling, VkImageUsageFlags usage);
     static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+    void createColorMap(ColorMapParams params);
 
     void initSampler(LveDevice& device);
 

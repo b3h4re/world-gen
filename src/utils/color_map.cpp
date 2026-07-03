@@ -73,38 +73,6 @@ glm::vec3 terrainBlackAndWhite(float height) {
     return glm::vec3{(height + 1) / 2};
 }
 
-VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool) {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
-
-    VkCommandBuffer commandBuffer{};
-    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    return commandBuffer;
-}
-void endSingleTimeCommands(VkDevice device, VkCommandPool commandPool, VkQueue queue, VkCommandBuffer commandBuffer) {
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
-    vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(queue);
-
-    vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-}
-
 std::vector<std::uint8_t> ColorMapper::generateTerrainColorMapRGBA8(ColorMapParams params) {
     std::vector<std::uint8_t> pixels(params.resolution * 4);
     auto colorFunc = getColorFunction(params.mapping);
@@ -128,14 +96,35 @@ std::vector<std::uint8_t> ColorMapper::generateTerrainColorMapRGBA8(ColorMapPara
 
 ColorMapper::ColorMapper(LveDevice& device) : device_{device} {
     init();
+    createColorMap({
+        .minHeight = -1.0F,
+        .maxHeight = 1.0F,
+        .resolution = 512,
+        .mapping = ColorFunctions::TerrainColorStandard,
+    });
 }
 
 ColorMapper::~ColorMapper() {
+    clear();
+}
+
+
+void ColorMapper::clear() {
+    vkDestroySampler(device_.device(), sampler_, nullptr);
+    vkDestroyImageView(device_.device(), imageView_, nullptr);
+    vkDestroyImage(device_.device(), image_, nullptr);
+    vkFreeMemory(device_.device(), imageMemory_, nullptr);
 }
 
 
 void ColorMapper::init() {
     initSampler(device_);
+}
+
+
+void ColorMapper::recreateColorMap(ColorMapParams params) {
+    clear();
+    createColorMap(params);
 }
 
 VkDescriptorImageInfo ColorMapper::descriptorInfo() const {
@@ -349,7 +338,7 @@ void ColorMapper::transitionImageLayout(
     VkImageLayout oldLayout,
     VkImageLayout newLayout
 ) {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
+    VkCommandBuffer commandBuffer = device_.beginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -406,7 +395,7 @@ void ColorMapper::transitionImageLayout(
         &barrier
     );
 
-    endSingleTimeCommands(device, commandPool, graphicsQueue, commandBuffer);
+    device_.endSingleTimeCommands(commandBuffer);
 }
 
 void ColorMapper::copyBufferToImage(
@@ -418,7 +407,7 @@ void ColorMapper::copyBufferToImage(
     uint32_t width,
     uint32_t height
 ) {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
+    VkCommandBuffer commandBuffer = device_.beginSingleTimeCommands();
 
     VkBufferImageCopy region{};
     region.bufferOffset = 0;
@@ -446,7 +435,7 @@ void ColorMapper::copyBufferToImage(
         &region
     );
 
-    endSingleTimeCommands(device, commandPool, graphicsQueue, commandBuffer);
+    device_.endSingleTimeCommands(commandBuffer);
 }
 
 VkImageView ColorMapper::createImageView(

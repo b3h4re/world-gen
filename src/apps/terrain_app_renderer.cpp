@@ -12,7 +12,7 @@ TerrainAppRenderer::TerrainAppRenderer() : TerrainAppRenderer(wgen::WindowConfig
 
 TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig& config)
     : window_{config.width, config.height, "World Generator"}, device_{window_},
-    renderer_{window_, device_, config.present_mode} {
+    renderer_{window_, device_, config.present_mode}, colorMapper_{device_} {
     initDescriptorPool();
     window_.setSurfaceAboutToBeDestroyedCallback([this] {
         shutdownVulkanResources();
@@ -72,7 +72,7 @@ void TerrainAppRenderer::initDescriptorPool() {
     globalPool_ = LveDescriptorPool::Builder(device_)
         .setMaxSets(100)
         .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
-        .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16)
+        .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, LveSwapChain::MAX_FRAMES_IN_FLIGHT)
         .build();
 }
 

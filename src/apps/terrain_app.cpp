@@ -63,7 +63,10 @@ void TerrainApp::run() {
     auto& device = renderer_.device();
     auto& lveRenderer = renderer_.renderer();
     auto& window = renderer_.window();
+    auto& colorMapper = renderer_.colorMapper();
 
+
+    // ubo buffers
     std::vector<std::unique_ptr<LveBuffer>> uboBuffers(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
     for (std::size_t i = 0; i < uboBuffers.size(); ++i) {
         uboBuffers[i] = std::make_unique<LveBuffer>(
@@ -79,13 +82,16 @@ void TerrainApp::run() {
 
     auto globalSetLayout = LveDescriptorSetLayout::Builder(device)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .build();
+    auto imageInfo = colorMapper.descriptorInfo();
 
     std::vector<VkDescriptorSet> globalDescriptorSets(LveSwapChain::MAX_FRAMES_IN_FLIGHT);
     for (std::size_t i = 0; i < globalDescriptorSets.size(); ++i) {
         auto bufferInfo = uboBuffers[i]->descriptorInfo();
         LveDescriptorWriter(*globalSetLayout, renderer_.descriptorPool())
             .writeBuffer(0, &bufferInfo)
+            .writeImage(1, &imageInfo)
             .build(globalDescriptorSets[i]);
     }
 

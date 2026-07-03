@@ -153,17 +153,6 @@ void TerrainApp::run() {
             };
 
             GlobalUbo ubo{};
-            const auto colorFunc = core_.getActiveColorFuncID();
-            switch (colorFunc) {
-                case ColorFunctions::TerrainColorStandard: {
-                    ubo.colorFuncID = 0;
-                    break;
-                }
-                case ColorFunctions::BlackAndWhite:{
-                    ubo.colorFuncID = 1;
-                    break;
-                }
-            }
             if (render3d_) {
                 ubo.projection = camera3d.projection();
                 ubo.view = camera3d.view();

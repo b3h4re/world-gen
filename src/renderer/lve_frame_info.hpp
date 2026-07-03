@@ -19,7 +19,7 @@ namespace lve {
         glm::mat4 view{1.0F};
         glm::mat4 inverseView{1.0F};
 
-        alignas(16) std::uint32_t colorFuncID{0};
+        alignas(16) glm::vec2 heightParams{-1.0F, 1.0F}; // {min height, max height}
     };
 
     struct TextInfo {

@@ -121,6 +121,10 @@ void ColorMapper::init() {
     initSampler(device_);
 }
 
+void ColorMapper::recreateColorMap() {
+    clear();
+    createColorMap(params_);
+}
 
 void ColorMapper::recreateColorMap(ColorMapParams params) {
     clear();
@@ -138,6 +142,7 @@ VkDescriptorImageInfo ColorMapper::descriptorInfo() const {
 void ColorMapper::createColorMap(ColorMapParams params) {
     auto pixels = generateTerrainColorMapRGBA8(params);
     VkDeviceSize imageSize = pixels.size();
+    params_ = params;
 
 
     LveBuffer stagingBuffer{

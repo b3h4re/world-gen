@@ -23,10 +23,10 @@ enum class ColorFunctions {
 };
 
 struct ColorMapParams {
-    float minHeight;
-    float maxHeight;
-    std::uint32_t resolution;
-    ColorFunctions mapping;
+    float minHeight{-1.0F};
+    float maxHeight{1.0F};
+    std::uint32_t resolution{512};
+    ColorFunctions mapping{ColorFunctions::TerrainColorStandard};
 };
 
 
@@ -40,12 +40,16 @@ public:
 
     VkDescriptorImageInfo descriptorInfo() const;
     void recreateColorMap(ColorMapParams params);
+    void recreateColorMap();
+    ColorMapParams getCurrentParams() const { return params_; }
 
 
 
 private:
     void init();
     void clear();
+
+    ColorMapParams params_{};
 
     VkImage image_ = VK_NULL_HANDLE;
     VkImageView imageView_ = VK_NULL_HANDLE;

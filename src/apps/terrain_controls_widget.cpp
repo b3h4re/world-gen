@@ -67,6 +67,21 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .scale = 1.0F,
         });
     });
+    auto* addGaborAction = addGeneratorMenu->addAction(QStringLiteral("Gabor"));
+    connect(addGaborAction, &QAction::triggered, this, [this] {
+        wgen::GaborNoiseGeneratorSpec specDefault{};
+        pipelineModel_->appendGenerator(wgen::GeneratorSpec{
+            .kind = wgen::GeneratorKind::GaborNoise,
+            .config = wgen::GaborNoiseGeneratorSpec{
+                .dotsPerCell = 100,
+                .impulseDensity = specDefault.impulseDensity,
+                .kernelSpatialExtent = specDefault.kernelSpatialExtent,
+                .kernelOscillationFrequency = specDefault.kernelOscillationFrequency,
+                .oscillationOrientation = specDefault.oscillationOrientation
+            },
+            .scale = 1.0F,
+        });
+    });
     auto* addSimplexAction = addGeneratorMenu->addAction(QStringLiteral("Simplex"));
     connect(addSimplexAction, &QAction::triggered, this, [this] {
         pipelineModel_->appendGenerator(wgen::GeneratorSpec{

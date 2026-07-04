@@ -267,6 +267,8 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/perlin.hpp
         src/terrain/generators/noise/worley.cpp
         src/terrain/generators/noise/worley.hpp
+        src/terrain/generators/noise/gabor.cpp
+        src/terrain/generators/noise/gabor.hpp
         src/terrain/generators/noise/simplex.cpp
         src/terrain/generators/noise/simplex.hpp
         src/terrain/generators/noise/wavelet.cpp
@@ -324,6 +326,8 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/simplex.hpp
         src/terrain/generators/noise/wavelet.cpp
         src/terrain/generators/noise/wavelet.hpp
+        src/terrain/generators/noise/gabor.cpp
+        src/terrain/generators/noise/gabor.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp

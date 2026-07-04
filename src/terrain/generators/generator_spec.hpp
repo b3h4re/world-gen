@@ -16,7 +16,8 @@ enum class GeneratorKind {
     PerlinNoise,
     WorleyNoise,
     SimplexNoise,
-    WaveletNoise
+    WaveletNoise,
+    GaborNoise
 };
 
 constexpr bool generatorSupportsVulkanCompute(GeneratorKind kind) {
@@ -57,6 +58,14 @@ struct PerlinNoiseGeneratorSpec {
     std::size_t dotsPerCell{100};
 };
 
+struct GaborNoiseGeneratorSpec {
+    std::size_t dotsPerCell{100};
+    float impulseDensity{4.0f};
+    float kernelSpatialExtent{1.5f};
+    float kernelOscillationFrequency{1.0f};
+    float oscillationOrientation{1.0f};
+};
+
 struct SimplexNoiseGeneratorSpec {
     std::size_t dotsPerCell{100};
 };
@@ -80,7 +89,8 @@ using GeneratorConfig = std::variant<
     PerlinNoiseGeneratorSpec,
     WorleyNoiseGeneratorSpec,
     SimplexNoiseGeneratorSpec,
-    WaveletNoiseGeneratorSpec
+    WaveletNoiseGeneratorSpec,
+    GaborNoiseGeneratorSpec
 >;
 
 struct GeneratorOctaveSettings {

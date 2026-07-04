@@ -4,6 +4,7 @@
 #include "terrain/generators/noise/worley.hpp"
 #include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/perlin.hpp"
+#include "terrain/generators/noise/gabor.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 #include "terrain/generators/noise/wavelet.hpp"
 
@@ -30,6 +31,21 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
             return std::make_unique<PerlinNoise2d>(
                 config->dotsPerCell,
                 seed
+            );
+        }
+        case GeneratorKind::GaborNoise: {
+            const auto* config = std::get_if<GaborNoiseGeneratorSpec>(&spec.config);
+            if (config == nullptr) {
+                throw std::invalid_argument("gabor noise generator spec has wrong config type");
+            }
+
+            return std::make_unique<GaborNoise>(
+                config->dotsPerCell,
+                seed,
+                config->impulseDensity,
+                config->kernelSpatialExtent,
+                config->kernelOscillationFrequency,
+                config->oscillationOrientation
             );
         }
         case GeneratorKind::WorleyNoise: {

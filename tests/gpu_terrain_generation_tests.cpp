@@ -165,9 +165,9 @@ void testWaveletNoise() {
         {kWidth, kheight}, p
     };
     wgen::WaveletNoiseComputeSpec spec{
-        .kWidth = kWidth,
-        .kheight = kheight,
         .waveletParams = p,
+        .kWidth = kWidth,
+        .kHeight = kheight,
         .seed = 0
     };
     std::string message = "Wavelet Noise generated on cpu must be exactly the same as generated on GPU";

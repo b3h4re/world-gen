@@ -173,9 +173,9 @@ void WaveletNoiseGpuGenerator::dispatch(
     }
 
     wgen::WaveletNoiseComputeSpec computeSpec{
-        .kWidth = checkedComputeDimension(waveletSpec->kWidth, "Kernel width for wavelet"),
-        .kheight = checkedComputeDimension(waveletSpec->kheight, "Kernel height for wavelet"),
         .waveletParams = waveletSpec->waveletParams,
+        .kWidth = checkedComputeDimension(waveletSpec->kWidth, "Kernel width for wavelet"),
+        .kHeight = checkedComputeDimension(waveletSpec->kheight, "Kernel height for wavelet"),
         .seed = seed,
         .coordinateScale = wgen::generatorOctaveFrequency(spec)
     };

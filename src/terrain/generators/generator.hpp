@@ -92,12 +92,19 @@ namespace wgen {
         float coordinateScale{1.0F};
         wgen::SeedType seed{};
     };
+    static_assert(offsetof(ValueNoiseComputeSpec, width) == 0);
+    static_assert(offsetof(ValueNoiseComputeSpec, height) == 4);
+    static_assert(offsetof(ValueNoiseComputeSpec, coordinateScale) == 8);
+    static_assert(offsetof(ValueNoiseComputeSpec, seed) == 16);
 
     struct PerlinNoiseComputeSpec {
         std::uint32_t dots{};
         float coordinateScale{1.0F};
         SeedType seed{};
     };
+    static_assert(offsetof(PerlinNoiseComputeSpec, dots) == 0);
+    static_assert(offsetof(PerlinNoiseComputeSpec, coordinateScale) == 4);
+    static_assert(offsetof(PerlinNoiseComputeSpec, seed) == 8);
 
     struct WorleyNoiseComputeSpec {
         std::uint32_t dots{};
@@ -105,20 +112,32 @@ namespace wgen {
         float coordinateScale{1.0F};
         SeedType seed{};
     };
+    static_assert(offsetof(WorleyNoiseComputeSpec, dots) == 0);
+    static_assert(offsetof(WorleyNoiseComputeSpec, p) == 4);
+    static_assert(offsetof(WorleyNoiseComputeSpec, coordinateScale) == 8);
+    static_assert(offsetof(WorleyNoiseComputeSpec, seed) == 16);
 
     struct SimplexNoiseComputeSpec {
         std::uint32_t dots{};
         float coordinateScale{1.0F};
         SeedType seed{};
     };
+    static_assert(offsetof(SimplexNoiseComputeSpec, dots) == 0);
+    static_assert(offsetof(SimplexNoiseComputeSpec, coordinateScale) == 4);
+    static_assert(offsetof(SimplexNoiseComputeSpec, seed) == 8);
 
     struct alignas(16) WaveletNoiseComputeSpec {
-        std::uint32_t kWidth{};
-        std::uint32_t kheight{};
         glm::vec4 waveletParams{}; // A, B, C, frequency
+        std::uint32_t kWidth{};
+        std::uint32_t kHeight{};
         SeedType seed{};
         float coordinateScale{1.0F};
     };
+    static_assert(offsetof(WaveletNoiseComputeSpec, waveletParams) == 0);
+    static_assert(offsetof(WaveletNoiseComputeSpec, kWidth) == 16);
+    static_assert(offsetof(WaveletNoiseComputeSpec, kHeight) == 20);
+    static_assert(offsetof(WaveletNoiseComputeSpec, seed) == 24);
+    static_assert(offsetof(WaveletNoiseComputeSpec, coordinateScale) == 32);
 
 
     class Generator {

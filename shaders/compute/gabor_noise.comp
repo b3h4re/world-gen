@@ -1,0 +1,83 @@
+#version 450
+#include "hash.glsl"
+#include "common.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint dots;
+    uint64_t seed;
+    // {impulseDensity, kernelSpatialExtent, kernelOscillationFrequency, coordinateScale}
+    vec4 gaborParams;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+
+
+float gaborNoise(uint64_t seed, uint x, uint y, uint dots, float lambda, float a, float F) {
+    uint gridX = x / dots;
+    uint gridY = y / dots;
+    vec2 point = {
+        float(x) / float(dots),
+        float(y) / float(dots)
+    };
+
+    uint R = uint(ceil(3.0f / float(a)));
+    const uint leftBound = R > gridX ? 0 : gridX - R;
+    const uint rightBound = gridX + R;
+
+    const uint borromBound = R > gridY ? 0 : gridY - R;
+    const uint topBound = gridY + R;
+
+    float noise = 0.0F;
+
+    for (uint p = leftBound; p <= rightBound; ++p) {
+        for (uint q = borromBound; q <= topBound; ++q) {
+            uint64_t cellSeed = hashValues(seed, p, q);
+            int M = poisson(lambda, cellSeed);
+            for (int i = 0; i < M; ++i) {
+                float xi = random(hashValues(cellSeed, i, 0), 0.0f, 1.0f);
+                float eta = random(hashValues(cellSeed, i, 1), 0.0f, 1.0f);
+
+                float weight = toUnitFloat(hashValues(cellSeed, i, 2));
+                float angle  = 2.0f * PI * random(hashValues(cellSeed, i, 3), 0.0f, 1.0f);
+                float phase  = 2.0f * PI * random(hashValues(cellSeed, i, 4), 0.0f, 1.0f);
+
+
+                vec2 impulsePos = vec2(
+                    float(p) + xi,
+                    float(q) + eta
+                );
+                vec2 r = point - impulsePos;
+                vec2 d = vec2(
+                    cos(angle),
+                    sin(angle)
+                );
+
+                noise += weight * exp(- PI * a*a * dot(r, r)) * cos(2*PI * F * dot(d, r) + phase);
+            }
+        }
+    }
+
+    return noise;
+}
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+    uint index = y * width + x;
+    if (index >= heightMap.values.length()) {
+        return;
+    }
+    float coordinateScale = params.gaborParams.w;
+
+    uint sampleX = uint(float(x) * coordinateScale);
+    uint sampleY = uint(float(y) * coordinateScale);
+    heightMap.values[index] = gaborNoise(params.seed, sampleX, sampleY, params.dots,
+                                params.gaborParams.x, params.gaborParams.y, params.gaborParams.z);
+}

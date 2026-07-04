@@ -76,8 +76,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
                 .dotsPerCell = 100,
                 .impulseDensity = specDefault.impulseDensity,
                 .kernelSpatialExtent = specDefault.kernelSpatialExtent,
-                .kernelOscillationFrequency = specDefault.kernelOscillationFrequency,
-                .oscillationOrientation = specDefault.oscillationOrientation
+                .kernelOscillationFrequency = specDefault.kernelOscillationFrequency
             },
             .scale = 1.0F,
         });

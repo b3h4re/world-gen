@@ -7,9 +7,9 @@
 namespace wgen {
 
 GaborNoise::GaborNoise(std::size_t dotsPerCell, SeedType seed, float impulseDensity,
-            float kernelSpatialExtent, float kernelOscillationFrequency, float oscillationOrientation)
+            float kernelSpatialExtent, float kernelOscillationFrequency)
             : dotsPerCell_{dotsPerCell}, impulseDensity_{impulseDensity}, kernelSpatialExtent_{kernelSpatialExtent},
-            kernelOscillationFrequency_{kernelOscillationFrequency}, oscillationOrientation_{oscillationOrientation} {
+            kernelOscillationFrequency_{kernelOscillationFrequency} {
     Generator::setSeed(seed);
 }
 
@@ -75,6 +75,14 @@ float GaborNoise::noise(std::size_t x, std::size_t y) const {
             .vulkanCompute = false,
             .octaves = false,
         };
+    }
+
+    std::string GaborNoise::compShader() const {
+        return "gabor_noise";
+    }
+
+    std::size_t GaborNoise::specSize() const {
+        return sizeof(GaborNoiseComputeSpec);
     }
 
 

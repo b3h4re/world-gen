@@ -18,6 +18,12 @@ uint64_t splitmix64(uint64_t x) {
     return x ^ (x >> 31ul);
 }
 
+uint64_t hashValues(uint64_t seed, uint x) {
+    uint64_t h = splitmix64(seed);
+    h = splitmix64(h ^ splitmix64(uint64_t(x)));
+    return h;
+}
+
 uint64_t hashValues(uint64_t seed, uint x, uint y) {
     uint64_t h = splitmix64(seed);
     h = splitmix64(h ^ splitmix64(uint64_t(x)));
@@ -73,4 +79,21 @@ vec2 randomHashDir(uint x, uint y, uint64_t seed) {
     float angle = u * 2.0f * PI;
     vec2 res = vec2(cos(angle), sin(angle));
     return res;
+}
+
+float random(uint64_t seed, float min, float max) {
+    return min + (max - min) * hashUnitFloat(seed);
+}
+
+int poisson(float lambda, uint64_t seed) {
+    const float limit = exp(-lambda);
+    float prod = 1.0f;
+    int k = 0;
+
+    while (prod > limit) {
+        ++k;
+        prod *= toUnitFloat(hashValues(seed, uint(k)));
+    }
+
+    return k - 1;
 }

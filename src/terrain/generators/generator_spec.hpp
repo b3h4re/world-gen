@@ -24,6 +24,7 @@ constexpr bool generatorSupportsVulkanCompute(GeneratorKind kind) {
     switch (kind) {
         case GeneratorKind::ValueNoise:
         case GeneratorKind::PerlinNoise:
+        case GeneratorKind::GaborNoise:
         case GeneratorKind::WorleyNoise:
         case GeneratorKind::SimplexNoise:
         case GeneratorKind::WaveletNoise:
@@ -43,6 +44,7 @@ constexpr bool generatorSupportsOctaves(GeneratorKind kind) {
     switch (kind) {
         case GeneratorKind::ValueNoise:
         case GeneratorKind::PerlinNoise:
+        case GeneratorKind::GaborNoise:
         case GeneratorKind::WorleyNoise:
         case GeneratorKind::SimplexNoise:
         case GeneratorKind::WaveletNoise:
@@ -63,7 +65,6 @@ struct GaborNoiseGeneratorSpec {
     float impulseDensity{4.0f};
     float kernelSpatialExtent{1.5f};
     float kernelOscillationFrequency{1.0f};
-    float oscillationOrientation{1.0f};
 };
 
 struct SimplexNoiseGeneratorSpec {

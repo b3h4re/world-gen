@@ -86,6 +86,34 @@ void PerlinNoiseGpuGenerator::dispatch(
         });
 }
 
+GaborNoiseGpuGenerator::GaborNoiseGpuGenerator(LveComputeDevice& device)
+    : computer_{device, "gabor_noise", sizeof(wgen::GaborNoiseComputeSpec)} {}
+
+void GaborNoiseGpuGenerator::dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) {
+    const auto* gaborSpec = std::get_if<wgen::GaborNoiseGeneratorSpec>(&spec.config);
+    if (spec.kind != wgen::GeneratorKind::GaborNoise || gaborSpec == nullptr) {
+        throw std::invalid_argument("gabor GPU generator received wrong spec");
+    }
+
+    wgen::GaborNoiseComputeSpec computeSpec{
+        .dots = checkedComputeDimension(gaborSpec->dotsPerCell, "gabor dots per cell"),
+        .seed = seed,
+        .gaborParams = glm::vec4{gaborSpec->impulseDensity, gaborSpec->kernelSpatialExtent, gaborSpec->kernelOscillationFrequency, wgen::generatorOctaveFrequency(spec)}
+    };
+
+    computer_.dispatch(
+        computeSpec,
+        output.descriptorInfo(),
+        ComputeDispatchSize{
+            .groupCountX = checkedComputeDimension(output.width(), "GPU heightmap width"),
+            .groupCountY = checkedComputeDimension(output.height(), "GPU heightmap height"),
+            .groupCountZ = 1,
+        });
+}
+
 WorleyNoiseGpuGenerator::WorleyNoiseGpuGenerator(LveComputeDevice& device)
     : device_{device} {}
 
@@ -194,6 +222,8 @@ std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::G
     switch (kind) {
         case wgen::GeneratorKind::ValueNoise:
             return std::make_unique<ValueNoiseGpuGenerator>(device);
+        case wgen::GeneratorKind::GaborNoise:
+            return std::make_unique<GaborNoiseGpuGenerator>(device);
         case wgen::GeneratorKind::PerlinNoise:
             return std::make_unique<PerlinNoiseGpuGenerator>(device);
         case wgen::GeneratorKind::WorleyNoise:

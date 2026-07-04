@@ -6,6 +6,7 @@
 #include "terrain/generators/generator_spec.hpp"
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/simplex.hpp"
+#include "terrain/generators/noise/gabor.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 #include "terrain/generators/noise/worley.hpp"
 
@@ -175,6 +176,36 @@ void testWaveletNoise() {
     testGenerator<wgen::WaveletNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testGaborNoise() {
+    const std::size_t width = 100;
+    const std::size_t height = 100;
+
+    const std::size_t dots = 10;
+    const float impulseDensity = 4.0f;
+    const float kernelSpatialExtent = 1.5f;
+    const float kernelOscillationFrequency = 1.0f;
+
+    wgen::GaborNoise gen{
+        dots,
+        0,
+        impulseDensity,
+        kernelSpatialExtent,
+        kernelOscillationFrequency
+    };
+    const glm::vec4 gaborParams{
+        impulseDensity,
+        kernelSpatialExtent,
+        kernelOscillationFrequency,1.0f
+    };
+    wgen::GaborNoiseComputeSpec spec{
+        .dots = dots,
+        .seed = 0,
+        .gaborParams = gaborParams
+    };
+    std::string message = "Gabor Noise generated on cpu must be exactly the same as generated on GPU";
+    testGenerator<wgen::GaborNoise>(width, height, gen, spec, message, 0.00001, 1, 1);
+}
+
 void testGpuTerrainPipeline() {
     const std::size_t width = 64;
     const std::size_t height = 64;
@@ -323,6 +354,7 @@ int main() {
         lve::LveComputeDevice computeDevice{};
         device = &computeDevice;
 
+        wgen::tests::runTest("Gabor Noise Test", testGaborNoise);
         wgen::tests::runTest("Wavelet Noise Test", testWaveletNoise);
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);

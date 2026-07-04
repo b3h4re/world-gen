@@ -106,6 +106,17 @@ namespace wgen {
     static_assert(offsetof(PerlinNoiseComputeSpec, coordinateScale) == 4);
     static_assert(offsetof(PerlinNoiseComputeSpec, seed) == 8);
 
+    struct GaborNoiseComputeSpec {
+        std::uint32_t dots{};
+        alignas(8) SeedType seed{};
+        // {impulseDensity, kernelSpatialExtent, kernelOscillationFrequency, coordinateScale}
+        alignas(16) glm::vec4 gaborParams{4.0f, 1.5f, 1.0f, 1.0f};
+    };
+    static_assert(offsetof(GaborNoiseComputeSpec, dots) == 0);
+    static_assert(offsetof(GaborNoiseComputeSpec, seed) == 8);
+    static_assert(offsetof(GaborNoiseComputeSpec, gaborParams) == 16);
+    static_assert(sizeof(GaborNoiseComputeSpec) == 32);
+
     struct WorleyNoiseComputeSpec {
         std::uint32_t dots{};
         float p{2.0F};
@@ -188,7 +199,8 @@ namespace wgen {
             std::constructible_from<GenClass, std::size_t, std::size_t, SeedType> ||
             std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType> ||
             std::constructible_from<GenClass, SeedType, glm::vec<2, std::size_t>, glm::vec4> ||
-            std::constructible_from<GenClass, glm::vec<2, std::size_t>, glm::vec4>
+            std::constructible_from<GenClass, glm::vec<2, std::size_t>, glm::vec4> ||
+            std::constructible_from<GenClass, std::size_t, SeedType, float, float, float>
         );
 
 }

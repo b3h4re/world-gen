@@ -39,6 +39,7 @@ private:
     std::unique_ptr<GpuGenerator> worleyNoiseGenerator_{};
     std::unique_ptr<GpuGenerator> simplexNoiseGenerator_{};
     std::unique_ptr<GpuGenerator> waveletNoiseGenerator_{};
+    std::unique_ptr<GpuGenerator> gaborNoiseGenerator_{};
 };
 
 } // namespace lve

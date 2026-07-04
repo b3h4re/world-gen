@@ -44,8 +44,7 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
                 seed,
                 config->impulseDensity,
                 config->kernelSpatialExtent,
-                config->kernelOscillationFrequency,
-                config->oscillationOrientation
+                config->kernelOscillationFrequency
             );
         }
         case GeneratorKind::WorleyNoise: {

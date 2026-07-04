@@ -48,6 +48,19 @@ private:
     Computer computer_;
 };
 
+class GaborNoiseGpuGenerator final : public GpuGenerator {
+public:
+    explicit GaborNoiseGpuGenerator(LveComputeDevice& device);
+
+    void dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) override;
+
+private:
+    Computer computer_;
+};
+
 class WorleyNoiseGpuGenerator final : public GpuGenerator {
 public:
     explicit WorleyNoiseGpuGenerator(LveComputeDevice& device);

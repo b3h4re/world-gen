@@ -53,6 +53,11 @@ GpuGenerator& GpuTerrainPipeline::generatorFor(wgen::GeneratorKind kind) {
                 waveletNoiseGenerator_ = makeGpuGenerator(device_, kind);
             }
             return *waveletNoiseGenerator_;
+        case wgen::GeneratorKind::GaborNoise:
+            if (gaborNoiseGenerator_ == nullptr) {
+                gaborNoiseGenerator_ = makeGpuGenerator(device_, kind);
+            }
+            return *gaborNoiseGenerator_;
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

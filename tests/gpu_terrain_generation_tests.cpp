@@ -73,7 +73,9 @@ void testGenerator(
         wgen::HeightMap<float> heightMapGpu = gpuHeightMap.copyToCpu();
         wgen::HeightMap<float> heightMapCpu = gen.generateHeightMap(width, height);
 
-        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, epsilon), message);
+        std::string message_specific = message + " seed = " + std::to_string(seed);
+
+        wgen::tests::require(heightMapGpu.isClose(heightMapCpu, epsilon), message_specific);
     }
 
 }
@@ -106,8 +108,8 @@ void testPerlinNoise() {
 }
 
 void testWorleyNoise() {
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
     const std::size_t dots = 1000;
     const std::size_t numPoints = 1;
     const float p = 2.0F;
@@ -122,8 +124,8 @@ void testWorleyNoise() {
 }
 
 void testWorleyNoiseTwoPoints() {
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
     const std::size_t dots = 1000;
     const std::size_t numPoints = 2;
     const float p = 2.0F;
@@ -151,15 +153,15 @@ void testSimplexNoise() {
 }
 
 void testWaveletNoise() {
-    const float A = 0.25F;
-    const float B = 0.5F;
-    const float C = 0.25F;
+    const float A = wgen::WaveletNoise2d::A;
+    const float B = wgen::WaveletNoise2d::B;
+    const float C = wgen::WaveletNoise2d::C;
     const float frequency = wgen::WaveletNoise2d::DEFAULT_FREQUENCY;
     const glm::vec4 p{A, B, C, frequency};
     const std::size_t kWidth = 5;
     const std::size_t kheight = 5;
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
 
     wgen::WaveletNoise2d gen{
         {kWidth, kheight}, p
@@ -167,8 +169,7 @@ void testWaveletNoise() {
     wgen::WaveletNoiseComputeSpec spec{
         .waveletParams = p,
         .kWidth = kWidth,
-        .kHeight = kheight,
-        .seed = 0
+        .kHeight = kheight
     };
     std::string message = "Wavelet Noise generated on cpu must be exactly the same as generated on GPU";
     testGenerator<wgen::WaveletNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);

@@ -24,8 +24,9 @@ float randomAt(uint64_t seed, int x, int y) {
     uint X = uint(x);
     uint Y = uint(y);
     uint64_t key = hashValues(seed, X, Y);
+    float noise = -1.0f + 2.0f * toUnitFloat(key);
 
-    return -1.0f + 2.0f * hashUnitFloat(key);
+    return noise;
 }
 
 float smoothedGridAt(uint64_t seed, int x, int y, vec3 filterParams) {

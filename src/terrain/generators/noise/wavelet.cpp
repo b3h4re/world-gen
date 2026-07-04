@@ -52,7 +52,7 @@ namespace wgen {
     float WaveletNoise2d::randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const {
         // const auto x = wrapSignedIndex(i, gridWidth_);
         // const auto y = wrapSignedIndex(j, gridHeight_);
-        const auto key = hashValues(getSeed(), static_cast<std::size_t>(i), static_cast<std::size_t>(j));
+        const auto key = hashValues(getSeed(), static_cast<std::uint32_t>(i), static_cast<std::uint32_t>(j));
 
         HashUniformRealDistribution<float> noise{-1.0F, 1.0F};
         return noise(key);

@@ -83,6 +83,8 @@ QString TerrainPipelineListModel::displayName(const wgen::GeneratorSpec& spec) {
             return QStringLiteral("Worley");
         case wgen::GeneratorKind::ValueNoise:
             return QStringLiteral("Value noise");
+        case wgen::GeneratorKind::WaveletNoise:
+            return QStringLiteral("Wavelet noise");
     }
 
     return QStringLiteral("Unknown generator");

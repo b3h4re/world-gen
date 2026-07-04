@@ -4,6 +4,7 @@
 #include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
 #include "terrain/generators/noise/worley.hpp"
+#include "terrain/generators/noise/wavelet.hpp"
 
 #include "helpers.hpp"
 

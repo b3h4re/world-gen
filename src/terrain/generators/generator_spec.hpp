@@ -2,6 +2,8 @@
 
 #include "terrain/terrain_compute_method.hpp"
 
+#include <glm/glm.hpp>
+
 #include <cmath>
 #include <cstddef>
 #include <variant>
@@ -13,7 +15,8 @@ enum class GeneratorKind {
     ValueNoise,
     PerlinNoise,
     WorleyNoise,
-    SimplexNoise
+    SimplexNoise,
+    WaveletNoise
 };
 
 constexpr bool generatorSupportsVulkanCompute(GeneratorKind kind) {
@@ -22,6 +25,7 @@ constexpr bool generatorSupportsVulkanCompute(GeneratorKind kind) {
         case GeneratorKind::PerlinNoise:
         case GeneratorKind::WorleyNoise:
         case GeneratorKind::SimplexNoise:
+        case GeneratorKind::WaveletNoise:
             return true;
     }
 
@@ -40,6 +44,7 @@ constexpr bool generatorSupportsOctaves(GeneratorKind kind) {
         case GeneratorKind::PerlinNoise:
         case GeneratorKind::WorleyNoise:
         case GeneratorKind::SimplexNoise:
+        case GeneratorKind::WaveletNoise:
             return true;
     }
 
@@ -63,11 +68,19 @@ struct WorleyNoiseGeneratorSpec {
     float p{2.0F};
 };
 
+struct WaveletNoiseGeneratorSpec {
+    std::uint32_t kWidth{1};
+    std::uint32_t kheight{1};
+    glm::vec4 waveletParams{0.25f, 0.5f, 0.25f, 0.014231234F}; // A, B, C, frequency
+    float coordinateScale{1.0F};
+};
+
 using GeneratorConfig = std::variant<
     ValueNoiseGeneratorSpec,
     PerlinNoiseGeneratorSpec,
     WorleyNoiseGeneratorSpec,
-    SimplexNoiseGeneratorSpec
+    SimplexNoiseGeneratorSpec,
+    WaveletNoiseGeneratorSpec
 >;
 
 struct GeneratorOctaveSettings {

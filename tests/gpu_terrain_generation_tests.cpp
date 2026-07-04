@@ -150,6 +150,30 @@ void testSimplexNoise() {
     testGenerator<wgen::SimplexNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
+void testWaveletNoise() {
+    const float A = 0.25F;
+    const float B = 0.5F;
+    const float C = 0.25F;
+    const float frequency = wgen::WaveletNoise2d::DEFAULT_FREQUENCY;
+    const glm::vec4 p{A, B, C, frequency};
+    const std::size_t kWidth = 5;
+    const std::size_t kheight = 5;
+    const std::size_t width = 1000;
+    const std::size_t height = 1000;
+
+    wgen::WaveletNoise2d gen{
+        {kWidth, kheight}, p
+    };
+    wgen::WaveletNoiseComputeSpec spec{
+        .kWidth = kWidth,
+        .kheight = kheight,
+        .waveletParams = p,
+        .seed = 0
+    };
+    std::string message = "Wavelet Noise generated on cpu must be exactly the same as generated on GPU";
+    testGenerator<wgen::WaveletNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
+}
+
 void testGpuTerrainPipeline() {
     const std::size_t width = 64;
     const std::size_t height = 64;
@@ -298,6 +322,7 @@ int main() {
         lve::LveComputeDevice computeDevice{};
         device = &computeDevice;
 
+        wgen::tests::runTest("Wavelet Noise Test", testWaveletNoise);
         wgen::tests::runTest("Value Noise Test", testValueNoise);
         wgen::tests::runTest("Perlin Noise Test", testPerlinNoise);
         wgen::tests::runTest("Worley Noise Test", testWorleyNoise);

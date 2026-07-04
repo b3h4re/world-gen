@@ -12,3 +12,13 @@ float minkowskiDistance(vec2 v1, vec2 v2, float p) {
         1.0F / p
     );
 }
+
+float lowPassFilter(int x, vec3 params) {
+    if (x == -1) {
+        return params.x;
+    }
+    if (x == 0) {
+        return params.y;
+    }
+    return params.z;
+}

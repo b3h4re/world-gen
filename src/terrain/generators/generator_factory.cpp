@@ -5,6 +5,7 @@
 #include "terrain/generators/noise/simplex.hpp"
 #include "terrain/generators/noise/perlin.hpp"
 #include "terrain/generators/noise/value_noise.hpp"
+#include "terrain/generators/noise/wavelet.hpp"
 
 #include <cmath>
 #include <stdexcept>
@@ -53,6 +54,18 @@ std::unique_ptr<Generator> makeGenerator(const GeneratorSpec& spec, SeedType see
             return std::make_unique<SimplexNoise2d>(
                 config->dotsPerCell,
                 seed
+            );
+        }
+        case GeneratorKind::WaveletNoise: {
+            const auto* config = std::get_if<WaveletNoiseGeneratorSpec>(&spec.config);
+            if (config == nullptr) {
+                throw std::invalid_argument("wavelet noise generator spec has wrong config type");
+            }
+
+            return std::make_unique<WaveletNoise2d>(
+                seed,
+                glm::vec<2, std::size_t>{config->kWidth, config->kheight},
+                config->waveletParams
             );
         }
     }

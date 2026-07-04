@@ -147,38 +147,38 @@ namespace wgen {
             throw std::runtime_error("Worley expects dots, optional seed, and optional p");
         };
 
-        constructors["wavelet"] = [](const std::vector<Value>& args) -> Value {
-            if (args.size() < 2) {
-                throw std::runtime_error("Wavelet must have at least three arguments: width, height");
-            }
+        // constructors["wavelet"] = [](const std::vector<Value>& args) -> Value {
+        //     if (args.size() < 2) {
+        //         throw std::runtime_error("Wavelet must have at least three arguments: width, height");
+        //     }
 
-            const auto width = static_cast<std::size_t>(as<int>(args[0]));
-            const auto height = static_cast<std::size_t>(as<int>(args[1]));
+        //     const auto width = static_cast<std::size_t>(as<int>(args[0]));
+        //     const auto height = static_cast<std::size_t>(as<int>(args[1]));
 
-            if (args.size() == 2) {
-                return std::make_unique<wgen::WaveletNoise2d>(width, height);
-            }
+        //     if (args.size() == 2) {
+        //         return std::make_unique<wgen::WaveletNoise2d>(width, height);
+        //     }
 
-            const auto seed = static_cast<SeedType>(as<int>(args[3]));
+        //     const auto seed = static_cast<SeedType>(as<int>(args[3]));
 
-            if (args.size() == 3) {
-                return std::make_unique<wgen::WaveletNoise2d>(width, height, seed);
-            }
+        //     if (args.size() == 3) {
+        //         return std::make_unique<wgen::WaveletNoise2d>(width, height, seed);
+        //     }
 
-            const auto frequency = static_cast<float>(as<float>(args[4]));
+        //     const auto frequency = static_cast<float>(as<float>(args[4]));
 
-            if (args.size() == 4) {
-                return std::make_unique<wgen::WaveletNoise2d>(
-                    width,
-                    height,
-                    seed,
-                    wgen::defaultReconstructionKernel,
-                    frequency
-                );
-            }
+        //     if (args.size() == 4) {
+        //         return std::make_unique<wgen::WaveletNoise2d>(
+        //             width,
+        //             height,
+        //             seed,
+        //             wgen::defaultReconstructionKernel,
+        //             frequency
+        //         );
+        //     }
 
-            throw std::runtime_error("Wavelet expects width, height, optional seed, and optional frequency");
-        };
+        //     throw std::runtime_error("Wavelet expects width, height, optional seed, and optional frequency");
+        // };
 
         constructors["value_noise"] = [](const std::vector<Value>& args) -> Value {
             if (args.size() == 0) {

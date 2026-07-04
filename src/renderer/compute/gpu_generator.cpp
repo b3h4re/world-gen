@@ -160,6 +160,36 @@ void SimplexNoiseGpuGenerator::dispatch(
         });
 }
 
+WaveletNoiseGpuGenerator::WaveletNoiseGpuGenerator(LveComputeDevice& device)
+    : computer_{device, "wavelet_noise", sizeof(wgen::WaveletNoiseComputeSpec)} {}
+
+void WaveletNoiseGpuGenerator::dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) {
+    const auto* waveletSpec = std::get_if<wgen::WaveletNoiseGeneratorSpec>(&spec.config);
+    if (spec.kind != wgen::GeneratorKind::WaveletNoise || waveletSpec == nullptr) {
+        throw std::invalid_argument("wavelet GPU generator received wrong spec");
+    }
+
+    wgen::WaveletNoiseComputeSpec computeSpec{
+        .kWidth = checkedComputeDimension(waveletSpec->kWidth, "Kernel width for wavelet"),
+        .kheight = checkedComputeDimension(waveletSpec->kheight, "Kernel height for wavelet"),
+        .waveletParams = waveletSpec->waveletParams,
+        .seed = seed,
+        .coordinateScale = wgen::generatorOctaveFrequency(spec)
+    };
+
+    computer_.dispatch(
+        computeSpec,
+        output.descriptorInfo(),
+        ComputeDispatchSize{
+            .groupCountX = checkedComputeDimension(output.width(), "GPU heightmap width"),
+            .groupCountY = checkedComputeDimension(output.height(), "GPU heightmap height"),
+            .groupCountZ = 1,
+        });
+}
+
 std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::GeneratorKind kind) {
     switch (kind) {
         case wgen::GeneratorKind::ValueNoise:
@@ -170,6 +200,8 @@ std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::G
             return std::make_unique<WorleyNoiseGpuGenerator>(device);
         case wgen::GeneratorKind::SimplexNoise:
             return std::make_unique<SimplexNoiseGpuGenerator>(device);
+        case wgen::GeneratorKind::WaveletNoise:
+            return std::make_unique<WaveletNoiseGpuGenerator>(device);
     }
 
     throw std::invalid_argument("unknown GPU generator kind");

@@ -77,6 +77,19 @@ private:
     Computer computer_;
 };
 
+class WaveletNoiseGpuGenerator final : public GpuGenerator {
+public:
+    explicit WaveletNoiseGpuGenerator(LveComputeDevice& device);
+
+    void dispatch(
+        GpuHeightMap& output,
+        const wgen::GeneratorSpec& spec,
+        wgen::SeedType seed) override;
+
+private:
+    Computer computer_;
+};
+
 
 std::unique_ptr<GpuGenerator> makeGpuGenerator(LveComputeDevice& device, wgen::GeneratorKind kind);
 

@@ -18,12 +18,17 @@ namespace wgen {
 
         constexpr static float DEFAULT_FREQUENCY = 0.014231234F;
 
-        WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, SeedType seed,
-                       FloatFunction reconstructionKernel = defaultReconstructionKernel,
-                        float frequency = DEFAULT_FREQUENCY);
-        WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight,
-                        FloatFunction reconstructionKernel = defaultReconstructionKernel,
-                        float frequency = DEFAULT_FREQUENCY);
+        WaveletNoise2d(
+            SeedType seed,
+            glm::vec<2, std::size_t> ker = {1, 1},
+            glm::vec4 params = glm::vec4{A, B, C, DEFAULT_FREQUENCY},
+            FloatFunction reconstructionKernel = defaultReconstructionKernel
+        );
+        WaveletNoise2d(
+            glm::vec<2, std::size_t> ker = {1, 1},
+            glm::vec4 params = glm::vec4{A, B, C, DEFAULT_FREQUENCY},
+            FloatFunction reconstructionKernel = defaultReconstructionKernel
+        );
 
         void setKernelSize(std::size_t kernelWidth, std::size_t kernelHeight);
         void setKernelWidth(std::size_t kernelWidth);
@@ -33,6 +38,9 @@ namespace wgen {
         std::size_t getKernelHeight() const;
 
         float noise(std::size_t x, std::size_t y) const override;
+        GeneratorCapabilities capabilities() const override;
+        virtual std::string compShader() const override;
+        virtual std::size_t specSize() const override;
 
 
     private:
@@ -41,8 +49,6 @@ namespace wgen {
         std::size_t kernelWidth_;
         std::size_t kernelHeight_;
 
-        std::size_t gridWidth_;
-        std::size_t gridHeight_;
         float frequency_;
 
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);

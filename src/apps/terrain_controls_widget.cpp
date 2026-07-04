@@ -88,6 +88,18 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .scale = 1.0F,
         });
     });
+    auto* addWaveletAction = addGeneratorMenu->addAction(QStringLiteral("Wavelet"));
+    connect(addWaveletAction, &QAction::triggered, this, [this] {
+        pipelineModel_->appendGenerator(wgen::GeneratorSpec{
+            .kind = wgen::GeneratorKind::WaveletNoise,
+            .config = wgen::WaveletNoiseGeneratorSpec{
+                .kWidth = 5,
+                .kheight = 5,
+                .waveletParams = glm::vec4{0.25f, 0.5f, 0.25f, 0.014231234F}
+            },
+            .scale = 1.0F,
+        });
+    });
     auto* addValueNoiseAction = addGeneratorMenu->addAction(QStringLiteral("Value noise"));
     connect(addValueNoiseAction, &QAction::triggered, this, [this] {
         pipelineModel_->appendGenerator(wgen::GeneratorSpec{

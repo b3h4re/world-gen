@@ -7,19 +7,18 @@
 
 namespace wgen {
 
-	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, FloatFunction reconstructionKernel,
-	                                   float frequency)
-	    : WaveletNoise2d{gridWidth, gridHeight, std::random_device{}(), reconstructionKernel, frequency} {}
+    WaveletNoise2d::WaveletNoise2d(glm::vec<2, std::size_t> ker, glm::vec4 params, FloatFunction reconstructionKernel)
+                : WaveletNoise2d{std::random_device{}(), ker, params, reconstructionKernel} {}
 
-	    WaveletNoise2d::WaveletNoise2d(std::size_t gridWidth, std::size_t gridHeight, SeedType seed,
-		                                   FloatFunction reconstructionKernel, float frequency)
-		    : gridWidth_{gridWidth}, gridHeight_{gridHeight}, frequency_{frequency}, reconstructionKernel_{reconstructionKernel},
-		        kernelWidth_{1}, kernelHeight_{1} {
-	        if (frequency_ <= 0.0F) {
-	            throw std::invalid_argument("Wavelet frequency must be positive");
-	        }
-	        setSeed(seed);
-	    }
+    WaveletNoise2d::WaveletNoise2d(SeedType seed, glm::vec<2, std::size_t> ker, glm::vec4 params, FloatFunction reconstructionKernel)
+                : reconstructionKernel_{reconstructionKernel}, kernelWidth_{ker.x}, kernelHeight_{ker.y}, frequency_{params.w} {
+        if (frequency_ <= 0.0F) {
+            std::string message = "Wavelet frequency must be positive: freq = ";
+            message += std::to_string(frequency_);
+            throw std::invalid_argument(message);
+        }
+        setSeed(seed);
+    }
 
     void WaveletNoise2d::setKernelSize(std::size_t kernelWidth, std::size_t kernelHeight) {
         setKernelHeight(kernelHeight);
@@ -51,9 +50,9 @@ namespace wgen {
     }
 
     float WaveletNoise2d::randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const {
-        const auto x = wrapSignedIndex(i, gridWidth_);
-        const auto y = wrapSignedIndex(j, gridHeight_);
-        const auto key = hashValues(getSeed(), x, y);
+        // const auto x = wrapSignedIndex(i, gridWidth_);
+        // const auto y = wrapSignedIndex(j, gridHeight_);
+        const auto key = hashValues(getSeed(), static_cast<std::size_t>(i), static_cast<std::size_t>(j));
 
         HashUniformRealDistribution<float> noise{-1.0F, 1.0F};
         return noise(key);
@@ -77,11 +76,11 @@ namespace wgen {
         const float u = static_cast<float>(x) * frequency_;
         const float v = static_cast<float>(y) * frequency_;
 
-        const float u_T = glm::mod<float>(u, gridWidth_);
-        const float v_T = glm::mod<float>(v, gridHeight_);
+        // const float u_T = glm::mod<float>(u, gridWidth_);
+        // const float v_T = glm::mod<float>(v, gridHeight_);
 
-        const auto i = static_cast<std::ptrdiff_t>(std::floor(u_T));
-        const auto j = static_cast<std::ptrdiff_t>(std::floor(v_T));
+        const auto i = static_cast<std::ptrdiff_t>(std::floor(u));
+        const auto j = static_cast<std::ptrdiff_t>(std::floor(v));
         const auto kernelWidth = static_cast<std::ptrdiff_t>(kernelWidth_);
         const auto kernelHeight = static_cast<std::ptrdiff_t>(kernelHeight_);
 
@@ -89,11 +88,27 @@ namespace wgen {
         for (auto m = i - kernelWidth; m <= i + kernelWidth; ++m ) {
             for (auto n = j - kernelHeight; n <= j + kernelHeight; ++n) {
                 noise += waveletNoiseTile(m, n)
-                        * reconstructionKernel_(u_T - static_cast<float>(m))
-                        * reconstructionKernel_(v_T - static_cast<float>(n));
+                        * reconstructionKernel_(u - static_cast<float>(m))
+                        * reconstructionKernel_(v - static_cast<float>(n));
             }
         }
         return noise;
+    }
+
+    GeneratorCapabilities WaveletNoise2d::capabilities() const {
+        return {
+            .cpu = true,
+            .vulkanCompute = true,
+            .octaves = true,
+        };
+    }
+
+    std::string WaveletNoise2d::compShader() const {
+        return "wavelet_noise";
+    }
+
+    std::size_t WaveletNoise2d::specSize() const {
+        return sizeof(WaveletNoiseComputeSpec);
     }
 
 }

@@ -269,6 +269,8 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/worley.hpp
         src/terrain/generators/noise/simplex.cpp
         src/terrain/generators/noise/simplex.hpp
+        src/terrain/generators/noise/wavelet.cpp
+        src/terrain/generators/noise/wavelet.hpp
     )
     target_include_directories(terrain_pipeline_octaves_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(terrain_pipeline_octaves_tests PRIVATE cxx_std_20)
@@ -320,6 +322,8 @@ if(BUILD_TESTING)
         src/terrain/generators/noise/worley.hpp
         src/terrain/generators/noise/simplex.cpp
         src/terrain/generators/noise/simplex.hpp
+        src/terrain/generators/noise/wavelet.cpp
+        src/terrain/generators/noise/wavelet.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp

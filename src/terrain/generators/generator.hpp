@@ -112,6 +112,14 @@ namespace wgen {
         SeedType seed{};
     };
 
+    struct alignas(16) WaveletNoiseComputeSpec {
+        std::uint32_t kWidth{};
+        std::uint32_t kheight{};
+        glm::vec4 waveletParams{}; // A, B, C, frequency
+        SeedType seed{};
+        float coordinateScale{1.0F};
+    };
+
 
     class Generator {
     public:
@@ -159,7 +167,9 @@ namespace wgen {
             std::constructible_from<GenClass, SeedType> ||
             std::constructible_from<GenClass, std::size_t, SeedType> ||
             std::constructible_from<GenClass, std::size_t, std::size_t, SeedType> ||
-            std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType>
+            std::constructible_from<GenClass, std::size_t, std::size_t, std::size_t, SeedType> ||
+            std::constructible_from<GenClass, SeedType, glm::vec<2, std::size_t>, glm::vec4> ||
+            std::constructible_from<GenClass, glm::vec<2, std::size_t>, glm::vec4>
         );
 
 }

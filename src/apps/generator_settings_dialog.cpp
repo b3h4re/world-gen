@@ -107,6 +107,9 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     disableSpinBox(ui_->numPointsSpinBox);
     disableOctaveSettings();
 
+    if (auto* wavelet = std::get_if<wgen::WaveletNoiseGeneratorSpec>(&spec_.config)) {
+
+    }
     if (auto* perlin = std::get_if<wgen::PerlinNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(perlin->dotsPerCell);
     }
@@ -177,6 +180,8 @@ QString GeneratorSettingsDialog::generatorName(wgen::GeneratorKind kind) {
             return QStringLiteral("Simplex");
         case wgen::GeneratorKind::WorleyNoise:
             return QStringLiteral("Worley");
+        case wgen::GeneratorKind::WaveletNoise:
+            return QStringLiteral("Wavelet");
         case wgen::GeneratorKind::ValueNoise:
             return QStringLiteral("Value noise");
     }

@@ -1,0 +1,90 @@
+#version 450
+#include "hash.glsl"
+#include "common.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform Params {
+    uint kWidth;
+    uint kHeight;
+    vec4 waveletParams; // A, B, C, frequency
+    uint64_t seed;
+    float coordinateScale;
+} params;
+
+layout(set = 0, binding = 0) buffer HeightMap {
+    float values[];
+} heightMap;
+
+float separableFilter(int a, int b, vec3 filterParams) {
+    return lowPassFilter(a, filterParams) * lowPassFilter(b, filterParams);
+}
+
+float randomAt(uint64_t seed, int x, int y) {
+    uint X = uint(x);
+    uint Y = uint(y);
+    uint64_t key = hashValues(seed, X, Y);
+
+    return -1.0f + 2.0f * hashUnitFloat(key);
+}
+
+float smoothedGridAt(uint64_t seed, int x, int y, vec3 filterParams) {
+    float res = 0;
+    for (int a = -1; a <= 1; ++a) {
+        for (int b = -1; b <= 1; ++b) {
+            res += separableFilter(a, b, filterParams) * randomAt(seed, x - a, y - b);
+        }
+    }
+    return res;
+}
+
+float waveletNoiseTile(uint64_t seed, int x, int y, vec3 filterParams) {
+    return randomAt(seed, x, y) - smoothedGridAt(seed, x, y, filterParams);
+}
+
+float reconstructionKernel(float t) {
+    if (abs(t) < 1) {
+        return 1 - abs(t);
+    }
+    return 0;
+}
+
+float waveletNoise(uint64_t seed, uint x, uint y, vec4 p, uint kWidth, uint kHeight) {
+    float f = p.w;
+    vec3 filterParams = vec3(p.x, p.y, p.z);
+
+    float u = float(x) * f;
+    float v = float(y) * f;
+
+    int i = int(floor(u));
+    int j = int(floor(v));
+    int kw = int(kWidth);
+    int kh = int(kHeight);
+    float noise = 0;
+    for (int m = i - kw; m <= i + kw; ++m) {
+        for (int n = j - kh; n <= j + kh; ++n) {
+            noise += waveletNoiseTile(seed, m, n, filterParams)
+                    * reconstructionKernel(u - float(m))
+                    * reconstructionKernel(v - float(n));
+        }
+    }
+
+    return noise;
+}
+
+
+void main() {
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+    uint index = y * width + x;
+    if (index >= heightMap.values.length()) {
+        return;
+    }
+
+    uint sampleX = uint(float(x) * params.coordinateScale);
+    uint sampleY = uint(float(y) * params.coordinateScale);
+    heightMap.values[index] = waveletNoise(params.seed, sampleX, sampleY,
+                    params.waveletParams, params.kWidth, params.kHeight);
+}

@@ -27,4 +27,18 @@ namespace wgen {
         };
     }
 
+    // Knuths algorithm
+    int poisson(float lambda, SeedType seed) {
+        const float limit = glm::exp(-lambda);
+        float prod = 1.0f;
+        int k = 0;
+
+        while (prod > limit) {
+            ++k;
+            prod *= toUnitFloat(hashValues(seed, k));
+        }
+
+        return k - 1;
+    }
+
 }

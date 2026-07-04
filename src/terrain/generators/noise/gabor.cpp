@@ -38,7 +38,7 @@ float GaborNoise::noise(std::size_t x, std::size_t y) const {
         for (std::size_t p = leftBound; p <= rightBound; ++p) {
             for (std::size_t q = borromBound; q <= topBound; ++q) {
                 std::uint64_t cellSeed = hashValues(seed, p, q);
-                int M = 4; // TODO Poisson distribution
+                int M = poisson(impulseDensity_, cellSeed);
                 for (int i = 0; i < M; ++i) {
                     float xi = random(hashValues(cellSeed, i, 0));
                     float eta = random(hashValues(cellSeed, i, 1));

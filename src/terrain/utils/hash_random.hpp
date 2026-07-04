@@ -141,4 +141,6 @@ namespace wgen {
         }
     };
 
+    int poisson(float lambda, SeedType seed);
+
 }

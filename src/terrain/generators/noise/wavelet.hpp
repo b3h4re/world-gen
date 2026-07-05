@@ -2,6 +2,7 @@
 
 #include "terrain/generators/generator.hpp"
 
+#include <functional>
 #include <cstddef>
 #include <cstdint>
 
@@ -46,6 +47,7 @@ namespace wgen {
     private:
         FloatFunction reconstructionKernel_;
 
+        glm::vec3 filterParams_;
         std::size_t kernelWidth_;
         std::size_t kernelHeight_;
 
@@ -53,7 +55,7 @@ namespace wgen {
 
         static std::size_t wrapSignedIndex(std::ptrdiff_t index, std::size_t size);
         float randomAt(std::ptrdiff_t i, std::ptrdiff_t j) const;
-        inline constexpr static auto hFilter = &lowPassFilter<A, B, C>;
+        std::function<float(int)> hFilter;
         float separableFilter(int a, int b) const;
         float smoothedGridAt(std::ptrdiff_t i, std::ptrdiff_t j) const;
         float waveletNoiseTile(std::ptrdiff_t i, std::ptrdiff_t j) const;

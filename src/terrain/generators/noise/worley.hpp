@@ -11,7 +11,6 @@ namespace wgen {
     class WorleyNoise2d : public Generator {
     public:
         static constexpr std::size_t MIN_GPU_FEATURE_POINT_COUNT{1};
-        static constexpr std::size_t MAX_GPU_FEATURE_POINT_COUNT{8};
 
         WorleyNoise2d(
             std::size_t dotsPerCell,

@@ -29,20 +29,37 @@ namespace wgen {
     float defaultReconstructionKernel(float t);
 
     // Low pass filter for {-1, 0, 1}, h[a, b, c]
-    template<float a, float b, float c>
-    float lowPassFilter(int x) {
-        switch (x) {
-            case -1:
-                return a;
-                break;
-            case 0:
-                return b;
-                break;
-            case 1:
-                return c;
-                break;
-        }
-        throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
+    // template<float a, float b, float c>
+    // float lowPassFilter(int x) {
+    //     switch (x) {
+    //         case -1:
+    //             return a;
+    //             break;
+    //         case 0:
+    //             return b;
+    //             break;
+    //         case 1:
+    //             return c;
+    //             break;
+    //     }
+    //     throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
+    // }
+
+    inline auto getLowPassFilter(float a, float b, float c) {
+        return [a, b, c](int x) {
+            switch (x) {
+                case -1:
+                    return a;
+                    break;
+                case 0:
+                    return b;
+                    break;
+                case 1:
+                    return c;
+                    break;
+            }
+            throw std::invalid_argument("Filter can only be used for x in {-1, 0, 1}");
+        };
     }
 
     // template<float k>

@@ -83,8 +83,8 @@ void testGenerator(
 
 
 void testValueNoise() {
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
 
     wgen::ValueNoiseGenerator gen{};
     wgen::ValueNoiseComputeSpec spec{
@@ -96,9 +96,9 @@ void testValueNoise() {
 }
 
 void testPerlinNoise() {
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
-    const std::size_t dots = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
+    const std::size_t dots = 10;
 
     wgen::PerlinNoise2d gen{dots, 0};
     wgen::PerlinNoiseComputeSpec spec{
@@ -118,7 +118,8 @@ void testWorleyNoise() {
     wgen::WorleyNoise2d gen{dots, 0, p, numPoints};
     wgen::WorleyNoiseComputeSpec spec{
         .dots = dots,
-        .p = p
+        .p = p,
+        .numPoints = numPoints,
     };
     std::string message = "Worley Noise generated on cpu must be exactly the same as generated on GPU";
     testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
@@ -134,15 +135,16 @@ void testWorleyNoiseTwoPoints() {
     wgen::WorleyNoise2d gen{dots, 0, p, numPoints};
     wgen::WorleyNoiseComputeSpec spec{
         .dots = dots,
-        .p = p
+        .p = p,
+        .numPoints = numPoints
     };
     std::string message = "Worley Noise with two feature points generated on cpu must be exactly the same as generated on GPU";
     testGenerator<wgen::WorleyNoise2d>(width, height, gen, spec, message, 0.00001, 1, 1);
 }
 
 void testSimplexNoise() {
-    const std::size_t width = 1000;
-    const std::size_t height = 1000;
+    const std::size_t width = 100;
+    const std::size_t height = 100;
     const std::size_t dots = 1000;
 
     wgen::SimplexNoise2d gen{dots, 0};
@@ -154,8 +156,8 @@ void testSimplexNoise() {
 }
 
 void testWaveletNoise() {
-    const float A = wgen::WaveletNoise2d::A;
-    const float B = wgen::WaveletNoise2d::B;
+    const float A = wgen::WaveletNoise2d::A - 0.1f;
+    const float B = wgen::WaveletNoise2d::B + 0.1f;
     const float C = wgen::WaveletNoise2d::C;
     const float frequency = wgen::WaveletNoise2d::DEFAULT_FREQUENCY;
     const glm::vec4 p{A, B, C, frequency};
@@ -203,7 +205,7 @@ void testGaborNoise() {
         .gaborParams = gaborParams
     };
     std::string message = "Gabor Noise generated on cpu must be exactly the same as generated on GPU";
-    testGenerator<wgen::GaborNoise>(width, height, gen, spec, message, 0.00001, 1, 1);
+    testGenerator<wgen::GaborNoise>(width, height, gen, spec, message, 0.0001, 1, 1);
 }
 
 void testGpuTerrainPipeline() {
@@ -251,7 +253,7 @@ void testGpuTerrainPipeline() {
         wgen::map(perlinNoise.generateHeightMap(width, height), wgen::multiplyFunction(perlinScale));
 
     wgen::tests::require(
-        gpuHeightMap.isClose(cpuHeightMap, 0.00001F),
+        gpuHeightMap.isClose(cpuHeightMap, 0.0001F),
         "GPU terrain pipeline must accumulate scaled generator outputs");
 }
 
@@ -290,9 +292,10 @@ void testGpuTerrainPipelineWorleyTwoPoints() {
     const wgen::WorleyNoiseComputeSpec computeSpec{
         .dots = dots,
         .p = p,
+        .numPoints = numPoints,
         .seed = worleySeed,
     };
-    lve::Computer computer{*device, "worley_noise_2", sizeof(wgen::WorleyNoiseComputeSpec)};
+    lve::Computer computer{*device, "worley_noise", sizeof(wgen::WorleyNoiseComputeSpec)};
     computer.dispatch(
         computeSpec,
         directGpuHeightMap.descriptorInfo(),

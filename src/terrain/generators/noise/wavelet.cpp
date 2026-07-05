@@ -11,12 +11,19 @@ namespace wgen {
                 : WaveletNoise2d{std::random_device{}(), ker, params, reconstructionKernel} {}
 
     WaveletNoise2d::WaveletNoise2d(SeedType seed, glm::vec<2, std::size_t> ker, glm::vec4 params, FloatFunction reconstructionKernel)
-                : reconstructionKernel_{reconstructionKernel}, kernelWidth_{ker.x}, kernelHeight_{ker.y}, frequency_{params.w} {
+                : reconstructionKernel_{reconstructionKernel}, filterParams_{params.x, params.y, params.z}, kernelWidth_{ker.x}, kernelHeight_{ker.y}, frequency_{params.w} {
         if (frequency_ <= 0.0F) {
             std::string message = "Wavelet frequency must be positive: freq = ";
             message += std::to_string(frequency_);
             throw std::invalid_argument(message);
         }
+        if (std::abs(filterParams_.x + filterParams_.y + filterParams_.z - 1.0F) > 0.0001f) {
+            std::string message = "Wavelet separable filter params should sum up to one: A + B + C = ";
+            message += std::to_string(filterParams_.x) + " + " + std::to_string(filterParams_.y) + " + " + std::to_string(filterParams_.z);
+            message += " = " + std::to_string(filterParams_.x + filterParams_.y + filterParams_.z);
+            throw std::invalid_argument(message);
+        }
+        hFilter = getLowPassFilter(filterParams_.x, filterParams_.y, filterParams_.z);
         setSeed(seed);
     }
 

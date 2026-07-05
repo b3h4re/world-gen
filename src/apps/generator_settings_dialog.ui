@@ -58,6 +58,19 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="1">
+      <widget class="QSpinBox" name="dotsPerCellSpinBox">
+       <property name="minimum">
+        <number>2</number>
+       </property>
+       <property name="maximum">
+        <number>2147483647</number>
+       </property>
+       <property name="value">
+        <number>100</number>
+       </property>
+      </widget>
+     </item>
      <item row="3" column="0">
       <widget class="QLabel" name="scaleLabel">
        <property name="text">
@@ -143,8 +156,8 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QSpinBox" name="dotsPerCellSpinBox">
+     <item row="6" column="1">
+      <widget class="QSpinBox" name="numPointsSpinBox">
        <property name="minimum">
         <number>2</number>
        </property>
@@ -156,16 +169,55 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QSpinBox" name="numPointsSpinBox">
+     <item row="7" column="0">
+      <widget class="QLabel" name="impulseDensityLabel">
+       <property name="text">
+        <string>impulse density</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QDoubleSpinBox" name="impulseDensitySpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
        <property name="minimum">
-        <number>2</number>
+        <double>-1000000.000000000000000</double>
        </property>
        <property name="maximum">
-        <number>2147483647</number>
+        <double>1000000.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
        </property>
        <property name="value">
-        <number>100</number>
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
+      <widget class="QLabel" name="spatialExtentLabel">
+       <property name="text">
+        <string>spatial extent</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="1">
+      <widget class="QDoubleSpinBox" name="spatialExtentSpinBox">
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-1000000.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>1000000.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
        </property>
       </widget>
      </item>

@@ -41,6 +41,25 @@ void GeneratorSettingsDialog::enableFrequency(float f) {
     );
 }
 
+
+void GeneratorSettingsDialog::enableImpulseDensity(float impulseDensity) {
+    setupSpinBox(
+        ui_->impulseDensitySpinBox,
+        0.0F,
+        std::numeric_limits<float>::max(),
+        impulseDensity
+    );
+}
+
+void GeneratorSettingsDialog::enableSpatialExtent(float spatialExtent) {
+    setupSpinBox(
+        ui_->spatialExtentSpinBox,
+        0.01F,
+        std::numeric_limits<float>::max(),
+        spatialExtent
+    );
+}
+
 void GeneratorSettingsDialog::enablePower(float p) {
     setupSpinBox(
         ui_->powerSpinBox,
@@ -105,10 +124,18 @@ GeneratorSettingsDialog::GeneratorSettingsDialog(wgen::GeneratorSpec spec, QWidg
     disableSpinBox(ui_->frequencySpinBox);
     disableSpinBox(ui_->powerSpinBox);
     disableSpinBox(ui_->numPointsSpinBox);
+    disableSpinBox(ui_->impulseDensitySpinBox);
+    disableSpinBox(ui_->spatialExtentSpinBox);
     disableOctaveSettings();
 
     if (auto* wavelet = std::get_if<wgen::WaveletNoiseGeneratorSpec>(&spec_.config)) {
 
+    }
+    if (auto* gabor = std::get_if<wgen::GaborNoiseGeneratorSpec>(&spec_.config)) {
+        enableDotsPerCell(gabor->dotsPerCell);
+        enableFrequency(gabor->kernelOscillationFrequency);
+        enableImpulseDensity(gabor->impulseDensity);
+        enableSpatialExtent(gabor->kernelSpatialExtent);
     }
     if (auto* perlin = std::get_if<wgen::PerlinNoiseGeneratorSpec>(&spec_.config)) {
         enableDotsPerCell(perlin->dotsPerCell);
@@ -158,6 +185,15 @@ void GeneratorSettingsDialog::accept() {
     if (std::holds_alternative<wgen::PerlinNoiseGeneratorSpec>(spec_.config)) {
         spec_.config = wgen::PerlinNoiseGeneratorSpec{
             .dotsPerCell = static_cast<std::size_t>(ui_->dotsPerCellSpinBox->value()),
+        };
+    }
+
+    if (std::holds_alternative<wgen::GaborNoiseGeneratorSpec>(spec_.config)) {
+        spec_.config = wgen::GaborNoiseGeneratorSpec{
+            .dotsPerCell = static_cast<std::size_t>(ui_->dotsPerCellSpinBox->value()),
+            .impulseDensity = static_cast<float>(ui_->impulseDensitySpinBox->value()),
+            .kernelSpatialExtent = static_cast<float>(ui_->spatialExtentSpinBox->value()),
+            .kernelOscillationFrequency = static_cast<float>(ui_->frequencySpinBox->value())
         };
     }
 

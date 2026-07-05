@@ -67,6 +67,8 @@ private:
 
     void enableDotsPerCell(std::size_t val = 100);
     void enableFrequency(float f = 0.014231234F);
+    void enableImpulseDensity(float impulseDensity = 1.0F);
+    void enableSpatialExtent(float spatialExtent = 1.5F);
     void enablePower(float p = 2.0F);
     void enableNumPoints(std::size_t numPoints = 1);
     void enableOctaveSettings(const wgen::GeneratorOctaveSettings& settings);

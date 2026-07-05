@@ -11,6 +11,8 @@ public:
     explicit TerrainPipelineListModel(QObject* parent = nullptr);
     explicit TerrainPipelineListModel(wgen::GeneratorPipelineSpec pipeline, QObject* parent = nullptr);
 
+    void clear();
+
     int rowCount(const QModelIndex& parent = QModelIndex{}) const override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 

@@ -123,6 +123,9 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .scale = 1.0F,
         });
     });
+    connect(ui_->clearPipelineButton, &QPushButton::clicked, this, [this] {
+        clearPipeline();
+    });
 
     auto openGeneratorSettings = [this](const QModelIndex& index) {
         const wgen::GeneratorSpec* spec = pipelineModel_->generatorAt(index.row());
@@ -204,6 +207,10 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 }
 
 TerrainControlsWidget::~TerrainControlsWidget() = default;
+
+void TerrainControlsWidget::clearPipeline() {
+    pipelineModel_->clear();
+}
 
 QWidget& TerrainControlsWidget::vulkanWidget() {
     return *ui_->vulkanWidget;

@@ -33,6 +33,9 @@ private:
     std::unique_ptr<Ui::TerrainControlsWidget> ui_;
     std::unique_ptr<TerrainPipelineListModel> pipelineModel_;
     Callbacks callbacks_;
+
+    void clearPipeline();
+
 };
 
 } // namespace lve

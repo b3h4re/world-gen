@@ -71,10 +71,7 @@ public:
         wgen::SeedType seed) override;
 
 private:
-    Computer& computerForFeaturePointCount(std::size_t numPoints);
-
-    LveComputeDevice& device_;
-    std::array<std::unique_ptr<Computer>, 8> computers_{};
+    Computer computer_;
 };
 
 class SimplexNoiseGpuGenerator final : public GpuGenerator {

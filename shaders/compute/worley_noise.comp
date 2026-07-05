@@ -8,6 +8,7 @@ layout(push_constant) uniform Params {
     uint dots;
     float p;
     float coordinateScale;
+    uint numPoints;
     uint64_t seed;
 } params;
 
@@ -31,7 +32,7 @@ vec2 worleyFeaturePoint(uint64_t seed, int cellX, int cellY, uint featureIndex) 
     );
 }
 
-float worleyNoise(uint64_t seed, uint x, uint y, uint dots, float p) {
+float worleyNoise(uint64_t seed, uint x, uint y, uint dots, float p, uint numPoints) {
     uint i0 = x / dots;
     uint j0 = y / dots;
     float localX = float(x % dots) / float(dots);
@@ -45,7 +46,7 @@ float worleyNoise(uint64_t seed, uint x, uint y, uint dots, float p) {
 
     for (int i = -1; i <= 1; ++i) {
         for (int j = -1; j <= 1; ++j) {
-            for (uint u = 0; u < NUM_POINTS; ++u) {
+            for (uint u = 0; u < numPoints; ++u) {
                 int cellX = int(i0) + i;
                 int cellY = int(j0) + j;
                 vec2 featurePointDelta = vec2(cellX, cellY) + worleyFeaturePoint(seed, cellX, cellY, u) - point;
@@ -77,5 +78,5 @@ void main() {
 
     uint sampleX = uint(float(x) * params.coordinateScale);
     uint sampleY = uint(float(y) * params.coordinateScale);
-    heightMap.values[index] = worleyNoise(params.seed, sampleX, sampleY, params.dots, params.p);
+    heightMap.values[index] = worleyNoise(params.seed, sampleX, sampleY, params.dots, params.p, params.numPoints);
 }

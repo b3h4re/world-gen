@@ -97,6 +97,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             .kind = wgen::GeneratorKind::WorleyNoise,
             .config = wgen::WorleyNoiseGeneratorSpec{
                 .dotsPerCell = 100,
+                .numPoints = 1,
                 .p = 2.0F
             },
             .scale = 1.0F,

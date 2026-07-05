@@ -118,14 +118,16 @@ namespace wgen {
     static_assert(sizeof(GaborNoiseComputeSpec) == 32);
 
     struct WorleyNoiseComputeSpec {
-        std::uint32_t dots{};
-        float p{2.0F};
-        float coordinateScale{1.0F};
-        SeedType seed{};
+        alignas(4) std::uint32_t dots{};
+        alignas(4) float p{2.0F};
+        alignas(4) float coordinateScale{1.0F};
+        alignas(4) std::uint32_t numPoints{1};
+        alignas(8) SeedType seed{};
     };
     static_assert(offsetof(WorleyNoiseComputeSpec, dots) == 0);
     static_assert(offsetof(WorleyNoiseComputeSpec, p) == 4);
     static_assert(offsetof(WorleyNoiseComputeSpec, coordinateScale) == 8);
+    static_assert(offsetof(WorleyNoiseComputeSpec, numPoints) == 12);
     static_assert(offsetof(WorleyNoiseComputeSpec, seed) == 16);
 
     struct SimplexNoiseComputeSpec {

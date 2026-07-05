@@ -54,7 +54,7 @@ void GeneratorSettingsDialog::enableNumPoints(std::size_t numPoints) {
     setupSpinBox(
         ui_->numPointsSpinBox,
         1,
-        8,
+        std::numeric_limits<int>::max(),
         static_cast<int>(std::min<std::size_t>(
             numPoints,
             static_cast<std::size_t>(std::numeric_limits<int>::max())))

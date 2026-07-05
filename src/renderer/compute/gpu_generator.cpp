@@ -115,24 +115,7 @@ void GaborNoiseGpuGenerator::dispatch(
 }
 
 WorleyNoiseGpuGenerator::WorleyNoiseGpuGenerator(LveComputeDevice& device)
-    : device_{device} {}
-
-Computer& WorleyNoiseGpuGenerator::computerForFeaturePointCount(std::size_t numPoints) {
-    if (numPoints < wgen::WorleyNoise2d::MIN_GPU_FEATURE_POINT_COUNT ||
-            numPoints > wgen::WorleyNoise2d::MAX_GPU_FEATURE_POINT_COUNT) {
-        throw std::invalid_argument("Worley GPU generator supports 1 to 8 feature points");
-    }
-
-    const std::size_t index = numPoints - wgen::WorleyNoise2d::MIN_GPU_FEATURE_POINT_COUNT;
-    if (computers_[index] == nullptr) {
-        computers_[index] = std::make_unique<Computer>(
-            device_,
-            "worley_noise_" + std::to_string(numPoints),
-            sizeof(wgen::WorleyNoiseComputeSpec));
-    }
-
-    return *computers_[index];
-}
+    : computer_{device, "worley_noise", sizeof(wgen::WorleyNoiseComputeSpec)} {}
 
 void WorleyNoiseGpuGenerator::dispatch(
         GpuHeightMap& output,
@@ -147,10 +130,11 @@ void WorleyNoiseGpuGenerator::dispatch(
         .dots = checkedComputeDimension(worleySpec->dotsPerCell, "worley dots per cell"),
         .p = checkedPowerDimension(worleySpec->p, "worley minkowsky distance power"),
         .coordinateScale = wgen::generatorOctaveFrequency(spec),
+        .numPoints = checkedComputeDimension(worleySpec->numPoints, "worley numner of feature points"),
         .seed = seed,
     };
 
-    computerForFeaturePointCount(worleySpec->numPoints).dispatch(
+    computer_.dispatch(
         computeSpec,
         output.descriptorInfo(),
         ComputeDispatchSize{

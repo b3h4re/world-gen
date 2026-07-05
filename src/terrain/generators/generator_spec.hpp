@@ -82,7 +82,6 @@ struct WaveletNoiseGeneratorSpec {
     std::uint32_t kWidth{1};
     std::uint32_t kheight{1};
     glm::vec4 waveletParams{0.25f, 0.5f, 0.25f, 0.014231234F}; // A, B, C, frequency
-    float coordinateScale{1.0F};
 };
 
 using GeneratorConfig = std::variant<

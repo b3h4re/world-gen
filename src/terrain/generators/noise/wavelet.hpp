@@ -18,6 +18,7 @@ namespace wgen {
 
 
         constexpr static float DEFAULT_FREQUENCY = 0.014231234F;
+        static void assertFilterParams(float a, float b, float c);
 
         WaveletNoise2d(
             SeedType seed,

@@ -7,6 +7,15 @@
 
 namespace wgen {
 
+    void WaveletNoise2d::assertFilterParams(float a, float b, float c) {
+        if (std::abs(a + b + c - 1.0F) > 0.0001f) {
+            std::string message = "Wavelet separable filter params should sum up to one: A + B + C = ";
+            message += std::to_string(a) + " + " + std::to_string(b) + " + " + std::to_string(c);
+            message += " = " + std::to_string(a + b + c);
+            throw std::invalid_argument(message);
+        }
+    }
+
     WaveletNoise2d::WaveletNoise2d(glm::vec<2, std::size_t> ker, glm::vec4 params, FloatFunction reconstructionKernel)
                 : WaveletNoise2d{std::random_device{}(), ker, params, reconstructionKernel} {}
 
@@ -17,12 +26,8 @@ namespace wgen {
             message += std::to_string(frequency_);
             throw std::invalid_argument(message);
         }
-        if (std::abs(filterParams_.x + filterParams_.y + filterParams_.z - 1.0F) > 0.0001f) {
-            std::string message = "Wavelet separable filter params should sum up to one: A + B + C = ";
-            message += std::to_string(filterParams_.x) + " + " + std::to_string(filterParams_.y) + " + " + std::to_string(filterParams_.z);
-            message += " = " + std::to_string(filterParams_.x + filterParams_.y + filterParams_.z);
-            throw std::invalid_argument(message);
-        }
+        assertFilterParams(filterParams_.x, filterParams_.y, filterParams_.z);
+        
         hFilter = getLowPassFilter(filterParams_.x, filterParams_.y, filterParams_.z);
         setSeed(seed);
     }

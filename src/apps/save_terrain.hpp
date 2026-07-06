@@ -34,6 +34,8 @@ private:
 
     QWidget* getLabelForField(QWidget *field);
 
+    void selectSaveLocation();
+
 };
 
 } // namespace lve

@@ -1,7 +1,11 @@
 #include "save_terrain.hpp"
 
 #include "ui_save_terrain.h"
+#include "files/file_path.hpp"
 
+
+#include <QFileDialog>
+#include <QFileInfo>
 
 
 namespace lve {
@@ -11,6 +15,7 @@ SaveTerrainDialog::SaveTerrainDialog(QWidget* parent)
     ui_->setupUi(this);
     // setWindowTitle(generatorName(spec_.kind) + QStringLiteral(" Settings"));
 
+    connect(ui_->filePathBrowsePushButton, &QPushButton::clicked, this, &SaveTerrainDialog::selectSaveLocation);
 
 
     
@@ -24,6 +29,7 @@ SaveTerrainDialog::~SaveTerrainDialog() = default;
 void SaveTerrainDialog::accept() {
     cfg_.dataFormat = dataFromatFromIndex(ui_->styleComboBox->currentIndex());
     cfg_.fileFormat = exportFormatFromIndex(ui_->formatComboBox->currentIndex());
+    cfg_.path = wgen::files::Path(ui_->filePathLineEdit->text().toStdString());
     QDialog::accept();
 }
 
@@ -47,6 +53,23 @@ ExportFormats SaveTerrainDialog::exportFormatFromIndex(int index) {
         default:
             return ExportFormats::PNG;
     }
+}
+
+void SaveTerrainDialog::selectSaveLocation() {
+    const QString filePath = QFileDialog::getSaveFileName(
+        this,
+        tr("Save file"),
+        ui_->filePathLineEdit->text().isEmpty()
+            ? QDir::homePath() + "/output.csv"
+            : ui_->filePathLineEdit->text(),
+        tr("CSV files (*.csv);;All files (*)")
+    );
+
+    if (filePath.isEmpty()) {
+        return; // user cancelled
+    }
+
+    ui_->filePathLineEdit->setText(filePath);
 }
 
 }

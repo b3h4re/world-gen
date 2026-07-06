@@ -1,5 +1,7 @@
 #pragma once
 
+#include "files/exporter.hpp"
+
 #include <QDialog>
 #include <QSpinBox>
 
@@ -17,11 +19,18 @@ public:
     explicit SaveTerrainDialog(QWidget* parent = nullptr);
     ~SaveTerrainDialog() override;
 
+
+    ExportConfig getConfig() const { return cfg_; }
+
 protected:
     void accept() override;
 
 private:
     std::unique_ptr<Ui::SaveTerrainDialog> ui_;
+    ExportConfig cfg_;
+
+    DataFormats dataFromatFromIndex(int index);
+    ExportFormats exportFormatFromIndex(int index);
 
     QWidget* getLabelForField(QWidget *field);
 

@@ -4,6 +4,7 @@
 #include "game/input/qt_input_reader.hpp"
 #include "model/buffer/lve_buffer.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
+#include "files/exporter.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -40,7 +41,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .configChanged = [this](wgen::WindowConfig config) {
                 this->applyWindowConfig(config);
               },
-              .saveTerrain = [this] {
+              .exportWithConfig = [this](ExportConfig cfg) {
                 
               }
           }

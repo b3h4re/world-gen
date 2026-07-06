@@ -3,6 +3,7 @@
 #include "generator_settings_dialog.hpp"
 #include "app_settings.hpp"
 #include "save_terrain.hpp"
+#include "files/exporter.hpp"
 #include "terrain_pipeline_list_model.hpp"
 #include "ui_terrain_controls_widget.h"
 
@@ -208,12 +209,11 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
 
     auto openSaveDialog = [this]() {
-
         SaveTerrainDialog dialog{this};
         if (dialog.exec() == QDialog::Accepted) {
-            
+            ExportConfig cfg = dialog.getConfig();
+            callbacks_.exportWithConfig(cfg);
         }
-
     };
     connect(ui_->saveButton, &QPushButton::clicked, this, [openSaveDialog]{
         openSaveDialog();

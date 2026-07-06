@@ -12,6 +12,7 @@
 #include <QListView>
 #include <QMenu>
 #include <QPoint>
+#include <QMessageBox>
 #include <utility>
 
 namespace lve {
@@ -210,9 +211,23 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
     auto openSaveDialog = [this]() {
         SaveTerrainDialog dialog{this};
-        if (dialog.exec() == QDialog::Accepted) {
-            ExportConfig cfg = dialog.getConfig();
-            callbacks_.exportWithConfig(cfg);
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        ExportConfig cfg = dialog.getConfig();
+        try {
+            callbacks_.exportTerrain(cfg);
+            QMessageBox::information(
+                this,
+                tr("Terrain exported"),
+                tr("Terrain was saved successfully.")
+            );
+        } catch (const std::runtime_error& e) {
+            QMessageBox::critical(
+                this,
+                tr("Export failed"),
+                tr("Could not save terrain:\n%1").arg(QString::fromUtf8(e.what()))
+            );
         }
     };
     connect(ui_->saveButton, &QPushButton::clicked, this, [openSaveDialog]{

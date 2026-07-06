@@ -5,6 +5,7 @@
 #include "apps/terrain_app_renderer.hpp"
 #include "config/app_config.hpp"
 #include "utils/frame_limiter.hpp"
+#include "files/exporter.hpp"
 
 namespace lve {
 
@@ -31,6 +32,7 @@ private:
     TerrainAppRenderer renderer_;
     TerrainAppGui gui_;
     FrameLimiter limiter_;
+    Exporter exporter_;
     wgen::AppConfig config_;
     bool render3d_{false};
 };

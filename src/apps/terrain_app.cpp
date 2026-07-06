@@ -18,7 +18,7 @@ namespace lve {
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
-    : core_{config}, config_{config},
+    : core_{config}, config_{config}, exporter_{},
       renderer_{config.windowConfig}, limiter_{config.windowConfig.fps_max},
       gui_{
           renderer_.window().controlsWidget(),
@@ -41,8 +41,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .configChanged = [this](wgen::WindowConfig config) {
                 this->applyWindowConfig(config);
               },
-              .exportWithConfig = [this](ExportConfig cfg) {
-                
+              .exportTerrain = [this](ExportConfig cfg) {
+                exporter_.cfg() = cfg;
+                exporter_.exportToFile(core_.activeHeightMap());
               }
           }
       } {

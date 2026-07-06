@@ -39,6 +39,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               },
               .configChanged = [this](wgen::WindowConfig config) {
                 this->applyWindowConfig(config);
+              },
+              .saveTerrain = [this] {
+                
               }
           }
       } {

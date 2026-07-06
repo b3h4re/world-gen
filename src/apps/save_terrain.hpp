@@ -34,6 +34,8 @@ private:
 
     QWidget* getLabelForField(QWidget *field);
 
+    std::pair<std::string, std::string> getFileFormat(ExportFormats fmt);
+
     void selectSaveLocation();
 
 };

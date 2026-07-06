@@ -56,13 +56,14 @@ ExportFormats SaveTerrainDialog::exportFormatFromIndex(int index) {
 }
 
 void SaveTerrainDialog::selectSaveLocation() {
+    auto format = getFileFormat(exportFormatFromIndex(ui_->formatComboBox->currentIndex()));
     const QString filePath = QFileDialog::getSaveFileName(
         this,
         tr("Save file"),
         ui_->filePathLineEdit->text().isEmpty()
-            ? QDir::homePath() + "/output.csv"
+            ? QDir::homePath() + "/output" + QString::fromStdString(format.second)
             : ui_->filePathLineEdit->text(),
-        tr("CSV files (*.csv);;All files (*)")
+        tr((format.first + ";;All files (*)").c_str())
     );
 
     if (filePath.isEmpty()) {
@@ -70,6 +71,25 @@ void SaveTerrainDialog::selectSaveLocation() {
     }
 
     ui_->filePathLineEdit->setText(filePath);
+}
+
+std::pair<std::string, std::string> SaveTerrainDialog::getFileFormat(ExportFormats fmt) {
+    std::pair<std::string, std::string> result;
+    switch (fmt) {
+        case ExportFormats::CSV:
+            result.first = "CSV files (*.csv)";
+            result.second = ".csv";
+            break;
+        case ExportFormats::PNG:
+            result.first = "PNG files (*.png)";
+            result.second = ".png";
+            break;
+        default:
+            result.first = "PNG files (*.png)";
+            result.second = ".png";
+            break;
+    }
+    return result;
 }
 
 }

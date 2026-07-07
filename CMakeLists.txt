@@ -261,6 +261,21 @@ if(BUILD_TESTING)
     target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
     add_test(NAME hash_uniform_real_distribution_tests COMMAND hash_uniform_real_distribution_tests)
 
+    # Exporter tests
+    add_executable(exporter_tests
+        tests/exporter_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/files/exporter.cpp
+        src/files/exporter.hpp
+        src/files/file_path.cpp
+        src/files/file_path.hpp
+    )
+    target_include_directories(exporter_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(exporter_tests PRIVATE cxx_std_20)
+    target_link_libraries(exporter_tests PRIVATE stb)
+    add_test(NAME exporter_tests COMMAND exporter_tests)
+
 
     # GPU compute tests
     add_executable(gpu_terrain_generation_tests

@@ -24,6 +24,7 @@ namespace wgen::files {
         static std::filesystem::path normalize(std::filesystem::path path);
 
         static std::filesystem::path homeDirectory();
+        static std::filesystem::path tmpDirectory();
 
     private:
         std::filesystem::path path_;

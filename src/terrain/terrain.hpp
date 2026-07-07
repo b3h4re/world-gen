@@ -67,6 +67,27 @@ public:
     HeightMap& operator=(const HeightMap&) = default;
     HeightMap& operator=(HeightMap&&) noexcept = default;
 
+
+    void resize(std::size_t newWidth, std::size_t newHeight) {
+        if (newWidth == width_ && newHeight == height_) {
+            return;
+        }
+        if (newWidth == width_) {
+            samples_.resize(newWidth * newHeight);
+            width_ = newWidth;
+            height_ = newHeight;
+        }
+
+        std::vector<T> newSamples{};
+        newSamples.reserve(newWidth * newHeight);
+        for (std::size_t x = 0; x < width_; ++x) {
+            for (std::size_t y = 0; y < height_; ++y) {
+                newSamples.at(y * newWidth + x) = this->at(x, y);
+            }
+        }
+        samples_ = std::move(newSamples);
+    }
+
     // Adds values from a different heightmap starting at position (x, y)
     /*
     If the other heightmap is of size (w, h) and position at (x, y)

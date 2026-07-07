@@ -61,6 +61,8 @@ public:
 
     const wgen::AppConfig& config() const { return config_; }
 
+    wgen::HeightMap<float>& activeHeightMap() { return activeHeightMap_; }
+
     ColorFunctions getActiveColorFuncID() const { return activeColorFuncId_; }
 
 private:

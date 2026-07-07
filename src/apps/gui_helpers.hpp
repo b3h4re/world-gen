@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/app_config.hpp"
+#include "files/exporter.hpp"
 #include "terrain/generators/generator_spec.hpp"
 
 #include <functional>
@@ -15,6 +16,7 @@ struct Callbacks {
     std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
     std::function<wgen::AppConfig()> getConfig;
     std::function<void(wgen::WindowConfig)> configChanged;
+    std::function<void(ExportConfig)> exportTerrain;
 };
 
 

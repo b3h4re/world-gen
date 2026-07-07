@@ -4,6 +4,7 @@
 #include "game/input/qt_input_reader.hpp"
 #include "model/buffer/lve_buffer.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
+#include "files/exporter.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -17,8 +18,7 @@ namespace lve {
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
-    : core_{config}, config_{config},
-      renderer_{config.windowConfig}, limiter_{config.windowConfig.fps_max},
+    : core_{config}, renderer_{config.windowConfig},
       gui_{
           renderer_.window().controlsWidget(),
           Callbacks{
@@ -39,9 +39,14 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               },
               .configChanged = [this](wgen::WindowConfig config) {
                 this->applyWindowConfig(config);
+              },
+              .exportTerrain = [this](ExportConfig cfg) {
+                exporter_.cfg() = cfg;
+                exporter_.exportToFile(core_.activeHeightMap());
               }
           }
-      } {
+      },
+      limiter_{config.windowConfig.fps_max}, exporter_{renderer_.colorMapper()}, config_{config} {
     renderer_.window().setRenderParent(gui_.vulkanWidget());
     renderer_.setTerrainMesh(core_.loadTerrain());
 }

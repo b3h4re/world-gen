@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/generators/2d/generator.hpp"
+#include "terrain/utils/generator_utils.hpp"
 
 #include <utility>
 #include <cstdint>

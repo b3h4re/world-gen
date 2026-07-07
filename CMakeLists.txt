@@ -147,7 +147,7 @@ if(BUILD_TESTING)
         tests/helpers.cpp
         tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/2d/generator.cpp
+        src/terrain/utils/generator_utils.cpp
         src/terrain/generators/2d/generator.hpp
         src/terrain/generators/2d/noise/gradient_noise_interface.hpp
         src/terrain/generators/2d/noise/perlin.cpp
@@ -178,7 +178,7 @@ if(BUILD_TESTING)
         src/files/file_path.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/2d/generator.cpp
+        src/terrain/utils/generator_utils.cpp
         src/terrain/generators/2d/noise/worley.cpp
         src/terrain/generators/2d/noise/worley.hpp
         src/terrain/generators/2d/noise/wavelet.cpp
@@ -203,9 +203,9 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
+        src/terrain/utils/generator_utils.cpp
         src/terrain/generators/2d/terrain_pipeline.cpp
         src/terrain/generators/2d/terrain_pipeline.hpp
-        src/terrain/generators/2d/generator.cpp
         src/terrain/generators/2d/generator.hpp
         src/terrain/generators/2d/noise/value_noise.cpp
         src/terrain/generators/2d/noise/value_noise.hpp
@@ -221,9 +221,9 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
+        src/terrain/utils/generator_utils.cpp
         src/terrain/generators/2d/coordinate_scaled_generator.cpp
         src/terrain/generators/2d/coordinate_scaled_generator.hpp
-        src/terrain/generators/2d/generator.cpp
         src/terrain/generators/2d/generator.hpp
         src/terrain/generators/2d/generator_factory.cpp
         src/terrain/generators/2d/generator_factory.hpp
@@ -256,6 +256,7 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
     )
     target_include_directories(hash_uniform_real_distribution_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
@@ -292,9 +293,9 @@ if(BUILD_TESTING)
         src/pipeline/descriptors/lve_descriptors.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
         src/terrain/generators/2d/coordinate_scaled_generator.cpp
         src/terrain/generators/2d/coordinate_scaled_generator.hpp
-        src/terrain/generators/2d/generator.cpp
         src/terrain/generators/2d/generator.hpp
         src/terrain/generators/2d/generator_factory.cpp
         src/terrain/generators/2d/generator_factory.hpp

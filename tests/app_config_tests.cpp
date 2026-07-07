@@ -18,6 +18,7 @@ void testPlanetConfigDefaults() {
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
     wgen::tests::require(config.resolution == 0, "default planet resolution should be automatic");
+    wgen::tests::expectNear(config.radius, 100.0F, 0.00001F, "default planet radius is wrong");
     wgen::tests::require(
         config.computeMethod == wgen::TerrainComputeMethod::VulkanCompute,
         "default planet compute should be Vulkan compute");
@@ -31,6 +32,7 @@ void testPlanetConfigOverrides() {
     const toml::table root = parseToml(R"(
         [planet]
         resolution = 128
+        radius = 42.5
         compute_method = "vulkan_compute"
         perlin_cell_size = 0.25
         octaves = 3
@@ -40,6 +42,7 @@ void testPlanetConfigOverrides() {
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
     wgen::tests::require(config.resolution == 128, "planet resolution override is wrong");
+    wgen::tests::expectNear(config.radius, 42.5F, 0.00001F, "planet radius override is wrong");
     wgen::tests::require(config.computeMethod == wgen::TerrainComputeMethod::VulkanCompute, "planet compute override is wrong");
     wgen::tests::expectNear(config.perlinCellSize, 0.25F, 0.00001F, "planet cell size override is wrong");
     wgen::tests::require(config.octaves == 3, "planet octaves override is wrong");
@@ -67,6 +70,15 @@ void testPlanetConfigRejectsBadValues() {
     wgen::tests::requireThrows<std::runtime_error>(
         [&] { wgen::parse_planet_config(badCellSize); },
         "planet config should reject non-positive cell size"
+    );
+
+    const toml::table badRadius = parseToml(R"(
+        [planet]
+        radius = 0.0
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badRadius); },
+        "planet config should reject non-positive radius"
     );
 
     const toml::table badLacunarity = parseToml(R"(

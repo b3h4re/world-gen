@@ -410,6 +410,7 @@ wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& te
         ? std::min(terrainConfig.width, terrainConfig.height)
         : config_.planetConfig.resolution;
     wgen::Planet<float> result{dots, 0.0F};
+    result.setRadius(config_.planetConfig.radius);
     std::vector<GpuPlanetGeneratorRequest> gpuRequests;
     gpuRequests.reserve(planetPipelineSpec_.size());
     const std::vector<wgen::SeedType> seeds = generatorSeeds(planetPipelineSpec_.size(), terrainConfig.seed);
@@ -434,6 +435,7 @@ wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& te
 
     if (!gpuRequests.empty()) {
         result += generatePlanetGpu(gpuRequests, terrainConfig);
+        result.setRadius(config_.planetConfig.radius);
     }
 
     return result;
@@ -449,7 +451,9 @@ wgen::Planet<float> TerrainAppCore::generatePlanetGpu(
     const std::size_t dots = config_.planetConfig.resolution == 0
         ? std::min(terrainConfig.width, terrainConfig.height)
         : config_.planetConfig.resolution;
-    return gpuPlanetPipeline_->generatePlanet(requests, dots);
+    wgen::Planet<float> planet = gpuPlanetPipeline_->generatePlanet(requests, dots);
+    planet.setRadius(config_.planetConfig.radius);
+    return planet;
 }
 
 TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet) {

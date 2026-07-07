@@ -36,7 +36,8 @@ public:
 
 private:
     CameraController2d cameraController2d_{};
-    CameraController3d cameraController3d_{};
+    CameraController3d planeMeshCameraController3d_{};
+    CameraController3d planetCameraController3d_{};
 };
 
 } // namespace lve

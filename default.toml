@@ -32,6 +32,7 @@ jiggle=0.021
 
 [planet]
 resolution=0
+radius=100.0
 compute_method="vulkan_compute"
 perlin_cell_size=1.0
 octaves=5

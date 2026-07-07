@@ -261,6 +261,15 @@ namespace wgen {
             "planet.resolution"
         );
 
+        config.radius = checked_float(
+            root["planet"]["radius"],
+            config.radius,
+            "planet.radius"
+        );
+        if (config.radius <= 0.0F) {
+            throw std::runtime_error("planet.radius must be positive");
+        }
+
         const std::string computeMethod = checked_string(
             root["planet"]["compute_method"],
             "vulkan_compute",

@@ -269,9 +269,6 @@ jobs:
             ninja-build \
             qt6-base-dev \
             qt6-base-dev-tools \
-            libvulkan-dev \
-            vulkan-tools \
-            glslang-tools \
             libglm-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev \
@@ -282,45 +279,19 @@ jobs:
             file \
             patchelf
 
-      - name: Provide glslc wrapper through glslangValidator
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+
+      - name: Check Vulkan SDK tools
         shell: bash
         run: |
-          sudo tee /usr/local/bin/glslc > /dev/null <<'EOF'
-          #!/usr/bin/env bash
-          set -euo pipefail
-
-          if [[ "${1:-}" == "--version" ]]; then
-            glslangValidator --version
-            exit 0
-          fi
-
-          out=""
-          args=()
-
-          while [[ $# -gt 0 ]]; do
-            case "$1" in
-              -o)
-                out="$2"
-                shift 2
-                ;;
-              *)
-                args+=("$1")
-                shift
-                ;;
-            esac
-          done
-
-          if [[ -z "$out" ]]; then
-            echo "glslc wrapper error: missing -o <output>" >&2
-            exit 1
-          fi
-
-          exec glslangValidator -V "${args[@]}" -o "$out"
-          EOF
-
-          sudo chmod +x /usr/local/bin/glslc
+          echo "VULKAN_SDK=$VULKAN_SDK"
           which glslc
           glslc --version
+          which glslangValidator || true
 
       - name: Configure
         shell: bash
@@ -328,7 +299,8 @@ jobs:
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DWORLD_GEN_PORTABLE_BUILD=ON \
-            -DBUILD_TESTING=OFF
+            -DBUILD_TESTING=OFF \
+            -DVulkan_GLSLC_EXECUTABLE="$VULKAN_SDK/bin/glslc"
 
       - name: Build
         shell: bash

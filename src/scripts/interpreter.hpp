@@ -96,7 +96,7 @@ namespace wgen {
         CommandPayload payload;
     };
 
-    constexpr Command EMPTY_COMMAND{0, "", EmptyCommand{}};
+    inline const Command EMPTY_COMMAND{0, "", EmptyCommand{}};
 
 
     /*

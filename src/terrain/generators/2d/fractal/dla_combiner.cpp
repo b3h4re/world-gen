@@ -1,6 +1,8 @@
 #include "dla_combiner.hpp"
 #include "dla.hpp"
 
+#include <cstdint>
+
 
 namespace wgen {
     DLACombiner::DLACombiner(std::size_t numDlas, std::vector<DLAGeneratorConfig> configs)
@@ -68,7 +70,13 @@ namespace wgen {
     HeightMap<float> DLACombiner::generateHeightMap(std::size_t width, std::size_t height) const {
         HeightMap<float> res{width, height};
 
-        std::mt19937 rd{getSeed()};
+        const auto seed = getSeed();
+        std::seed_seq seedSequence{
+            static_cast<std::uint32_t>(seed),
+            static_cast<std::uint32_t>(seed >> 32U)
+        };
+
+        std::mt19937 rd{seedSequence};
 
         for (std::size_t i = 0; i < numDlas_; ++i) {
             std::size_t posX = rd() % width;

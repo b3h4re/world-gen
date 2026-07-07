@@ -4,6 +4,7 @@
 #include <fstream>
 #include <random>
 #include <utility>
+#include <sstream>
 
 
 namespace wgen {

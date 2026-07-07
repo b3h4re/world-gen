@@ -5,6 +5,7 @@
 #include <queue>
 #include <iostream>
 #include <vector>
+#include <cstdint>
 
 
 namespace wgen {
@@ -15,7 +16,12 @@ namespace wgen {
     }
 
     void RandomGridPoints::reset() {
-        random_ = std::mt19937(seed_);
+        const auto seed = seed_;
+        std::seed_seq seedSequence{
+            static_cast<std::uint32_t>(seed),
+            static_cast<std::uint32_t>(seed >> 32U)
+        };
+        random_ = std::mt19937(seedSequence);
     }
 
     void RandomGridPoints::setSeed(SeedType newSeed) {
@@ -44,7 +50,13 @@ namespace wgen {
         RandomGridPoints points{getSeed()};
         HeightMap<float> res{width, height};
 
-        std::mt19937 random{getSeed()};
+        const auto seed = getSeed();
+        std::seed_seq seedSequence{
+            static_cast<std::uint32_t>(seed),
+            static_cast<std::uint32_t>(seed >> 32U)
+        };
+
+        std::mt19937 random{seedSequence};
         std::unordered_set<glm::ivec2, Ivec2Hash> placedPoints{};
         placedPoints.insert(startingPos);
         std::unordered_set<glm::ivec2, Ivec2Hash> leafs{};
@@ -504,7 +516,13 @@ namespace wgen {
         pixelsStart.at(startingPos) = 1;
         RandomGridPoints points{getSeed()};
 
-        std::mt19937 random{getSeed()};
+        const auto seed = getSeed();
+        std::seed_seq seedSequence{
+            static_cast<std::uint32_t>(seed),
+            static_cast<std::uint32_t>(seed >> 32U)
+        };
+
+        std::mt19937 random{seedSequence};
         std::unordered_set<glm::ivec2, Ivec2Hash> placedPoints{};
         placedPoints.insert(startingPos);
         std::unordered_set<glm::ivec2, Ivec2Hash> leafs{};

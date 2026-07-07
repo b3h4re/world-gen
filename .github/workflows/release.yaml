@@ -271,12 +271,52 @@ jobs:
             qt6-base-dev-tools \
             libvulkan-dev \
             vulkan-tools \
-            glslc \
+            glslang-tools \
             libglm-dev \
             libfuse2 \
             wget \
             file \
             patchelf
+
+      - name: Provide glslc wrapper through glslangValidator
+        shell: bash
+        run: |
+          sudo tee /usr/local/bin/glslc > /dev/null <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          if [[ "${1:-}" == "--version" ]]; then
+            glslangValidator --version
+            exit 0
+          fi
+
+          out=""
+          args=()
+
+          while [[ $# -gt 0 ]]; do
+            case "$1" in
+              -o)
+                out="$2"
+                shift 2
+                ;;
+              *)
+                args+=("$1")
+                shift
+                ;;
+            esac
+          done
+
+          if [[ -z "$out" ]]; then
+            echo "glslc wrapper error: missing -o <output>" >&2
+            exit 1
+          fi
+
+          exec glslangValidator -V "${args[@]}" -o "$out"
+          EOF
+
+          sudo chmod +x /usr/local/bin/glslc
+          which glslc
+          glslc --version
 
       - name: Configure
         shell: bash

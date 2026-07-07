@@ -88,6 +88,12 @@ public:
         samples_ = std::move(newSamples);
     }
 
+    HeightMap<T> resized(std::size_t newWidth, std::size_t newHeight) const {
+        HeightMap<T> resizedHeightMap(*this);
+        resizedHeightMap.resize(newWidth, newHeight);
+        return resizedHeightMap;
+    }
+
     // Adds values from a different heightmap starting at position (x, y)
     /*
     If the other heightmap is of size (w, h) and position at (x, y)

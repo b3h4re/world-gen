@@ -29,15 +29,24 @@ namespace lve {
         float scale{1.0F};
     };
 
+
+    enum class TerrainRenderModes {
+        FlatPicture,
+        PlaneMesh3D,
+        PlanetView
+    };
+
     struct FrameInfo {
         int frameIndex;
         float frameTime;
         VkCommandBuffer commandBuffer;
         Camera2d &camera2d;
         Camera3d &camera3d;
+        Camera3d &cameraPlanet;
         VkDescriptorSet globalDescriptorSet;
-        bool render3d;
+        TerrainRenderModes renderMode;
         const std::vector<GameObject2d> &objects2d;
         const std::vector<GameObject3d> &objects3d;
+        const std::vector<GameObject3d> &objectsPlanet;
     };
 }

@@ -8,6 +8,7 @@
 #include "terrain/generators/generator_spec.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
+#include "terrain/planet.hpp"
 
 #include <cstdint>
 #include <future>
@@ -23,6 +24,9 @@ struct TerrainMeshData {
     std::vector<std::uint32_t> indices2d;
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
+    std::vector<Vertex3d> verticesPlanet;
+    std::vector<std::uint32_t> indicesPlanet;
+
 };
 
 struct TerrainJobResult {
@@ -43,6 +47,12 @@ void appendHeightMapMesh3d(
     const wgen::HeightMap<float>& heightMap,
     std::vector<Vertex3d>& vertices,
     std::vector<std::uint32_t>& indices);
+
+void appendPlanetmesh(
+    const wgen::Planet<float>& planet,
+    std::vector<Vertex3d>& vertices,
+    std::vector<std::uint32_t>& indices
+);
 
 class TerrainAppCore {
 public:

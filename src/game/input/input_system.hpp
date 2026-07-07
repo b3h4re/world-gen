@@ -5,6 +5,7 @@
 #include "game/camera/camera_3d.hpp"
 #include "game/input/camera_controller_3d.hpp"
 #include "game/input/input_state.hpp"
+#include "renderer/lve_frame_info.hpp"
 
 #include <vector>
 
@@ -31,7 +32,7 @@ public:
         const AppInputState &input,
         float frameTime,
         float aspectRatio,
-        std::vector<CameraUpdateTarget> &targets);
+        std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>> &targets);
 
 private:
     CameraController2d cameraController2d_{};

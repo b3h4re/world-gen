@@ -67,6 +67,26 @@ wgen::AppConfig TerrainApp::getConfig() const {
     return config_;
 }
 
+void TerrainApp::rotateCameraViews() {
+    switch (renderMode_) {
+        case TerrainRenderModes::FlatPicture:
+            renderMode_ = TerrainRenderModes::PlaneMesh3D;
+            return;
+        case TerrainRenderModes::PlaneMesh3D:
+            renderMode_ = TerrainRenderModes::PlanetView;
+            return;
+        case TerrainRenderModes::PlanetView:
+            renderMode_ = TerrainRenderModes::FlatPicture;
+            return;
+    }
+}
+
+void TerrainApp::updateCamerasStatus(std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>>& cameraTargets) {
+    for (auto& pair : cameraTargets) {
+        pair.first.active = pair.second == renderMode_;
+    }
+}
+
 void TerrainApp::run() {
     auto& device = renderer_.device();
     auto& lveRenderer = renderer_.renderer();
@@ -106,11 +126,13 @@ void TerrainApp::run() {
     TerrainRenderSystem terrainRenderSystem{device, lveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
     Camera2d camera2d{};
     Camera3d camera3d{};
+    Camera3d cameraPlanet{};
     AppInputSystem appInputSystem{};
     QtInputReader inputReader{window.qWindow(), window.rootWidget(), window.renderParentWidget(), window.renderWidget()};
-    std::vector<CameraUpdateTarget> cameraTargets{
-        makeCameraTarget(camera2d, !render3d_),
-        makeCameraTarget(camera3d, render3d_),
+    std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>> cameraTargets{
+        {makeCameraTarget(camera2d, renderMode_ == TerrainRenderModes::FlatPicture), TerrainRenderModes::FlatPicture},
+        {makeCameraTarget(camera3d, renderMode_ == TerrainRenderModes::PlaneMesh3D), TerrainRenderModes::PlaneMesh3D},
+        {makeCameraTarget(cameraPlanet, renderMode_ == TerrainRenderModes::PlanetView), TerrainRenderModes::PlanetView}
     };
 
     auto previousTime = std::chrono::steady_clock::now();
@@ -131,15 +153,14 @@ void TerrainApp::run() {
         }
 
         if (input.viewToggleJustPressed) {
-            render3d_ = !render3d_;
+            rotateCameraViews();
         }
 
         const auto currentTime = std::chrono::steady_clock::now();
         const float frameTime = std::min(std::chrono::duration<float>(currentTime - previousTime).count(), 0.1F);
         previousTime = currentTime;
 
-        cameraTargets[0].active = !render3d_;
-        cameraTargets[1].active = render3d_;
+        updateCamerasStatus(cameraTargets);
         appInputSystem.updateCameras(input, frameTime, lveRenderer.getAspectRatio(), cameraTargets);
 
         if (const VkCommandBuffer commandBuffer = lveRenderer.beginFrame()) {
@@ -154,19 +175,32 @@ void TerrainApp::run() {
                 commandBuffer,
                 camera2d,
                 camera3d,
+                cameraPlanet,
                 globalDescriptorSets[frameIndex],
-                render3d_,
+                renderMode_,
                 renderer_.objects2d(),
                 renderer_.objects3d(),
+                renderer_.objectsPlanet()
             };
 
             GlobalUbo ubo{};
-            if (render3d_) {
-                ubo.projection = camera3d.projection();
-                ubo.view = camera3d.view();
-                ubo.inverseView = glm::inverse(camera3d.view());
-            } else {
-                ubo.projection = camera2d.projectionView();
+            switch (renderMode_) {
+                case TerrainRenderModes::FlatPicture: {
+                    ubo.projection = camera2d.projectionView();
+                    break;
+                }
+                case TerrainRenderModes::PlaneMesh3D: {
+                    ubo.projection = camera3d.projection();
+                    ubo.view = camera3d.view();
+                    ubo.inverseView = glm::inverse(camera3d.view());
+                    break;
+                }
+                case TerrainRenderModes::PlanetView: {
+                    ubo.projection = cameraPlanet.projection();
+                    ubo.view = cameraPlanet.view();
+                    ubo.inverseView = glm::inverse(cameraPlanet.view());
+                    break;
+                }
             }
             uboBuffers[frameIndex]->writeToBuffer(&ubo);
             uboBuffers[frameIndex]->flush();

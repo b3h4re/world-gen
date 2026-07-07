@@ -82,6 +82,44 @@ void appendHeightMapMesh3d(
     }
 }
 
+void appendPlanetmesh(
+        const wgen::Planet<float>& planet,
+        std::vector<Vertex3d>& vertices,
+        std::vector<std::uint32_t>& indices) {
+    const std::size_t dots = planet.width();
+
+    vertices.reserve(vertices.size() + dots * dots);
+    indices.reserve(indices.size() + (dots - 1) * (dots - 1) * 6);
+
+    const float R = planet.radius();
+
+    for (std::size_t y = 0; y < dots; ++y) {
+        for (std::size_t x = 0; x < dots; ++x) {
+            const float height = planet.at(x, y);
+
+            const glm::vec3 pointDir = planet.pointUnitDir(x, y);
+            glm::vec3 pos = pointDir * (height + R) / R;
+            vertices.push_back({
+                .position = pos,
+                .height = height
+            });
+        }
+    }
+
+    for (std::size_t y = 0; y + 1 < dots; ++y) {
+        for (std::size_t x = 0; x + 1 < dots; ++x) {
+            const auto topLeft = static_cast<std::uint32_t>(y * dots + x);
+            const auto topRight = static_cast<std::uint32_t>(y * dots + x + 1);
+            const auto bottomLeft = static_cast<std::uint32_t>((y + 1) * dots + x);
+            const auto bottomRight = static_cast<std::uint32_t>((y + 1) * dots + x + 1);
+
+            indices.insert(
+                indices.end(),
+                {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
+        }
+    }
+}
+
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
@@ -131,6 +169,15 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
             result.heightMap,
             result.data.vertices3d,
             result.data.indices3d
+        );
+
+        // tmp implementation that copies and resizes 2d heightmap into planet
+        const std::size_t dots = std::min(result.heightMap.width(), result.heightMap.height());
+        wgen::Planet<float> planet(std::move(result.heightMap.resized(dots, dots)));
+        appendPlanetmesh(
+            planet,
+            result.data.verticesPlanet,
+            result.data.indicesPlanet
         );
 
         return result;
@@ -310,6 +357,9 @@ TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heig
     TerrainMeshData data;
     appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
     appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
+    std::size_t dots = std::min(heightMap.width(), heightMap.height());
+    wgen::Planet<float> planet(std::move(heightMap.resized(dots, dots)));
+    appendPlanetmesh(planet, data.verticesPlanet, data.indicesPlanet);
     return data;
 }
 

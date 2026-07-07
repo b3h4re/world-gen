@@ -14,15 +14,21 @@ on:
 permissions:
   contents: write
 
-env:
-  QT_VERSION: "6.7.3"
-
 jobs:
   windows:
     name: Windows x64 zip
     runs-on: windows-latest
 
+    defaults:
+      run:
+        shell: msys2 {0}
+
     steps:
+      - name: Disable Windows checkout CRLF conversion
+        shell: pwsh
+        run: |
+          git config --global core.autocrlf input
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -35,96 +41,80 @@ jobs:
             "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
           }
 
-      - name: Install Qt
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install aqtinstall
-          python -m aqt install-qt windows desktop $env:QT_VERSION win64_msvc2022_64 -O "$env:RUNNER_TEMP\Qt"
-
-          "QT_DIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64" >> $env:GITHUB_ENV
-          "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64" >> $env:GITHUB_ENV
-          "$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64\bin" >> $env:GITHUB_PATH
-
-      - name: Install Vulkan SDK
-        shell: pwsh
-        run: |
-          choco install vulkan-sdk -y
-
-          $sdk = Get-ChildItem "C:\VulkanSDK" | Sort-Object Name -Descending | Select-Object -First 1
-
-          if (-not $sdk) {
-            Write-Error "Vulkan SDK was not found in C:\VulkanSDK"
-            exit 1
-          }
-
-          "VULKAN_SDK=$($sdk.FullName)" >> $env:GITHUB_ENV
-          "$($sdk.FullName)\Bin" >> $env:GITHUB_PATH
-
-      - name: Install GLM
-        shell: pwsh
-        run: |
-          git clone --depth 1 --branch 1.0.1 https://github.com/g-truc/glm.git "$env:RUNNER_TEMP\glm"
-          "GLM_INCLUDE_DIR=$env:RUNNER_TEMP\glm" >> $env:GITHUB_ENV
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            zip
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+            qt6-base:p
+            glm:p
+            vulkan-headers:p
+            vulkan-loader:p
+            shaderc:p
 
       - name: Configure
-        shell: pwsh
         run: |
-          cmake -S . -B build `
-            -G "Visual Studio 17 2022" `
-            -A x64 `
-            -DCMAKE_PREFIX_PATH="$env:CMAKE_PREFIX_PATH" `
-            -DCMAKE_CXX_FLAGS="/I$env:GLM_INCLUDE_DIR" `
-            -DWORLD_GEN_PORTABLE_BUILD=ON `
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWORLD_GEN_PORTABLE_BUILD=ON \
             -DBUILD_TESTING=OFF
 
       - name: Build
-        shell: pwsh
         run: |
-          cmake --build build --config Release --parallel
+          cmake --build build --parallel
 
       - name: Package Windows zip
-        shell: pwsh
         run: |
-          $dist = "dist\world-gen-windows-x64"
+          DIST="$PWD/dist/world-gen-windows-x64"
+          mkdir -p "$DIST"
 
-          New-Item -ItemType Directory -Force -Path $dist | Out-Null
-
-          if (-not (Test-Path "build\Release\world_gen.exe")) {
-            Write-Error "build\Release\world_gen.exe was not found"
+          if [ ! -f build/world_gen.exe ]; then
+            echo "build/world_gen.exe was not found"
+            find build -maxdepth 3 -type f
             exit 1
-          }
+          fi
 
-          Copy-Item "build\Release\world_gen.exe" "$dist\world_gen.exe"
+          cp build/world_gen.exe "$DIST/world_gen.exe"
 
-          if (Test-Path "build\shaders") {
-            Copy-Item "build\shaders" "$dist\shaders" -Recurse
-          }
+          if [ -d build/shaders ]; then
+            cp -R build/shaders "$DIST/shaders"
+          fi
 
-          if (Test-Path "assets") {
-            Copy-Item "assets" "$dist\assets" -Recurse
-          }
+          if [ -d assets ]; then
+            cp -R assets "$DIST/assets"
+          fi
 
-          & "$env:QT_DIR\bin\windeployqt.exe" `
-            --release `
-            --compiler-runtime `
-            "$dist\world_gen.exe"
+          WINDEPLOYQT="$(command -v windeployqt6 || command -v windeployqt || true)"
 
-          $vkDll = Join-Path $env:VULKAN_SDK "Bin\vulkan-1.dll"
-          if (Test-Path $vkDll) {
-            Copy-Item $vkDll "$dist\vulkan-1.dll"
-          }
+          if [ -z "$WINDEPLOYQT" ]; then
+            echo "windeployqt was not found"
+            exit 1
+          fi
 
-          Compress-Archive `
-            -Path "$dist\*" `
-            -DestinationPath "world-gen-$env:VERSION-windows-x64.zip" `
-            -Force
+          "$WINDEPLOYQT" \
+            --release \
+            --compiler-runtime \
+            "$DIST/world_gen.exe"
+
+          if [ -f /ucrt64/bin/vulkan-1.dll ]; then
+            cp /ucrt64/bin/vulkan-1.dll "$DIST/vulkan-1.dll"
+          fi
+
+          cd "$DIST"
+          zip -r "$GITHUB_WORKSPACE/world-gen-$VERSION-windows-x64.zip" .
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: world-gen-${{ env.VERSION }}-windows-x64.zip
+          path: world-gen-*-windows-x64.zip
           if-no-files-found: error
 
   macos:
@@ -148,18 +138,13 @@ jobs:
         shell: bash
         run: |
           brew update
-          brew install cmake ninja shaderc glm vulkan-headers vulkan-loader molten-vk
+          brew install cmake ninja qt glm shaderc vulkan-headers vulkan-loader molten-vk
 
-      - name: Install Qt
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install aqtinstall
-          python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
+          QT_PREFIX="$(brew --prefix qt)"
 
-          echo "QT_DIR=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
-          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/Qt/$QT_VERSION/macos/bin" >> "$GITHUB_PATH"
+          echo "QT_PREFIX=$QT_PREFIX" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$QT_PREFIX" >> "$GITHUB_ENV"
+          echo "$QT_PREFIX/bin" >> "$GITHUB_PATH"
 
       - name: Configure
         shell: bash
@@ -178,17 +163,19 @@ jobs:
       - name: Create .app bundle
         shell: bash
         run: |
-          APP="dist/world_gen.app"
+          APP="$PWD/dist/world_gen.app"
 
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
 
           if [ ! -f build/world_gen ]; then
             echo "build/world_gen was not found"
+            find build -maxdepth 3 -type f
             exit 1
           fi
 
           cp build/world_gen "$APP/Contents/MacOS/world_gen"
+          chmod +x "$APP/Contents/MacOS/world_gen"
 
           cat > "$APP/Contents/Info.plist" <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -231,7 +218,14 @@ jobs:
             cp -R assets "$APP/Contents/MacOS/assets"
           fi
 
-          macdeployqt "$APP" -verbose=2
+          MACDEPLOYQT="$(command -v macdeployqt || true)"
+
+          if [ -z "$MACDEPLOYQT" ]; then
+            echo "macdeployqt was not found"
+            exit 1
+          fi
+
+          "$MACDEPLOYQT" "$APP" -verbose=2
 
           ditto -c -k --sequesterRsrc --keepParent "$APP" "world-gen-$VERSION-macos.zip"
 
@@ -239,7 +233,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: world-gen-${{ env.VERSION }}-macos.zip
+          path: world-gen-*-macos.zip
           if-no-files-found: error
 
   linux-appimage:
@@ -262,7 +256,13 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
+          sudo find /etc/apt/sources.list.d \
+            -type f \( -name '*microsoft*' -o -name '*azure*' \) \
+            -print \
+            -delete || true
+
           sudo apt-get update
+
           sudo apt-get install -y \
             build-essential \
             cmake \
@@ -302,10 +302,12 @@ jobs:
 
           if [ ! -f build/world_gen ]; then
             echo "build/world_gen was not found"
+            find build -maxdepth 3 -type f
             exit 1
           fi
 
           cp build/world_gen "$APPDIR/usr/bin/world_gen"
+          chmod +x "$APPDIR/usr/bin/world_gen"
 
           if [ -d build/shaders ]; then
             cp -R build/shaders "$APPDIR/usr/bin/shaders"
@@ -337,6 +339,7 @@ jobs:
         shell: bash
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
+          QMAKE: /usr/lib/qt6/bin/qmake6
         run: |
           wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
@@ -365,7 +368,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: world-gen-${{ env.VERSION }}-linux-x86_64.AppImage
+          path: world-gen-*-linux-x86_64.AppImage
           if-no-files-found: error
 
   source-archive:
@@ -398,7 +401,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: source
-          path: world-gen-${{ env.VERSION }}-source.zip
+          path: world-gen-*-source.zip
           if-no-files-found: error
 
   publish-release:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/terrain_compute_method.hpp"
 
 #include <variant>
@@ -22,7 +23,7 @@ constexpr TerrainComputeMethod defaultComputeMethodForGenerator3d(Generator3dKin
 }
 
 constexpr bool generator3dSupportsOctaves(Generator3dKind) {
-    return false;
+    return true;
 }
 
 struct PerlinNoise3dGeneratorSpec {
@@ -36,7 +37,24 @@ struct Generator3dSpec {
     Generator3dConfig config{PerlinNoise3dGeneratorSpec{}};
     float scale{1.0F};
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator3d(kind)};
+    GeneratorOctaveSettings octaveSettings{};
 };
+
+inline float generator3dOctaveFrequency(const Generator3dSpec& spec) {
+    if (!generator3dSupportsOctaves(spec.kind)) {
+        return 1.0F;
+    }
+
+    return octaveFrequency(spec.octaveSettings);
+}
+
+inline float generator3dOctaveAmplitude(const Generator3dSpec& spec) {
+    if (!generator3dSupportsOctaves(spec.kind)) {
+        return 1.0F;
+    }
+
+    return octaveAmplitude(spec.octaveSettings);
+}
 
 using Generator3dPipelineSpec = std::vector<Generator3dSpec>;
 

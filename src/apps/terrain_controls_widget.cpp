@@ -15,6 +15,7 @@
 #include <QMenu>
 #include <QPoint>
 #include <QMessageBox>
+#include <QTabWidget>
 #include <utility>
 
 namespace lve {
@@ -272,6 +273,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
                 .config = gen->config,
                 .scale = gen->scale,
                 .computeMethod = gen->computeMethod,
+                .octaveSettings = gen->octaveSettings,
             });
         }
     });

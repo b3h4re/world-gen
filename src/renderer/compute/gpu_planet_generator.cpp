@@ -36,7 +36,7 @@ void PerlinNoise3dGpuGenerator::dispatch(
 
     const wgen::PerlinNoiseComputeSpec3D computeSpec{
         .cellSize = perlinSpec->cellSize,
-        .coordinateScale = 1.0F,
+        .coordinateScale = wgen::generator3dOctaveFrequency(spec),
         .planetRadius = 1.0F,
         .dotsOnPlanet = checkedComputeDimension3d(output.width(), "GPU planet dots"),
         .seed = seed,

@@ -9,6 +9,12 @@
 
 namespace lve {
 
+enum class TerrainGenerationTarget {
+    Terrain,
+    Planet,
+    All,
+};
+
 struct Callbacks {
     std::function<void()> regenerateTerrain;
     std::function<void()> reloadTerrain;

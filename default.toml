@@ -29,3 +29,11 @@ num_steps=5
 height_scale=0.15
 fill=0.25
 jiggle=0.021
+
+[planet]
+resolution=0
+compute_method="vulkan_compute"
+perlin_cell_size=1.0
+octaves=5
+lacunarity=2.0
+persistence=0.5

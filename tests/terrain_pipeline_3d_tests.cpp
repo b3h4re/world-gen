@@ -122,6 +122,86 @@ void testSetSeedChainsGeneratorSeeds() {
     );
 }
 
+void testOctaveFrequencyScalesCoordinates() {
+    const wgen::Generator3dSpec spec{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = 0.5F},
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 2,
+            .lacunarity = 2.0F,
+            .persistance = 0.5F,
+        },
+    };
+    const auto generator = wgen::makePipelineGenerator3d(spec, 17);
+    const wgen::PerlinNoise3d expected{17, 0.5F};
+    const glm::vec3 point{-0.25F, 0.75F, -0.5F};
+
+    wgen::tests::expectNear(
+        generator->noise(point),
+        expected.noise(point * 4.0F),
+        0.00001F,
+        "3D octave frequency should scale coordinates"
+    );
+}
+
+void testOctaveAmplitudeScalesPipelineOutput() {
+    const wgen::Generator3dSpec spec{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = 0.5F},
+        .scale = 1.5F,
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 2,
+            .lacunarity = 2.0F,
+            .persistance = 0.5F,
+        },
+    };
+    const auto pipeline = wgen::makePipeline3d({spec}, 17);
+
+    const wgen::PerlinNoise3d expectedGenerator{17, 0.5F};
+    wgen::Planet<float> expected{5, 0.0F};
+    for (std::size_t y = 0; y < expected.height(); ++y) {
+        for (std::size_t x = 0; x < expected.width(); ++x) {
+            expected.at(x, y) = expectedGenerator.noise(expected.pointUnitDir(x, y) * 4.0F) * 1.5F * 0.25F;
+        }
+    }
+
+    expectPlanetNear(
+        pipeline->generatePlanet(5),
+        expected,
+        "3D octave amplitude should scale pipeline output"
+    );
+}
+
+void testInvalidOctaveSettingsThrow() {
+    wgen::Generator3dSpec badLacunarity{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = 0.5F},
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 1,
+            .lacunarity = 0.0F,
+            .persistance = 0.5F,
+        },
+    };
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&] { wgen::makePipelineGenerator3d(badLacunarity, 17); },
+        "3D generator should reject non-positive octave lacunarity"
+    );
+
+    wgen::Generator3dSpec badPersistence{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = 0.5F},
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 1,
+            .lacunarity = 2.0F,
+            .persistance = -0.1F,
+        },
+    };
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&] { wgen::makePipelineGenerator3d(badPersistence, 17); },
+        "3D generator should reject negative octave persistence"
+    );
+}
+
 void testPerlinNoiseIsDeterministic() {
     const wgen::PerlinNoise3d generator{17, 0.5F};
     const glm::vec3 point{-0.25F, 0.75F, -0.5F};
@@ -161,6 +241,9 @@ int main() {
         wgen::tests::runTest("3D generator impact function", testGeneratorImpactFunction);
         wgen::tests::runTest("3D noise matches planet samples", testNoiseMatchesPlanetSamples);
         wgen::tests::runTest("3D setSeed chains generator seeds", testSetSeedChainsGeneratorSeeds);
+        wgen::tests::runTest("3D octave frequency scales coordinates", testOctaveFrequencyScalesCoordinates);
+        wgen::tests::runTest("3D octave amplitude scales pipeline output", testOctaveAmplitudeScalesPipelineOutput);
+        wgen::tests::runTest("3D invalid octave settings throw", testInvalidOctaveSettingsThrow);
         wgen::tests::runTest("3D Perlin is deterministic", testPerlinNoiseIsDeterministic);
         wgen::tests::runTest("3D Perlin depends on seed", testPerlinNoiseDependsOnSeed);
         wgen::tests::runTest("3D Perlin rejects invalid cell size", testPerlinRejectsInvalidCellSize);

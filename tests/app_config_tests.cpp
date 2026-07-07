@@ -18,7 +18,9 @@ void testPlanetConfigDefaults() {
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
     wgen::tests::require(config.resolution == 0, "default planet resolution should be automatic");
-    wgen::tests::require(config.computeMethod == wgen::TerrainComputeMethod::Cpu, "default planet compute should be CPU");
+    wgen::tests::require(
+        config.computeMethod == wgen::TerrainComputeMethod::VulkanCompute,
+        "default planet compute should be Vulkan compute");
     wgen::tests::expectNear(config.perlinCellSize, 1.0F, 0.00001F, "default planet cell size is wrong");
     wgen::tests::require(config.octaves == 5, "default planet octaves is wrong");
     wgen::tests::expectNear(config.lacunarity, 2.0F, 0.00001F, "default planet lacunarity is wrong");

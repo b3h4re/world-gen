@@ -10,6 +10,7 @@
 #include "terrain/generators/2d/noise/gabor.hpp"
 #include "terrain/generators/2d/noise/value_noise.hpp"
 #include "terrain/generators/2d/noise/worley.hpp"
+#include "terrain/generators/3d/generator_factory.hpp"
 #include "terrain/generators/3d/noise/perlin.hpp"
 
 #include "helpers.hpp"
@@ -423,6 +424,42 @@ void testGpuPlanetPipeline() {
         "GPU planet pipeline must accumulate scaled 3D generator outputs");
 }
 
+void testGpuPlanetPipelinePerlinOctave() {
+    const std::size_t dots = 32;
+    const wgen::SeedType seed = 1234;
+
+    const wgen::Generator3dSpec perlinSpec{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{
+            .cellSize = 0.5F,
+        },
+        .scale = 1.25F,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 2,
+            .lacunarity = 2.0F,
+            .persistance = 0.5F,
+        },
+    };
+
+    lve::GpuPlanetPipeline gpuPipeline;
+    const wgen::Planet<float> planetGpu = gpuPipeline.generatePlanet(
+        {
+            lve::GpuPlanetGeneratorRequest{
+                .spec = perlinSpec,
+                .seed = seed,
+            },
+        },
+        dots);
+
+    const std::unique_ptr<wgen::TerrainPipeline3d> cpuPipeline = wgen::makePipeline3d({perlinSpec}, seed);
+    const wgen::Planet<float> planetCpu = cpuPipeline->generatePlanet(dots);
+
+    wgen::tests::require(
+        planetGpu.isClose(planetCpu, 0.0001F),
+        "GPU planet pipeline must apply octave coordinate scale and amplitude");
+}
+
 
 }
 
@@ -443,6 +480,7 @@ int main() {
         wgen::tests::runTest("GPU Terrain Pipeline Perlin Octave Test", testGpuTerrainPipelinePerlinOctave);
         wgen::tests::runTest("3D Perlin Noise Test", testPerlinNoise3d);
         wgen::tests::runTest("GPU Planet Pipeline Test", testGpuPlanetPipeline);
+        wgen::tests::runTest("GPU Planet Pipeline Perlin Octave Test", testGpuPlanetPipelinePerlinOctave);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
         if (isVulkanUnavailableError(exception)) {

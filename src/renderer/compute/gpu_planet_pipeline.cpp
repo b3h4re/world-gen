@@ -15,7 +15,11 @@ wgen::Planet<float> GpuPlanetPipeline::generatePlanet(
     GpuHeightMap generated{device_, dots, dots};
     for (const GpuPlanetGeneratorRequest& request : requests) {
         generatorFor(request.spec.kind).dispatch(generated, request.spec, request.seed);
-        accumulator_.accumulate(generated, accumulated, request.spec.scale);
+        accumulator_.accumulate(
+            generated,
+            accumulated,
+            request.spec.scale * wgen::generator3dOctaveAmplitude(request.spec)
+        );
     }
 
     return wgen::Planet<float>{accumulated.copyToCpu()};

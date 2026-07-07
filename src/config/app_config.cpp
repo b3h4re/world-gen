@@ -263,7 +263,7 @@ namespace wgen {
 
         const std::string computeMethod = checked_string(
             root["planet"]["compute_method"],
-            "cpu",
+            "vulkan_compute",
             "planet.compute_method"
         );
         if (computeMethod == "cpu") {

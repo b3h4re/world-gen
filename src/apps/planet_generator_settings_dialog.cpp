@@ -6,6 +6,7 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QSpinBox>
 #include <QVariant>
 #include <QVBoxLayout>
 
@@ -53,6 +54,29 @@ PlanetGeneratorSettingsDialog::PlanetGeneratorSettingsDialog(wgen::Generator3dSp
     scaleSpinBox_->setValue(spec_.scale);
     form->addRow(QStringLiteral("Scale"), scaleSpinBox_);
 
+    if (wgen::generator3dSupportsOctaves(spec_.kind)) {
+        numOctaveSpinBox_ = new QSpinBox{this};
+        numOctaveSpinBox_->setRange(0, std::numeric_limits<int>::max());
+        numOctaveSpinBox_->setValue(static_cast<int>(std::min<std::size_t>(
+            spec_.octaveSettings.numOctave,
+            static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+        form->addRow(QStringLiteral("Octave"), numOctaveSpinBox_);
+
+        lacunaritySpinBox_ = new QDoubleSpinBox{this};
+        lacunaritySpinBox_->setDecimals(4);
+        lacunaritySpinBox_->setRange(0.0001, std::numeric_limits<double>::max());
+        lacunaritySpinBox_->setSingleStep(0.1);
+        lacunaritySpinBox_->setValue(spec_.octaveSettings.lacunarity);
+        form->addRow(QStringLiteral("Lacunarity"), lacunaritySpinBox_);
+
+        persistenceSpinBox_ = new QDoubleSpinBox{this};
+        persistenceSpinBox_->setDecimals(4);
+        persistenceSpinBox_->setRange(0.0, std::numeric_limits<double>::max());
+        persistenceSpinBox_->setSingleStep(0.1);
+        persistenceSpinBox_->setValue(spec_.octaveSettings.persistance);
+        form->addRow(QStringLiteral("Persistence"), persistenceSpinBox_);
+    }
+
     auto* buttonBox = new QDialogButtonBox{QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this};
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -71,6 +95,13 @@ void PlanetGeneratorSettingsDialog::accept() {
     if (!wgen::generator3dSupportsVulkanCompute(spec_.kind) &&
             spec_.computeMethod == wgen::TerrainComputeMethod::VulkanCompute) {
         spec_.computeMethod = wgen::TerrainComputeMethod::Cpu;
+    }
+    if (wgen::generator3dSupportsOctaves(spec_.kind)) {
+        spec_.octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = static_cast<std::size_t>(numOctaveSpinBox_->value()),
+            .lacunarity = static_cast<float>(lacunaritySpinBox_->value()),
+            .persistance = static_cast<float>(persistenceSpinBox_->value()),
+        };
     }
 
     QDialog::accept();

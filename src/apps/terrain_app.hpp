@@ -27,6 +27,7 @@ public:
 private:
     void applyWindowConfig(const wgen::WindowConfig& cfg);
     void applyFinishedTerrainJob(int frameIndex);
+    TerrainGenerationTarget currentGenerationTarget() const;
     void regenerateWithRandomSeed();
     void reloadConfiguredSeed();
 

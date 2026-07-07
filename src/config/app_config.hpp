@@ -139,7 +139,7 @@ namespace wgen {
 
     struct PlanetConfig {
         std::size_t resolution{0};
-        TerrainComputeMethod computeMethod{TerrainComputeMethod::Cpu};
+        TerrainComputeMethod computeMethod{TerrainComputeMethod::VulkanCompute};
         float perlinCellSize{1.0F};
         std::size_t octaves{5};
         float lacunarity{2.0F};

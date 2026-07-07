@@ -228,6 +228,8 @@ if(BUILD_TESTING)
         src/terrain/generators/3d/generator_spec.hpp
         src/terrain/generators/3d/terrain_pipeline.cpp
         src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
         src/terrain/generators/3d/noise/perlin.cpp
         src/terrain/generators/3d/noise/perlin.hpp
     )
@@ -358,7 +360,13 @@ if(BUILD_TESTING)
         src/terrain/generators/2d/noise/gabor.cpp
         src/terrain/generators/2d/noise/gabor.hpp
         src/terrain/generators/3d/generator.hpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
         src/terrain/generators/3d/generator_spec.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
         src/terrain/generators/3d/noise/perlin.cpp
         src/terrain/generators/3d/noise/perlin.hpp
         src/renderer/compute/computer.cpp

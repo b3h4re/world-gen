@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/app_config.hpp"
+#include "gui_helpers.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
 #include "renderer/compute/gpu_planet_pipeline.hpp"
@@ -67,7 +68,7 @@ public:
     TerrainAppCore& operator=(const TerrainAppCore&) = delete;
 
     TerrainMeshData loadTerrain();
-    void regenerateTerrain(wgen::SeedType seed);
+    void regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target = TerrainGenerationTarget::All);
     void rotateColorFunction();
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
     void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);

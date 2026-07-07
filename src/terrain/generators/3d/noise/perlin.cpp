@@ -81,7 +81,7 @@ GeneratorCapabilities PerlinNoise3d::capabilities() const {
     return {
         .cpu = true,
         .vulkanCompute = true,
-        .octaves = false,
+        .octaves = true,
     };
 }
 

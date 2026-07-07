@@ -6,6 +6,7 @@
 
 class QComboBox;
 class QDoubleSpinBox;
+class QSpinBox;
 
 namespace lve {
 
@@ -23,6 +24,9 @@ private:
     QComboBox* computeMethodComboBox_{};
     QDoubleSpinBox* cellSizeSpinBox_{};
     QDoubleSpinBox* scaleSpinBox_{};
+    QSpinBox* numOctaveSpinBox_{};
+    QDoubleSpinBox* lacunaritySpinBox_{};
+    QDoubleSpinBox* persistenceSpinBox_{};
 };
 
 } // namespace lve

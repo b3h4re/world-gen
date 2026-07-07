@@ -234,13 +234,25 @@ void TerrainApp::applyFinishedTerrainJob(int frameIndex) {
     renderer_.applyTerrainMesh(frameIndex, std::move(result->data));
 }
 
+TerrainGenerationTarget TerrainApp::currentGenerationTarget() const {
+    switch (renderMode_) {
+        case TerrainRenderModes::FlatPicture:
+        case TerrainRenderModes::PlaneMesh3D:
+            return TerrainGenerationTarget::Terrain;
+        case TerrainRenderModes::PlanetView:
+            return TerrainGenerationTarget::Planet;
+    }
+
+    return TerrainGenerationTarget::All;
+}
+
 void TerrainApp::regenerateWithRandomSeed() {
     std::random_device rd;
-    core_.regenerateTerrain(rd());
+    core_.regenerateTerrain(rd(), currentGenerationTarget());
 }
 
 void TerrainApp::reloadConfiguredSeed() {
-    core_.regenerateTerrain(core_.config().terrainConfig.seed);
+    core_.regenerateTerrain(core_.config().terrainConfig.seed, currentGenerationTarget());
 }
 
 } // namespace lve

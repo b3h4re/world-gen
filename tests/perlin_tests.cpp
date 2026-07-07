@@ -1,5 +1,5 @@
-#include "terrain/generators/generator.hpp"
-#include "terrain/generators/noise/perlin.hpp"
+#include "terrain/generators/2d/generator.hpp"
+#include "terrain/generators/2d/noise/perlin.hpp"
 
 #include "helpers.hpp"
 

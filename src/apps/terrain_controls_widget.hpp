@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/generators/generator_spec.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
 #include "config/app_config.hpp"
 #include "gui_helpers.hpp"
 

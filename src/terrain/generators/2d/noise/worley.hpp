@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/generators/noise/gradient_noise_interface.hpp"
+#include "terrain/generators/2d/noise/gradient_noise_interface.hpp"
 
 #include <cstddef>
 #include <cstdint>

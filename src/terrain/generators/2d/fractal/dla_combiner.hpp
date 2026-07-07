@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "terrain/generators/generator.hpp"
+#include "terrain/generators/2d/generator.hpp"
 
 #include <cstddef>
 #include <cstdint>

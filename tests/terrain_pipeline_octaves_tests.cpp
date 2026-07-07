@@ -1,10 +1,10 @@
-#include "terrain/generators/generator_factory.hpp"
-#include "terrain/generators/noise/noise_octaves.hpp"
-#include "terrain/generators/noise/perlin.hpp"
-#include "terrain/generators/noise/simplex.hpp"
-#include "terrain/generators/noise/value_noise.hpp"
-#include "terrain/generators/noise/worley.hpp"
-#include "terrain/generators/noise/wavelet.hpp"
+#include "terrain/generators/2d/generator_factory.hpp"
+#include "terrain/generators/2d/noise/noise_octaves.hpp"
+#include "terrain/generators/2d/noise/perlin.hpp"
+#include "terrain/generators/2d/noise/simplex.hpp"
+#include "terrain/generators/2d/noise/value_noise.hpp"
+#include "terrain/generators/2d/noise/worley.hpp"
+#include "terrain/generators/2d/noise/wavelet.hpp"
 
 #include "helpers.hpp"
 

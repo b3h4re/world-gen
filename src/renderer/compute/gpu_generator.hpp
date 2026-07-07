@@ -3,8 +3,8 @@
 #include "device/lve_compute_device.hpp"
 #include "renderer/compute/computer.hpp"
 #include "renderer/compute/gpu_height_map.hpp"
-#include "terrain/generators/generator_spec.hpp"
-#include "terrain/generators/generator.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
+#include "terrain/generators/2d/generator.hpp"
 
 #include <array>
 #include <cstddef>

@@ -1,12 +1,12 @@
 #include "generator_factory.hpp"
 
-#include "terrain/generators/coordinate_scaled_generator.hpp"
-#include "terrain/generators/noise/worley.hpp"
-#include "terrain/generators/noise/simplex.hpp"
-#include "terrain/generators/noise/perlin.hpp"
-#include "terrain/generators/noise/gabor.hpp"
-#include "terrain/generators/noise/value_noise.hpp"
-#include "terrain/generators/noise/wavelet.hpp"
+#include "terrain/generators/2d/coordinate_scaled_generator.hpp"
+#include "terrain/generators/2d/noise/worley.hpp"
+#include "terrain/generators/2d/noise/simplex.hpp"
+#include "terrain/generators/2d/noise/perlin.hpp"
+#include "terrain/generators/2d/noise/gabor.hpp"
+#include "terrain/generators/2d/noise/value_noise.hpp"
+#include "terrain/generators/2d/noise/wavelet.hpp"
 
 #include <cmath>
 #include <stdexcept>

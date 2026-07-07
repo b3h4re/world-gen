@@ -1,6 +1,6 @@
 #include "gpu_generator.hpp"
 
-#include "terrain/generators/noise/worley.hpp"
+#include "terrain/generators/2d/noise/worley.hpp"
 
 #include <cstddef>
 #include <cstdint>

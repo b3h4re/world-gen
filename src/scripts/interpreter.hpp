@@ -12,7 +12,7 @@
 
 #include "files/file_path.hpp"
 #include "terrain/terrain.hpp"
-#include "terrain/generators/generators.hpp"
+#include "terrain/generators/2d/generators.hpp"
 
 
 namespace wgen {

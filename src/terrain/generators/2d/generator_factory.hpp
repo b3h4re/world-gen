@@ -1,8 +1,8 @@
 #pragma once
 
-#include "terrain/generators/generator.hpp"
-#include "terrain/generators/generator_spec.hpp"
-#include "terrain/generators/terrain_pipeline.hpp"
+#include "terrain/generators/2d/generator.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
+#include "terrain/generators/2d/terrain_pipeline.hpp"
 
 #include <memory>
 

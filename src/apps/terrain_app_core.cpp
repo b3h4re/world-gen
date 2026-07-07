@@ -1,7 +1,7 @@
 #include "terrain_app_core.hpp"
 
-#include "terrain/generators/generator_compute_capabilities.hpp"
-#include "terrain/generators/generator_factory.hpp"
+#include "terrain/generators/2d/generator_compute_capabilities.hpp"
+#include "terrain/generators/2d/generator_factory.hpp"
 #include "terrain/utils/hash_random.hpp"
 #include "terrain/terrain.hpp"
 

@@ -1,5 +1,5 @@
 #include "color_map.hpp"
-#include "terrain/generators/generator.hpp"
+#include "terrain/generators/2d/generator.hpp"
 #include "model/buffer/lve_buffer.hpp"
 
 #include <glm/gtc/constants.hpp>

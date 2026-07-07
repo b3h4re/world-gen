@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/generators/generator_spec.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/terrain_compute_method.hpp"
 
 namespace wgen {

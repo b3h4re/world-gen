@@ -2,7 +2,7 @@
 
 #include "files/file_path.hpp"
 #include "swap_chain/lve_swap_chain.hpp"
-#include "terrain/generators/generator.hpp"
+#include "terrain/generators/2d/generator.hpp"
 
 #include <string>
 #include <cstdint>

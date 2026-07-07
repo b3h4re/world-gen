@@ -36,6 +36,21 @@ fetchcontent_makeavailable(stb)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+# Find glm
+find_package(glm QUIET)
+
+if(NOT glm_FOUND)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        glm
+        GIT_REPOSITORY https://github.com/g-truc/glm.git
+        GIT_TAG 1.0.1
+    )
+
+    FetchContent_MakeAvailable(glm)
+endif()
+
 
 # Adding source/headers
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
@@ -60,8 +75,16 @@ target_include_directories(world_gen PRIVATE
 
 
 # Adding and compiling shaders
+option(WORLD_GEN_PORTABLE_BUILD "Use relative runtime shader directory for packaged builds" OFF)
+
+if(WORLD_GEN_PORTABLE_BUILD)
+    set(WORLD_GEN_RUNTIME_SHADER_DIR "shaders")
+else()
+    set(WORLD_GEN_RUNTIME_SHADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+endif()
+
 target_compile_definitions(world_gen PRIVATE
-    WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"
+    WORLD_GEN_SHADER_DIR="${WORLD_GEN_RUNTIME_SHADER_DIR}"
 )
 
 find_program(GLSLC glslc REQUIRED)
@@ -125,6 +148,7 @@ add_dependencies(world_gen shaders)
 target_compile_features(world_gen PRIVATE cxx_std_20)
 target_link_libraries(world_gen PRIVATE
     Vulkan::Vulkan
+    glm::glm
     Qt6::Gui
     Qt6::Widgets
     tomlplusplus::tomlplusplus
@@ -297,7 +321,7 @@ if(BUILD_TESTING)
     )
     target_include_directories(exporter_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(exporter_tests PRIVATE cxx_std_20)
-    target_link_libraries(exporter_tests PRIVATE stb)
+    target_link_libraries(exporter_tests PRIVATE stb glm::glm)
     add_test(NAME exporter_tests COMMAND exporter_tests)
 
     # App config tests
@@ -316,6 +340,7 @@ if(BUILD_TESTING)
     target_include_directories(app_config_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(app_config_tests PRIVATE cxx_std_20)
     target_link_libraries(app_config_tests PRIVATE
+        glm::glm
         Qt6::Gui
         tomlplusplus::tomlplusplus
     )
@@ -390,6 +415,7 @@ if(BUILD_TESTING)
     WORLD_GEN_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders"
 )
 	    target_link_libraries(gpu_terrain_generation_tests PRIVATE
+            glm::glm
 	        Vulkan::Vulkan
 	    )
 	    add_dependencies(gpu_terrain_generation_tests shaders)

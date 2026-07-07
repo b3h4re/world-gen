@@ -336,6 +336,8 @@ QString GeneratorSettingsDialog::generatorName(wgen::GeneratorKind kind) {
             return QStringLiteral("Wavelet");
         case wgen::GeneratorKind::ValueNoise:
             return QStringLiteral("Value noise");
+        case wgen::GeneratorKind::GaborNoise:
+            return QStringLiteral("Gabor");
     }
 
     return QStringLiteral("Generator");

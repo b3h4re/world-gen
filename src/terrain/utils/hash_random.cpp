@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <glm/gtc/constants.hpp>
+
 
 namespace wgen {
 
@@ -20,7 +22,7 @@ namespace wgen {
         h = splitmix64(h);
 
         const float u = static_cast<float>(h >> 11) * (1.0 / 9007199254740992.0);
-        const float angle = u * 2.0 * std::numbers::pi_v<float>;
+        const float angle = u * 2.0 * glm::pi<float>();
         return {
             std::cos(angle),
             std::sin(angle)
@@ -43,7 +45,7 @@ namespace wgen {
         const float u2 = static_cast<float>(h >> 11) * (1.0 / 9007199254740992.0);
 
         const float zNew = 1.0f - 2.0f * u1;
-        const float phi = u2 * 2.0f * std::numbers::pi_v<float>;
+        const float phi = u2 * 2.0f * glm::pi<float>();
         const float r = std::sqrt(std::max(0.0f, 1.0f - zNew * zNew));
 
         return {

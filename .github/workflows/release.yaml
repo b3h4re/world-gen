@@ -273,6 +273,10 @@ jobs:
             vulkan-tools \
             glslang-tools \
             libglm-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libxkbcommon-dev \
+            libxcb-cursor0 \
             libfuse2 \
             wget \
             file \

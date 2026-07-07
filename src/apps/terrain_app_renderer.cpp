@@ -33,13 +33,16 @@ void TerrainAppRenderer::setTerrainMesh(TerrainMeshData data) {
     vkDeviceWaitIdle(device_.device());
     objects2d_ = makeObjects2d(data);
     objects3d_ = makeObjects3d(data);
+    objectsPlanet_ = makeObjectsPlanet(data);
 }
 
 void TerrainAppRenderer::applyTerrainMesh(int frameIndex, TerrainMeshData data) {
     retiredObjects_[frameIndex].objects2d = std::move(objects2d_);
     retiredObjects_[frameIndex].objects3d = std::move(objects3d_);
+    retiredObjects_[frameIndex].objectsPlanet = std::move(objectsPlanet_);
     objects2d_ = makeObjects2d(data);
     objects3d_ = makeObjects3d(data);
+    objectsPlanet_ = makeObjectsPlanet(data);
 }
 
 void TerrainAppRenderer::clearRetiredObjects(int frameIndex) {
@@ -64,6 +67,7 @@ void TerrainAppRenderer::shutdownVulkanResources() {
     retiredObjects_ = {};
     objects3d_.clear();
     objects2d_.clear();
+    objectsPlanet_.clear();
     globalPool_.reset();
     renderer_.destroySwapChain();
 }
@@ -86,6 +90,13 @@ std::vector<GameObject2d> TerrainAppRenderer::makeObjects2d(const TerrainMeshDat
 std::vector<GameObject3d> TerrainAppRenderer::makeObjects3d(const TerrainMeshData& data) {
     std::vector<GameObject3d> objects;
     auto mesh = std::make_shared<Mesh3d>(device_, data.vertices3d, data.indices3d);
+    objects.push_back({std::move(mesh), {}});
+    return objects;
+}
+
+std::vector<GameObject3d> TerrainAppRenderer::makeObjectsPlanet(const TerrainMeshData& data) {
+    std::vector<GameObject3d> objects;
+    auto mesh = std::make_shared<Mesh3d>(device_, data.verticesPlanet, data.indicesPlanet);
     objects.push_back({std::move(mesh), {}});
     return objects;
 }

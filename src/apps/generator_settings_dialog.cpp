@@ -1,8 +1,8 @@
 #include "generator_settings_dialog.hpp"
 
-#include "terrain/generators/generator_compute_capabilities.hpp"
+#include "terrain/generators/2d/generator_compute_capabilities.hpp"
 #include "terrain_compute_method_ui.hpp"
-#include "terrain/generators/noise/wavelet.hpp"
+#include "terrain/generators/2d/noise/wavelet.hpp"
 #include "ui_generator_settings_dialog.h"
 
 #include <QComboBox>

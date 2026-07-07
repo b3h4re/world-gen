@@ -6,6 +6,8 @@
 #include "config/app_config.hpp"
 #include "utils/frame_limiter.hpp"
 #include "files/exporter.hpp"
+#include "game/input/input_system.hpp"
+#include "renderer/lve_frame_info.hpp"
 
 namespace lve {
 
@@ -25,8 +27,12 @@ public:
 private:
     void applyWindowConfig(const wgen::WindowConfig& cfg);
     void applyFinishedTerrainJob(int frameIndex);
+    TerrainGenerationTarget currentGenerationTarget() const;
     void regenerateWithRandomSeed();
     void reloadConfiguredSeed();
+
+    void rotateCameraViews();
+    void updateCamerasStatus(std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>>& cameraTargets);
 
     TerrainAppCore core_;
     TerrainAppRenderer renderer_;
@@ -34,7 +40,7 @@ private:
     FrameLimiter limiter_;
     Exporter exporter_;
     wgen::AppConfig config_;
-    bool render3d_{false};
+    TerrainRenderModes renderMode_{TerrainRenderModes::FlatPicture};
 };
 
 } // namespace lve

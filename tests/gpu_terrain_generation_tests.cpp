@@ -1,14 +1,17 @@
 #include "device/lve_compute_device.hpp"
 #include "renderer/compute/computer.hpp"
 #include "renderer/compute/gpu_height_map.hpp"
+#include "renderer/compute/gpu_planet_pipeline.hpp"
 #include "renderer/compute/gpu_terrain_pipeline.hpp"
-#include "terrain/generators/generator_factory.hpp"
-#include "terrain/generators/generator_spec.hpp"
-#include "terrain/generators/noise/perlin.hpp"
-#include "terrain/generators/noise/simplex.hpp"
-#include "terrain/generators/noise/gabor.hpp"
-#include "terrain/generators/noise/value_noise.hpp"
-#include "terrain/generators/noise/worley.hpp"
+#include "terrain/generators/2d/generator_factory.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
+#include "terrain/generators/2d/noise/perlin.hpp"
+#include "terrain/generators/2d/noise/simplex.hpp"
+#include "terrain/generators/2d/noise/gabor.hpp"
+#include "terrain/generators/2d/noise/value_noise.hpp"
+#include "terrain/generators/2d/noise/worley.hpp"
+#include "terrain/generators/3d/generator_factory.hpp"
+#include "terrain/generators/3d/noise/perlin.hpp"
 
 #include "helpers.hpp"
 
@@ -36,6 +39,7 @@ bool isVulkanUnavailableError(const std::exception& exception) {
     const std::string message = exception.what();
     return message.find("failed to create compute Vulkan instance") != std::string::npos ||
            message.find("failed to find a Vulkan device with compute queue support") != std::string::npos ||
+           message.find("failed to find GPUs with Vulkan support") != std::string::npos ||
            message.find("Found no drivers") != std::string::npos;
 }
 
@@ -349,6 +353,113 @@ void testGpuTerrainPipelinePerlinOctave() {
         "GPU terrain pipeline must apply octave coordinate scale and amplitude on GPU");
 }
 
+void testPerlinNoise3d() {
+    const std::size_t dots = 32;
+    const float cellSize = 0.5F;
+
+    wgen::PerlinNoise3d gen{0, cellSize};
+    wgen::PerlinNoiseComputeSpec3D spec{
+        .cellSize = cellSize,
+        .coordinateScale = 1.0F,
+        .planetRadius = 1.0F,
+        .dotsOnPlanet = static_cast<std::uint32_t>(dots),
+    };
+    std::string message = "3D Perlin planet generated on cpu must match GPU";
+
+    wgen::SeedType seeds[5] = {0, 42, 12323, 12333214, 1287612763};
+    lve::Computer computer{*device, gen.compShader(), gen.specSize()};
+
+    for (const auto& seed : seeds) {
+        gen.setSeed(seed);
+        spec.seed = seed;
+
+        lve::GpuHeightMap gpuHeightMap{*device, dots, dots};
+        computer.dispatch(
+            spec,
+            gpuHeightMap.descriptorInfo(),
+            lve::ComputeDispatchSize{
+                .groupCountX = static_cast<std::uint32_t>(dots),
+                .groupCountY = static_cast<std::uint32_t>(dots),
+                .groupCountZ = 1,
+            });
+
+        const wgen::Planet<float> planetGpu{gpuHeightMap.copyToCpu()};
+        const wgen::Planet<float> planetCpu = gen.generatePlanet(dots);
+        wgen::tests::require(planetGpu.isClose(planetCpu, 0.0001F), message + " seed = " + std::to_string(seed));
+    }
+}
+
+void testGpuPlanetPipeline() {
+    const std::size_t dots = 32;
+    const wgen::SeedType seed = 42;
+    const float cellSize = 0.5F;
+    const float scale = 1.25F;
+
+    const wgen::Generator3dSpec perlinSpec{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{
+            .cellSize = cellSize,
+        },
+        .scale = scale,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+    };
+
+    lve::GpuPlanetPipeline pipeline;
+    const wgen::Planet<float> planetGpu = pipeline.generatePlanet(
+        {
+            lve::GpuPlanetGeneratorRequest{
+                .spec = perlinSpec,
+                .seed = seed,
+            },
+        },
+        dots);
+
+    wgen::PerlinNoise3d perlin{seed, cellSize};
+    const wgen::Planet<float> planetCpu{
+        wgen::map(perlin.generatePlanet(dots), wgen::multiplyFunction(scale))
+    };
+
+    wgen::tests::require(
+        planetGpu.isClose(planetCpu, 0.0001F),
+        "GPU planet pipeline must accumulate scaled 3D generator outputs");
+}
+
+void testGpuPlanetPipelinePerlinOctave() {
+    const std::size_t dots = 32;
+    const wgen::SeedType seed = 1234;
+
+    const wgen::Generator3dSpec perlinSpec{
+        .kind = wgen::Generator3dKind::PerlinNoise,
+        .config = wgen::PerlinNoise3dGeneratorSpec{
+            .cellSize = 0.5F,
+        },
+        .scale = 1.25F,
+        .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
+        .octaveSettings = wgen::GeneratorOctaveSettings{
+            .numOctave = 2,
+            .lacunarity = 2.0F,
+            .persistance = 0.5F,
+        },
+    };
+
+    lve::GpuPlanetPipeline gpuPipeline;
+    const wgen::Planet<float> planetGpu = gpuPipeline.generatePlanet(
+        {
+            lve::GpuPlanetGeneratorRequest{
+                .spec = perlinSpec,
+                .seed = seed,
+            },
+        },
+        dots);
+
+    const std::unique_ptr<wgen::TerrainPipeline3d> cpuPipeline = wgen::makePipeline3d({perlinSpec}, seed);
+    const wgen::Planet<float> planetCpu = cpuPipeline->generatePlanet(dots);
+
+    wgen::tests::require(
+        planetGpu.isClose(planetCpu, 0.0001F),
+        "GPU planet pipeline must apply octave coordinate scale and amplitude");
+}
+
 
 }
 
@@ -367,6 +478,9 @@ int main() {
         wgen::tests::runTest("GPU Terrain Pipeline Test", testGpuTerrainPipeline);
         wgen::tests::runTest("GPU Terrain Pipeline Worley Two Points Test", testGpuTerrainPipelineWorleyTwoPoints);
         wgen::tests::runTest("GPU Terrain Pipeline Perlin Octave Test", testGpuTerrainPipelinePerlinOctave);
+        wgen::tests::runTest("3D Perlin Noise Test", testPerlinNoise3d);
+        wgen::tests::runTest("GPU Planet Pipeline Test", testGpuPlanetPipeline);
+        wgen::tests::runTest("GPU Planet Pipeline Perlin Octave Test", testGpuPlanetPipelinePerlinOctave);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << "\n";
         if (isVulkanUnavailableError(exception)) {

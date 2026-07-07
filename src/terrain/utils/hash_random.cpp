@@ -27,6 +27,32 @@ namespace wgen {
         };
     }
 
+    glm::vec3 randomHashDir3D(int x, int y, int z, SeedType seed) {
+        std::uint64_t h = seed;
+
+        h ^= splitmix64(static_cast<std::uint64_t>(x) + 0x9E3779B97F4A7C15ull);
+        h ^= splitmix64(static_cast<std::uint64_t>(y) + 0xBF58476D1CE4E5B9ull);
+        h ^= splitmix64(static_cast<std::uint64_t>(z) + 0x94D049BB133111EBull);
+
+        h = splitmix64(h);
+
+        const float u1 = static_cast<float>(h >> 11) * (1.0 / 9007199254740992.0);
+
+        h = splitmix64(h);
+
+        const float u2 = static_cast<float>(h >> 11) * (1.0 / 9007199254740992.0);
+
+        const float zNew = 1.0f - 2.0f * u1;
+        const float phi = u2 * 2.0f * std::numbers::pi_v<float>;
+        const float r = std::sqrt(std::max(0.0f, 1.0f - zNew * zNew));
+
+        return {
+            r * std::cos(phi),
+            r * std::sin(phi),
+            zNew
+        };
+    }
+
     // Knuths algorithm
     int poisson(float lambda, SeedType seed) {
         const float limit = glm::exp(-lambda);

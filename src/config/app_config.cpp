@@ -252,6 +252,73 @@ namespace wgen {
         return config;
     }
 
+    PlanetConfig parse_planet_config(const toml::table& root) {
+        PlanetConfig config;
+
+        config.resolution = checked_uinteger<std::size_t>(
+            root["planet"]["resolution"],
+            config.resolution,
+            "planet.resolution"
+        );
+
+        config.radius = checked_float(
+            root["planet"]["radius"],
+            config.radius,
+            "planet.radius"
+        );
+        if (config.radius <= 0.0F) {
+            throw std::runtime_error("planet.radius must be positive");
+        }
+
+        const std::string computeMethod = checked_string(
+            root["planet"]["compute_method"],
+            "vulkan_compute",
+            "planet.compute_method"
+        );
+        if (computeMethod == "cpu") {
+            config.computeMethod = TerrainComputeMethod::Cpu;
+        } else if (computeMethod == "vulkan_compute") {
+            config.computeMethod = TerrainComputeMethod::VulkanCompute;
+        } else {
+            throw std::runtime_error("planet.compute_method must be 'cpu' or 'vulkan_compute'");
+        }
+
+        config.perlinCellSize = checked_float(
+            root["planet"]["perlin_cell_size"],
+            config.perlinCellSize,
+            "planet.perlin_cell_size"
+        );
+        if (config.perlinCellSize <= 0.0F) {
+            throw std::runtime_error("planet.perlin_cell_size must be positive");
+        }
+
+        config.octaves = checked_uinteger<std::size_t>(
+            root["planet"]["octaves"],
+            config.octaves,
+            "planet.octaves"
+        );
+
+        config.lacunarity = checked_float(
+            root["planet"]["lacunarity"],
+            config.lacunarity,
+            "planet.lacunarity"
+        );
+        if (config.lacunarity <= 0.0F) {
+            throw std::runtime_error("planet.lacunarity must be positive");
+        }
+
+        config.persistence = checked_float(
+            root["planet"]["persistence"],
+            config.persistence,
+            "planet.persistence"
+        );
+        if (config.persistence < 0.0F) {
+            throw std::runtime_error("planet.persistence must be non-negative");
+        }
+
+        return config;
+    }
+
 
     AppConfig loadConfig(const std::filesystem::path &path) {
         AppConfig config{};
@@ -269,6 +336,7 @@ namespace wgen {
 
         config.windowConfig = parse_window_config(tbl);
         config.terrainConfig = parse_terrain_config(tbl);
+        config.planetConfig = parse_planet_config(tbl);
 
         return config;
 

@@ -4,15 +4,21 @@ namespace lve {
 
 TerrainRenderSystem::TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
     : renderSystem2d_{device, renderPass, globalSetLayout},
-      renderSystem3d_{device, renderPass, globalSetLayout} {}
+      renderSystem3d_{device, renderPass, globalSetLayout},
+      renderSystemPlanet_{device, renderPass, globalSetLayout} {}
 
 void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
-    if (frameInfo.render3d) {
-        renderSystem3d_.render(frameInfo);
-        return;
+    switch (frameInfo.renderMode) {
+        case TerrainRenderModes::FlatPicture:
+            renderSystem2d_.render(frameInfo);
+            return;
+        case TerrainRenderModes::PlaneMesh3D:
+            renderSystem3d_.render(frameInfo);
+            return;
+        case TerrainRenderModes::PlanetView:
+            renderSystemPlanet_.render(frameInfo);
+            return;
     }
-
-    renderSystem2d_.render(frameInfo);
 }
 
 } // namespace lve

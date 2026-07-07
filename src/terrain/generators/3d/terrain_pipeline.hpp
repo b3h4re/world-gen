@@ -1,0 +1,26 @@
+#pragma once
+
+#include "generator.hpp"
+
+#include <memory>
+#include <vector>
+
+namespace wgen {
+
+class TerrainPipeline3d : public Generator3d {
+public:
+    TerrainPipeline3d() = default;
+
+    void setSeed(SeedType newSeed) override;
+    void push_back(std::unique_ptr<Generator3d> generator);
+    void push_back(std::unique_ptr<Generator3d> generator, HeightFunc impact);
+
+    float noise(glm::vec3 point) const override;
+    Planet<float> generatePlanet(std::size_t dots) const override;
+
+private:
+    std::vector<std::unique_ptr<Generator3d>> generators_{};
+    std::vector<HeightFunc> generatorsImpact_{};
+};
+
+} // namespace wgen

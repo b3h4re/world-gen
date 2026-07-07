@@ -93,11 +93,12 @@ QString TerrainPipelineListModel::displayName(const wgen::GeneratorSpec& spec) {
 }
 
 void TerrainPipelineListModel::clear() {
-    const int size = rowCount() - 1;
-    beginRemoveRows(QModelIndex{}, 0, size);
-    for (int row = 0; row <= size; ++row) {
-        pipeline_.erase(pipeline_.begin() + row);
+    if (pipeline_.empty()) {
+        return;
     }
+
+    beginRemoveRows(QModelIndex{}, 0, rowCount() - 1);
+    pipeline_.clear();
     endRemoveRows();
 }
 

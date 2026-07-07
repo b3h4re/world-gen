@@ -18,10 +18,12 @@ namespace lve {
 struct RetiredFrameObjects {
     std::vector<GameObject2d> objects2d;
     std::vector<GameObject3d> objects3d;
+    std::vector<GameObject3d> objectsPlanet;
 
     void clear() {
         objects2d.clear();
         objects3d.clear();
+        objectsPlanet.clear();
     }
 };
 
@@ -53,11 +55,13 @@ public:
 
     const std::vector<GameObject2d>& objects2d() const { return objects2d_; }
     const std::vector<GameObject3d>& objects3d() const { return objects3d_; }
+    const std::vector<GameObject3d>& objectsPlanet() const { return objectsPlanet_; }
 
 private:
     void initDescriptorPool();
     std::vector<GameObject2d> makeObjects2d(const TerrainMeshData& data);
     std::vector<GameObject3d> makeObjects3d(const TerrainMeshData& data);
+    std::vector<GameObject3d> makeObjectsPlanet(const TerrainMeshData& data);
 
     QtWindowBackend window_;
     LveDevice device_;
@@ -67,6 +71,7 @@ private:
     std::unique_ptr<LveDescriptorPool> globalPool_{};
     std::vector<GameObject2d> objects2d_{};
     std::vector<GameObject3d> objects3d_{};
+    std::vector<GameObject3d> objectsPlanet_{};
     std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
     bool vulkanResourcesShutdown_{false};
 };

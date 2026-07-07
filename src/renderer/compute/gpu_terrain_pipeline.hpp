@@ -3,7 +3,7 @@
 #include "device/lve_compute_device.hpp"
 #include "renderer/compute/gpu_generator.hpp"
 #include "renderer/compute/gpu_height_map_accumulator.hpp"
-#include "terrain/generators/generator_spec.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/terrain.hpp"
 
 #include <cstddef>

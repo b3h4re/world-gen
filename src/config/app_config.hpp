@@ -2,7 +2,8 @@
 
 #include "files/file_path.hpp"
 #include "swap_chain/lve_swap_chain.hpp"
-#include "terrain/generators/generator.hpp"
+#include "terrain/generators/2d/generator.hpp"
+#include "terrain/terrain_compute_method.hpp"
 
 #include <string>
 #include <cstdint>
@@ -136,10 +137,21 @@ namespace wgen {
         DLAConfig dla{};
     };
 
+    struct PlanetConfig {
+        std::size_t resolution{0};
+        float radius{100.0F};
+        TerrainComputeMethod computeMethod{TerrainComputeMethod::VulkanCompute};
+        float perlinCellSize{1.0F};
+        std::size_t octaves{5};
+        float lacunarity{2.0F};
+        float persistence{0.5F};
+    };
+
     class AppConfig {
     public:
         WindowConfig windowConfig{};
         TerrainConfig terrainConfig{};
+        PlanetConfig planetConfig{};
 
     };
 
@@ -147,6 +159,7 @@ namespace wgen {
     WindowConfig parse_window_config(const toml::table& root);
     PerlinConfig parse_perlin_config(const toml::table& root);
     TerrainConfig parse_terrain_config(const toml::table& root);
+    PlanetConfig parse_planet_config(const toml::table& root);
 
     AppConfig loadConfig(const std::filesystem::path &path);
 

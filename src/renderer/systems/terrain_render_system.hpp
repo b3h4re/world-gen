@@ -3,6 +3,7 @@
 #include "device/lve_device.hpp"
 #include "render_system_2d.hpp"
 #include "render_system_3d.hpp"
+#include "render_system_planet.hpp"
 #include "renderer/lve_frame_info.hpp"
 
 namespace lve {
@@ -21,6 +22,7 @@ public:
 private:
     RenderSystem2d renderSystem2d_;
     RenderSystem3d renderSystem3d_;
+    RenderSystemPlanet renderSystemPlanet_;
 };
 
 } // namespace lve

@@ -147,11 +147,11 @@ if(BUILD_TESTING)
         tests/helpers.cpp
         tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/generator.hpp
-        src/terrain/generators/noise/gradient_noise_interface.hpp
-        src/terrain/generators/noise/perlin.cpp
-        src/terrain/generators/noise/perlin.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/2d/generator.hpp
+        src/terrain/generators/2d/noise/gradient_noise_interface.hpp
+        src/terrain/generators/2d/noise/perlin.cpp
+        src/terrain/generators/2d/noise/perlin.hpp
     )
     target_include_directories(perlin_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(perlin_tests PRIVATE cxx_std_20)
@@ -178,19 +178,19 @@ if(BUILD_TESTING)
         src/files/file_path.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/noise/worley.cpp
-        src/terrain/generators/noise/worley.hpp
-        src/terrain/generators/noise/wavelet.cpp
-        src/terrain/generators/noise/wavelet.hpp
-        src/terrain/generators/noise/value_noise.cpp
-        src/terrain/generators/noise/value_noise.hpp
-        src/terrain/generators/noise/simplex.cpp
-        src/terrain/generators/noise/simplex.hpp
-        src/terrain/generators/noise/perlin.cpp
-        src/terrain/generators/noise/perlin.hpp
-        src/terrain/generators/noise/layered_sin_noise.cpp
-        src/terrain/generators/noise/layered_sin_noise.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/2d/noise/worley.cpp
+        src/terrain/generators/2d/noise/worley.hpp
+        src/terrain/generators/2d/noise/wavelet.cpp
+        src/terrain/generators/2d/noise/wavelet.hpp
+        src/terrain/generators/2d/noise/value_noise.cpp
+        src/terrain/generators/2d/noise/value_noise.hpp
+        src/terrain/generators/2d/noise/simplex.cpp
+        src/terrain/generators/2d/noise/simplex.hpp
+        src/terrain/generators/2d/noise/perlin.cpp
+        src/terrain/generators/2d/noise/perlin.hpp
+        src/terrain/generators/2d/noise/layered_sin_noise.cpp
+        src/terrain/generators/2d/noise/layered_sin_noise.hpp
     )
     target_include_directories(interpreter_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(interpreter_tests PRIVATE cxx_std_20)
@@ -203,16 +203,39 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/terrain_pipeline.cpp
-        src/terrain/generators/terrain_pipeline.hpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/generator.hpp
-        src/terrain/generators/noise/value_noise.cpp
-        src/terrain/generators/noise/value_noise.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/2d/terrain_pipeline.cpp
+        src/terrain/generators/2d/terrain_pipeline.hpp
+        src/terrain/generators/2d/generator.hpp
+        src/terrain/generators/2d/noise/value_noise.cpp
+        src/terrain/generators/2d/noise/value_noise.hpp
     )
     target_include_directories(terrain_pipeline_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
     add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
+
+    # Terrain Pipeline 3D Tests
+    add_executable(terrain_pipeline_3d_tests
+        tests/terrain_pipeline_3d_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/3d/generator.hpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
+        src/terrain/generators/3d/generator_spec.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
+    )
+    target_include_directories(terrain_pipeline_3d_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_pipeline_3d_tests PRIVATE cxx_std_20)
+    add_test(NAME terrain_pipeline_3d_tests COMMAND terrain_pipeline_3d_tests)
 
     # Terrain Pipeline Octave Tests
     add_executable(terrain_pipeline_octaves_tests
@@ -221,29 +244,29 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/hash_random.cpp
-        src/terrain/generators/coordinate_scaled_generator.cpp
-        src/terrain/generators/coordinate_scaled_generator.hpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/generator.hpp
-        src/terrain/generators/generator_factory.cpp
-        src/terrain/generators/generator_factory.hpp
-        src/terrain/generators/generator_spec.hpp
-        src/terrain/generators/terrain_pipeline.cpp
-        src/terrain/generators/terrain_pipeline.hpp
-        src/terrain/generators/noise/gradient_noise_interface.hpp
-        src/terrain/generators/noise/noise_octaves.hpp
-        src/terrain/generators/noise/value_noise.cpp
-        src/terrain/generators/noise/value_noise.hpp
-        src/terrain/generators/noise/perlin.cpp
-        src/terrain/generators/noise/perlin.hpp
-        src/terrain/generators/noise/worley.cpp
-        src/terrain/generators/noise/worley.hpp
-        src/terrain/generators/noise/gabor.cpp
-        src/terrain/generators/noise/gabor.hpp
-        src/terrain/generators/noise/simplex.cpp
-        src/terrain/generators/noise/simplex.hpp
-        src/terrain/generators/noise/wavelet.cpp
-        src/terrain/generators/noise/wavelet.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/2d/coordinate_scaled_generator.cpp
+        src/terrain/generators/2d/coordinate_scaled_generator.hpp
+        src/terrain/generators/2d/generator.hpp
+        src/terrain/generators/2d/generator_factory.cpp
+        src/terrain/generators/2d/generator_factory.hpp
+        src/terrain/generators/2d/generator_spec.hpp
+        src/terrain/generators/2d/terrain_pipeline.cpp
+        src/terrain/generators/2d/terrain_pipeline.hpp
+        src/terrain/generators/2d/noise/gradient_noise_interface.hpp
+        src/terrain/generators/2d/noise/noise_octaves.hpp
+        src/terrain/generators/2d/noise/value_noise.cpp
+        src/terrain/generators/2d/noise/value_noise.hpp
+        src/terrain/generators/2d/noise/perlin.cpp
+        src/terrain/generators/2d/noise/perlin.hpp
+        src/terrain/generators/2d/noise/worley.cpp
+        src/terrain/generators/2d/noise/worley.hpp
+        src/terrain/generators/2d/noise/gabor.cpp
+        src/terrain/generators/2d/noise/gabor.hpp
+        src/terrain/generators/2d/noise/simplex.cpp
+        src/terrain/generators/2d/noise/simplex.hpp
+        src/terrain/generators/2d/noise/wavelet.cpp
+        src/terrain/generators/2d/noise/wavelet.hpp
     )
     target_include_directories(terrain_pipeline_octaves_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(terrain_pipeline_octaves_tests PRIVATE cxx_std_20)
@@ -256,6 +279,7 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
     )
     target_include_directories(hash_uniform_real_distribution_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(hash_uniform_real_distribution_tests PRIVATE cxx_std_20)
@@ -276,6 +300,27 @@ if(BUILD_TESTING)
     target_link_libraries(exporter_tests PRIVATE stb)
     add_test(NAME exporter_tests COMMAND exporter_tests)
 
+    # App config tests
+    add_executable(app_config_tests
+        tests/app_config_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/config/app_config.cpp
+        src/config/app_config.hpp
+        src/files/file_path.cpp
+        src/files/file_path.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
+    )
+    target_include_directories(app_config_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(app_config_tests PRIVATE cxx_std_20)
+    target_link_libraries(app_config_tests PRIVATE
+        Qt6::Gui
+        tomlplusplus::tomlplusplus
+    )
+    add_test(NAME app_config_tests COMMAND app_config_tests)
+
 
     # GPU compute tests
     add_executable(gpu_terrain_generation_tests
@@ -292,32 +337,46 @@ if(BUILD_TESTING)
         src/pipeline/descriptors/lve_descriptors.hpp
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
-        src/terrain/generators/coordinate_scaled_generator.cpp
-        src/terrain/generators/coordinate_scaled_generator.hpp
-        src/terrain/generators/generator.cpp
-        src/terrain/generators/generator.hpp
-        src/terrain/generators/generator_factory.cpp
-        src/terrain/generators/generator_factory.hpp
-        src/terrain/generators/generator_spec.hpp
-        src/terrain/generators/terrain_pipeline.cpp
-        src/terrain/generators/terrain_pipeline.hpp
-        src/terrain/generators/noise/value_noise.cpp
-        src/terrain/generators/noise/value_noise.hpp
-        src/terrain/generators/noise/gradient_noise_interface.hpp
-        src/terrain/generators/noise/perlin.cpp
-        src/terrain/generators/noise/perlin.hpp
-        src/terrain/generators/noise/worley.cpp
-        src/terrain/generators/noise/worley.hpp
-        src/terrain/generators/noise/simplex.cpp
-        src/terrain/generators/noise/simplex.hpp
-        src/terrain/generators/noise/wavelet.cpp
-        src/terrain/generators/noise/wavelet.hpp
-        src/terrain/generators/noise/gabor.cpp
-        src/terrain/generators/noise/gabor.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/2d/coordinate_scaled_generator.cpp
+        src/terrain/generators/2d/coordinate_scaled_generator.hpp
+        src/terrain/generators/2d/generator.hpp
+        src/terrain/generators/2d/generator_factory.cpp
+        src/terrain/generators/2d/generator_factory.hpp
+        src/terrain/generators/2d/generator_spec.hpp
+        src/terrain/generators/2d/terrain_pipeline.cpp
+        src/terrain/generators/2d/terrain_pipeline.hpp
+        src/terrain/generators/2d/noise/value_noise.cpp
+        src/terrain/generators/2d/noise/value_noise.hpp
+        src/terrain/generators/2d/noise/gradient_noise_interface.hpp
+        src/terrain/generators/2d/noise/perlin.cpp
+        src/terrain/generators/2d/noise/perlin.hpp
+        src/terrain/generators/2d/noise/worley.cpp
+        src/terrain/generators/2d/noise/worley.hpp
+        src/terrain/generators/2d/noise/simplex.cpp
+        src/terrain/generators/2d/noise/simplex.hpp
+        src/terrain/generators/2d/noise/wavelet.cpp
+        src/terrain/generators/2d/noise/wavelet.hpp
+        src/terrain/generators/2d/noise/gabor.cpp
+        src/terrain/generators/2d/noise/gabor.hpp
+        src/terrain/generators/3d/generator.hpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
+        src/terrain/generators/3d/generator_spec.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp
         src/renderer/compute/gpu_height_map.hpp
+        src/renderer/compute/gpu_planet_generator.cpp
+        src/renderer/compute/gpu_planet_generator.hpp
+        src/renderer/compute/gpu_planet_pipeline.cpp
+        src/renderer/compute/gpu_planet_pipeline.hpp
         src/renderer/compute/gpu_generator.cpp
         src/renderer/compute/gpu_generator.hpp
         src/renderer/compute/gpu_height_map_accumulator.cpp

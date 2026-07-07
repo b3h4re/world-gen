@@ -1,13 +1,18 @@
 #pragma once
 
 #include "config/app_config.hpp"
+#include "gui_helpers.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
+#include "renderer/compute/gpu_planet_pipeline.hpp"
 #include "renderer/compute/gpu_terrain_pipeline.hpp"
-#include "terrain/generators/generator.hpp"
-#include "terrain/generators/generator_spec.hpp"
+#include "terrain/generators/2d/generator.hpp"
+#include "terrain/generators/2d/generator_spec.hpp"
+#include "terrain/generators/3d/generator_spec.hpp"
+#include "terrain/generators/3d/terrain_pipeline.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
+#include "terrain/planet.hpp"
 
 #include <cstdint>
 #include <future>
@@ -23,10 +28,14 @@ struct TerrainMeshData {
     std::vector<std::uint32_t> indices2d;
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
+    std::vector<Vertex3d> verticesPlanet;
+    std::vector<std::uint32_t> indicesPlanet;
+
 };
 
 struct TerrainJobResult {
     wgen::HeightMap<float> heightMap;
+    wgen::Planet<float> planet;
     TerrainMeshData data;
 };
 
@@ -44,6 +53,12 @@ void appendHeightMapMesh3d(
     std::vector<Vertex3d>& vertices,
     std::vector<std::uint32_t>& indices);
 
+void appendPlanetmesh(
+    const wgen::Planet<float>& planet,
+    std::vector<Vertex3d>& vertices,
+    std::vector<std::uint32_t>& indices
+);
+
 class TerrainAppCore {
 public:
     TerrainAppCore();
@@ -53,10 +68,12 @@ public:
     TerrainAppCore& operator=(const TerrainAppCore&) = delete;
 
     TerrainMeshData loadTerrain();
-    void regenerateTerrain(wgen::SeedType seed);
+    void regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target = TerrainGenerationTarget::All);
     void rotateColorFunction();
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
+    void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);
     wgen::GeneratorPipelineSpec currentPipeline() const;
+    wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
 
     const wgen::AppConfig& config() const { return config_; }
@@ -75,6 +92,7 @@ private:
         wgen::SeedType seed);
     static std::vector<wgen::SeedType> generatorSeeds(std::size_t count, wgen::SeedType seed);
     static wgen::GeneratorPipelineSpec defaultPipelineSpec(const wgen::TerrainConfig& terrainConfig);
+    static wgen::Generator3dPipelineSpec defaultPlanetPipelineSpec(const wgen::PlanetConfig& planetConfig);
     wgen::SeedType activeSeed() const;
 
     wgen::HeightMap<float> generateHeightMap(const wgen::TerrainConfig& terrainConfig);
@@ -82,19 +100,26 @@ private:
     wgen::HeightMap<float> generateHeightMapGpu(
         const std::vector<GpuGeneratorRequest>& requests,
         const wgen::TerrainConfig& terrainConfig);
+    wgen::Planet<float> generatePlanet(const wgen::TerrainConfig& terrainConfig);
+    wgen::Planet<float> generatePlanetGpu(
+        const std::vector<GpuPlanetGeneratorRequest>& requests,
+        const wgen::TerrainConfig& terrainConfig);
 
-    TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap);
+    TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet);
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
     wgen::GeneratorPipelineSpec pipelineSpec_{};
+    wgen::Generator3dPipelineSpec planetPipelineSpec_{};
     ColorFunctions activeColorFuncId_{ColorFunctions::TerrainColorStandard};
 
     std::size_t usedGenerator_{0};
     std::vector<std::unique_ptr<wgen::Generator>> generators_{};
     std::unique_ptr<GpuTerrainPipeline> gpuPipeline_{};
+    std::unique_ptr<GpuPlanetPipeline> gpuPlanetPipeline_{};
     wgen::ThreadPool threadPool_{};
     wgen::HeightMap<float> activeHeightMap_{};
+    wgen::Planet<float> activePlanet_{};
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};

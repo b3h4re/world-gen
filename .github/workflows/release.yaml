@@ -103,9 +103,52 @@ jobs:
             --compiler-runtime \
             "$DIST/world_gen.exe"
 
+          # Copy MinGW/UCRT runtime DLLs and common Qt dependency DLLs.
+          # windeployqt deploys Qt modules/plugins, but with MSYS2/MinGW it may
+          # not copy all GCC/libstdc++/ICU/zlib/harfbuzz/freetype dependencies.
+          REQUIRED_DLLS=(
+            libgcc_s_seh-1.dll
+            libstdc++-6.dll
+            libwinpthread-1.dll
+            libb2-1.dll
+            libbrotlicommon.dll
+            libbrotlidec.dll
+            libbz2-1.dll
+            libdouble-conversion.dll
+            libfreetype-6.dll
+            libglib-2.0-0.dll
+            libgraphite2.dll
+            libharfbuzz-0.dll
+            libiconv-2.dll
+            libicudt78.dll
+            libicuin78.dll
+            libicuuc78.dll
+            libintl-8.dll
+            libmd4c.dll
+            libpcre2-16-0.dll
+            libpcre2-8-0.dll
+            libpng16-16.dll
+            libzstd.dll
+            zlib1.dll
+          )
+
+          for dll in "${REQUIRED_DLLS[@]}"; do
+            if [ -f "/ucrt64/bin/$dll" ]; then
+              cp -n "/ucrt64/bin/$dll" "$DIST/"
+            else
+              echo "Warning: /ucrt64/bin/$dll not found"
+            fi
+          done
+
           if [ -f /ucrt64/bin/vulkan-1.dll ]; then
-            cp /ucrt64/bin/vulkan-1.dll "$DIST/vulkan-1.dll"
+            cp -n /ucrt64/bin/vulkan-1.dll "$DIST/vulkan-1.dll"
           fi
+
+          echo "Packaged files:"
+          find "$DIST" -maxdepth 2 -type f | sort
+
+          echo "Runtime dependency check:"
+          ldd "$DIST/world_gen.exe" || true
 
           cd "$DIST"
           zip -r "$GITHUB_WORKSPACE/world-gen-$VERSION-windows-x64.zip" .
@@ -356,14 +399,24 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           QMAKE: /usr/lib/qt6/bin/qmake6
+          OUTPUT: world-gen-${{ env.VERSION }}-linux-x86_64.AppImage
         run: |
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          mkdir -p "$RUNNER_TEMP/linuxdeploy"
 
-          chmod +x linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
+          wget -q \
+            -O "$RUNNER_TEMP/linuxdeploy/linuxdeploy-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 
-          ./linuxdeploy-x86_64.AppImage \
+          wget -q \
+            -O "$RUNNER_TEMP/linuxdeploy/linuxdeploy-plugin-qt-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+
+          chmod +x "$RUNNER_TEMP/linuxdeploy/linuxdeploy-x86_64.AppImage"
+          chmod +x "$RUNNER_TEMP/linuxdeploy/linuxdeploy-plugin-qt-x86_64.AppImage"
+
+          export PATH="$RUNNER_TEMP/linuxdeploy:$PATH"
+
+          "$RUNNER_TEMP/linuxdeploy/linuxdeploy-x86_64.AppImage" \
             --appdir AppDir \
             --executable AppDir/usr/bin/world_gen \
             --desktop-file AppDir/usr/share/applications/world-gen.desktop \
@@ -371,14 +424,18 @@ jobs:
             --plugin qt \
             --output appimage
 
-          APPIMAGE="$(find . -maxdepth 1 -name '*.AppImage' -type f | head -n 1)"
-
-          if [ -z "$APPIMAGE" ]; then
-            echo "No AppImage was produced"
+          if [ ! -f "$OUTPUT" ]; then
+            echo "Expected AppImage was not created: $OUTPUT"
+            echo "Files in workspace:"
+            find . -maxdepth 2 -type f -print
             exit 1
           fi
 
-          mv "$APPIMAGE" "world-gen-$VERSION-linux-x86_64.AppImage"
+          chmod +x "$OUTPUT"
+
+          echo "Created AppImage:"
+          file "$OUTPUT"
+          ls -lh "$OUTPUT"
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4

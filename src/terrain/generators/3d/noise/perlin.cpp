@@ -80,7 +80,7 @@ float PerlinNoise3d::noise(glm::vec3 point) const {
 GeneratorCapabilities PerlinNoise3d::capabilities() const {
     return {
         .cpu = true,
-        .vulkanCompute = false,
+        .vulkanCompute = true,
         .octaves = false,
     };
 }

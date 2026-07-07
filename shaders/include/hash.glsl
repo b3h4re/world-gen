@@ -81,15 +81,19 @@ vec2 randomHashDir(uint x, uint y, uint64_t seed) {
     return res;
 }
 
-vec3 randomHashDir3D(uint x, uint y, uint z, uint64_t seed) {
+uint64_t intAsUint64(int value) {
+    return uint64_t(int64_t(value));
+}
+
+vec3 randomHashDir3D(int x, int y, int z, uint64_t seed) {
     uint64_t h = seed;
     const uint64_t c0x9E3779B97F4A7C15 = u64(0x9E3779B9u, 0x7F4A7C15u);
     const uint64_t c0xBF58476D1CE4E5B9 = u64(0xBF58476Du, 0x1CE4E5B9u);
     const uint64_t c0x94D049BB133111EB = u64(0x94D049BBu, 0x133111EBu);
 
-    h ^= splitmix64(uint64_t(x) + c0x9E3779B97F4A7C15);
-    h ^= splitmix64(uint64_t(y) + c0xBF58476D1CE4E5B9);
-    h ^= splitmix64(uint64_t(z) + c0x94D049BB133111EB);
+    h ^= splitmix64(intAsUint64(x) + c0x9E3779B97F4A7C15);
+    h ^= splitmix64(intAsUint64(y) + c0xBF58476D1CE4E5B9);
+    h ^= splitmix64(intAsUint64(z) + c0x94D049BB133111EB);
 
     h = splitmix64(h);
 

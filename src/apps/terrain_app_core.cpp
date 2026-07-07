@@ -127,10 +127,9 @@ TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
     : config_{config},
       pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)},
-      planetPipelineSpec_{defaultPlanetPipelineSpec()} {
+      planetPipelineSpec_{defaultPlanetPipelineSpec(config_.planetConfig)} {
     const wgen::SeedType seed = activeSeed();
     initGenerators(generators_, pipelineSpec_, seed);
-    planetPipeline_ = wgen::makePipeline3d(planetPipelineSpec_, seed);
 }
 
 TerrainMeshData TerrainAppCore::loadTerrain() {
@@ -217,8 +216,21 @@ void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
     usedGenerator_ = 0;
 }
 
+void TerrainAppCore::setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline) {
+    if (terrainJobRunning_) {
+        return;
+    }
+
+    std::lock_guard lock{generatorsMutex_};
+    planetPipelineSpec_ = std::move(pipeline);
+}
+
 wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
     return pipelineSpec_;
+}
+
+wgen::Generator3dPipelineSpec TerrainAppCore::currentPlanetPipeline() const {
+    return planetPipelineSpec_;
 }
 
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
@@ -290,19 +302,17 @@ wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::Terr
     return spec;
 }
 
-wgen::Generator3dPipelineSpec TerrainAppCore::defaultPlanetPipelineSpec() {
+wgen::Generator3dPipelineSpec TerrainAppCore::defaultPlanetPipelineSpec(const wgen::PlanetConfig& planetConfig) {
     wgen::Generator3dPipelineSpec spec{};
-    constexpr float baseCellSize = 1.0F;
-    constexpr float persistance = 0.5F;
-    for (std::size_t n = 0; n < 5; ++n) {
-        const float frequency = std::pow(2.0F, static_cast<float>(n));
+    for (std::size_t n = 0; n < planetConfig.octaves; ++n) {
+        const float frequency = std::pow(planetConfig.lacunarity, static_cast<float>(n));
         spec.push_back(wgen::Generator3dSpec{
             .kind = wgen::Generator3dKind::PerlinNoise,
             .config = wgen::PerlinNoise3dGeneratorSpec{
-                .cellSize = baseCellSize / frequency,
+                .cellSize = planetConfig.perlinCellSize / frequency,
             },
-            .scale = std::pow(persistance, static_cast<float>(n)),
-            .computeMethod = wgen::TerrainComputeMethod::Cpu,
+            .scale = std::pow(planetConfig.persistence, static_cast<float>(n)),
+            .computeMethod = planetConfig.computeMethod,
         });
     }
 
@@ -383,13 +393,47 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMapGpu(
 }
 
 wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& terrainConfig) {
-    if (planetPipeline_ == nullptr) {
-        planetPipeline_ = wgen::makePipeline3d(planetPipelineSpec_, terrainConfig.seed);
+    const std::size_t dots = config_.planetConfig.resolution == 0
+        ? std::min(terrainConfig.width, terrainConfig.height)
+        : config_.planetConfig.resolution;
+    wgen::Planet<float> result{dots, 0.0F};
+    std::vector<GpuPlanetGeneratorRequest> gpuRequests;
+    gpuRequests.reserve(planetPipelineSpec_.size());
+    const std::vector<wgen::SeedType> seeds = generatorSeeds(planetPipelineSpec_.size(), terrainConfig.seed);
+
+    for (std::size_t i = 0; i < planetPipelineSpec_.size(); ++i) {
+        const wgen::Generator3dSpec& spec = planetPipelineSpec_[i];
+        if (spec.computeMethod == wgen::TerrainComputeMethod::VulkanCompute &&
+                wgen::generator3dSupportsVulkanCompute(spec.kind)) {
+            gpuRequests.push_back({
+                .spec = spec,
+                .seed = seeds[i],
+            });
+            continue;
+        }
+
+        std::unique_ptr<wgen::Generator3d> generator = wgen::makePipelineGenerator3d(spec, seeds[i]);
+        result += wgen::map(generator->generatePlanet(dots), wgen::multiplyFunction(spec.scale));
     }
 
-    planetPipeline_->setSeed(terrainConfig.seed);
-    const std::size_t dots = std::min(terrainConfig.width, terrainConfig.height);
-    return planetPipeline_->generatePlanet(dots);
+    if (!gpuRequests.empty()) {
+        result += generatePlanetGpu(gpuRequests, terrainConfig);
+    }
+
+    return result;
+}
+
+wgen::Planet<float> TerrainAppCore::generatePlanetGpu(
+        const std::vector<GpuPlanetGeneratorRequest>& requests,
+        const wgen::TerrainConfig& terrainConfig) {
+    if (gpuPlanetPipeline_ == nullptr) {
+        gpuPlanetPipeline_ = std::make_unique<GpuPlanetPipeline>();
+    }
+
+    const std::size_t dots = config_.planetConfig.resolution == 0
+        ? std::min(terrainConfig.width, terrainConfig.height)
+        : config_.planetConfig.resolution;
+    return gpuPlanetPipeline_->generatePlanet(requests, dots);
 }
 
 TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet) {

@@ -298,6 +298,27 @@ if(BUILD_TESTING)
     target_link_libraries(exporter_tests PRIVATE stb)
     add_test(NAME exporter_tests COMMAND exporter_tests)
 
+    # App config tests
+    add_executable(app_config_tests
+        tests/app_config_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/config/app_config.cpp
+        src/config/app_config.hpp
+        src/files/file_path.cpp
+        src/files/file_path.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
+    )
+    target_include_directories(app_config_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(app_config_tests PRIVATE cxx_std_20)
+    target_link_libraries(app_config_tests PRIVATE
+        Qt6::Gui
+        tomlplusplus::tomlplusplus
+    )
+    add_test(NAME app_config_tests COMMAND app_config_tests)
+
 
     # GPU compute tests
     add_executable(gpu_terrain_generation_tests
@@ -336,10 +357,18 @@ if(BUILD_TESTING)
         src/terrain/generators/2d/noise/wavelet.hpp
         src/terrain/generators/2d/noise/gabor.cpp
         src/terrain/generators/2d/noise/gabor.hpp
+        src/terrain/generators/3d/generator.hpp
+        src/terrain/generators/3d/generator_spec.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp
         src/renderer/compute/gpu_height_map.hpp
+        src/renderer/compute/gpu_planet_generator.cpp
+        src/renderer/compute/gpu_planet_generator.hpp
+        src/renderer/compute/gpu_planet_pipeline.cpp
+        src/renderer/compute/gpu_planet_pipeline.hpp
         src/renderer/compute/gpu_generator.cpp
         src/renderer/compute/gpu_generator.hpp
         src/renderer/compute/gpu_height_map_accumulator.cpp

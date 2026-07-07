@@ -19,17 +19,20 @@ layout(set = 0, binding = 0) buffer HeightMap {
 
 
 float perlinNoise(uint64_t seed, vec3 point, float cellSize) {
-    const uint gridX = uint(floor(point.x / cellSize));
-    const uint gridY = uint(floor(point.y / cellSize));
-    const uint gridZ = uint(floor(point.z / cellSize));
+    const vec3 scaledPoint = point / cellSize;
+    const int gridX = int(floor(scaledPoint.x));
+    const int gridY = int(floor(scaledPoint.y));
+    const int gridZ = int(floor(scaledPoint.z));
 
-    const float localX = mod(point.x, cellSize);
-    const float localY = mod(point.y, cellSize);
-    const float localZ = mod(point.z, cellSize);
+    const vec3 localPoint = vec3(
+        scaledPoint.x - float(gridX),
+        scaledPoint.y - float(gridY),
+        scaledPoint.z - float(gridZ)
+    );
 
-    const float fadeX = defaultPerlinInterp(localX);
-    const float fadeY = defaultPerlinInterp(localY);
-    const float fadeZ = defaultPerlinInterp(localZ);
+    const float fadeX = defaultPerlinInterp(localPoint.x);
+    const float fadeY = defaultPerlinInterp(localPoint.y);
+    const float fadeZ = defaultPerlinInterp(localPoint.z);
 
     float cornerWeights[8];
 
@@ -51,7 +54,7 @@ float perlinNoise(uint64_t seed, vec3 point, float cellSize) {
                     float(u)
                 );
                 int index = 4*i + 2*j + u;
-                cornerWeights[index] = dot(point - cornerOffset, randomDir);
+                cornerWeights[index] = dot(localPoint - cornerOffset, randomDir);
             }
         }
     }
@@ -74,21 +77,20 @@ float perlinNoise(uint64_t seed, vec3 point, float cellSize) {
 void main() {
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
-    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
 
-    uint index = y * width + x;
-    if (index >= heightMap.values.length()) {
+    if (x >= params.dotsOnPlanet || y >= params.dotsOnPlanet) {
         return;
     }
+    uint index = y * params.dotsOnPlanet + x;
 
     const float phi = 2 * PI * float(x) / float(params.dotsOnPlanet);
     const float psi = 2 * PI * float(y) / float(params.dotsOnPlanet);
 
     vec3 pos = vec3(
-        params.planetRadius * cos(phi) * cos(psi),
-        params.planetRadius * sin(phi) * cos(psi),
-        params.planetRadius * sin(psi)
-    );
+        cos(phi) * cos(psi),
+        sin(phi) * cos(psi),
+        sin(psi)
+    ) * params.coordinateScale;
 
     heightMap.values[index] = perlinNoise(params.seed, pos, params.cellSize);
 }

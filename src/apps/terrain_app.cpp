@@ -31,8 +31,14 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .pipelineChanged = [this](wgen::GeneratorPipelineSpec pipeline) {
                   core_.setPipeline(std::move(pipeline));
               },
+              .planetPipelineChanged = [this](wgen::Generator3dPipelineSpec pipeline) {
+                  core_.setPlanetPipeline(std::move(pipeline));
+              },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
+              },
+              .currentPlanetPipeline = [this] {
+                  return core_.currentPlanetPipeline();
               },
               .getConfig = [this] {
                   return this->getConfig();

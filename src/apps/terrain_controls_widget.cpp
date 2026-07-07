@@ -1,9 +1,11 @@
 #include "terrain_controls_widget.hpp"
 
 #include "generator_settings_dialog.hpp"
+#include "planet_generator_settings_dialog.hpp"
 #include "app_settings.hpp"
 #include "save_terrain.hpp"
 #include "files/exporter.hpp"
+#include "planet_pipeline_list_model.hpp"
 #include "terrain_pipeline_list_model.hpp"
 #include "ui_terrain_controls_widget.h"
 
@@ -41,6 +43,21 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     pipelineModel_ = std::make_unique<TerrainPipelineListModel>(std::move(initialPipeline));
     ui_->listView->setModel(pipelineModel_.get());
 
+    wgen::Generator3dPipelineSpec initialPlanetPipeline;
+    if (callbacks_.currentPlanetPipeline) {
+        initialPlanetPipeline = callbacks_.currentPlanetPipeline();
+    } else {
+        initialPlanetPipeline = wgen::Generator3dPipelineSpec{
+            wgen::Generator3dSpec{
+                .kind = wgen::Generator3dKind::PerlinNoise,
+                .config = wgen::PerlinNoise3dGeneratorSpec{},
+            },
+        };
+    }
+
+    planetPipelineModel_ = std::make_unique<PlanetPipelineListModel>(std::move(initialPlanetPipeline));
+    ui_->planetListView->setModel(planetPipelineModel_.get());
+
     auto notifyPipelineChanged = [this] {
         if (callbacks_.pipelineChanged) {
             callbacks_.pipelineChanged(pipelineModel_->pipeline());
@@ -55,6 +72,22 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         this,
         [notifyPipelineChanged](const QModelIndex&, const QModelIndex&, const QList<int>&) {
             notifyPipelineChanged();
+        });
+
+    auto notifyPlanetPipelineChanged = [this] {
+        if (callbacks_.planetPipelineChanged) {
+            callbacks_.planetPipelineChanged(planetPipelineModel_->pipeline());
+        }
+    };
+    connect(planetPipelineModel_.get(), &QAbstractItemModel::modelReset, this, notifyPlanetPipelineChanged);
+    connect(planetPipelineModel_.get(), &QAbstractItemModel::rowsInserted, this, notifyPlanetPipelineChanged);
+    connect(planetPipelineModel_.get(), &QAbstractItemModel::rowsRemoved, this, notifyPlanetPipelineChanged);
+    connect(
+        planetPipelineModel_.get(),
+        &QAbstractItemModel::dataChanged,
+        this,
+        [notifyPlanetPipelineChanged](const QModelIndex&, const QModelIndex&, const QList<int>&) {
+            notifyPlanetPipelineChanged();
         });
 
     auto* addGeneratorMenu = new QMenu{ui_->addGeneratorButton};
@@ -130,6 +163,20 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         clearPipeline();
     });
 
+    auto* addPlanetGeneratorMenu = new QMenu{ui_->addPlanetGeneratorButton};
+    ui_->addPlanetGeneratorButton->setMenu(addPlanetGeneratorMenu);
+    auto* addPlanetPerlinAction = addPlanetGeneratorMenu->addAction(QStringLiteral("3D Perlin"));
+    connect(addPlanetPerlinAction, &QAction::triggered, this, [this] {
+        planetPipelineModel_->appendGenerator(wgen::Generator3dSpec{
+            .kind = wgen::Generator3dKind::PerlinNoise,
+            .config = wgen::PerlinNoise3dGeneratorSpec{},
+            .scale = 1.0F,
+        });
+    });
+    connect(ui_->clearPlanetPipelineButton, &QPushButton::clicked, this, [this] {
+        clearPlanetPipeline();
+    });
+
     auto openGeneratorSettings = [this](const QModelIndex& index) {
         const wgen::GeneratorSpec* spec = pipelineModel_->generatorAt(index.row());
         if (spec == nullptr) {
@@ -144,6 +191,22 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
     connect(ui_->listView, &QListView::doubleClicked, this, [openGeneratorSettings](const QModelIndex& index) {
         openGeneratorSettings(index);
+    });
+
+    auto openPlanetGeneratorSettings = [this](const QModelIndex& index) {
+        const wgen::Generator3dSpec* spec = planetPipelineModel_->generatorAt(index.row());
+        if (spec == nullptr) {
+            return;
+        }
+
+        PlanetGeneratorSettingsDialog dialog{*spec, this};
+        if (dialog.exec() == QDialog::Accepted) {
+            planetPipelineModel_->updateGenerator(index.row(), dialog.generatorSpec());
+        }
+    };
+
+    connect(ui_->planetListView, &QListView::doubleClicked, this, [openPlanetGeneratorSettings](const QModelIndex& index) {
+        openPlanetGeneratorSettings(index);
     });
 
     ui_->listView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -176,6 +239,39 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
                 .scale = gen->scale,
                 .computeMethod = gen->computeMethod,
                 .octaveSettings = gen->octaveSettings
+            });
+        }
+    });
+
+    ui_->planetListView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_->planetListView, &QListView::customContextMenuRequested, this, [this, openPlanetGeneratorSettings](const QPoint& pos) {
+        const QModelIndex index = ui_->planetListView->indexAt(pos);
+        if (!index.isValid() || planetPipelineModel_->generatorAt(index.row()) == nullptr) {
+            return;
+        }
+
+        ui_->planetListView->setCurrentIndex(index);
+
+        QMenu menu{this};
+        QAction* openSettingsAction = menu.addAction(QStringLiteral("Open generator settings"));
+        QAction* removeGeneratorAction = menu.addAction(QStringLiteral("Remove generator"));
+        QAction* duplicateGeneratorAction = menu.addAction(QStringLiteral("Duplicate"));
+
+        const QAction* selectedAction = menu.exec(ui_->planetListView->viewport()->mapToGlobal(pos));
+        if (selectedAction == openSettingsAction) {
+            openPlanetGeneratorSettings(index);
+            return;
+        }
+        if (selectedAction == removeGeneratorAction) {
+            planetPipelineModel_->removeGenerator(index.row());
+        }
+        if (selectedAction == duplicateGeneratorAction) {
+            auto gen = planetPipelineModel_->generatorAt(index.row());
+            planetPipelineModel_->appendGenerator(wgen::Generator3dSpec{
+                .kind = gen->kind,
+                .config = gen->config,
+                .scale = gen->scale,
+                .computeMethod = gen->computeMethod,
             });
         }
     });
@@ -239,6 +335,10 @@ TerrainControlsWidget::~TerrainControlsWidget() = default;
 
 void TerrainControlsWidget::clearPipeline() {
     pipelineModel_->clear();
+}
+
+void TerrainControlsWidget::clearPlanetPipeline() {
+    planetPipelineModel_->clear();
 }
 
 QWidget& TerrainControlsWidget::vulkanWidget() {

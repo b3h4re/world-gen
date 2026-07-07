@@ -12,7 +12,7 @@ enum class Generator3dKind {
 };
 
 constexpr bool generator3dSupportsVulkanCompute(Generator3dKind) {
-    return false;
+    return true;
 }
 
 constexpr TerrainComputeMethod defaultComputeMethodForGenerator3d(Generator3dKind kind) {

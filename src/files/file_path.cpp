@@ -16,6 +16,17 @@ namespace wgen::files {
         return home;
     }
 
+    std::filesystem::path Path::tmpDirectory() {
+        for (const char* envName : {"TMPDIR", "TEMP", "TMP"}) {
+            const char* tmp = std::getenv(envName);
+            if (tmp != nullptr && !std::string_view{tmp}.empty()) {
+                return tmp;
+            }
+        }
+
+        return "/tmp";
+    }
+
 
     Path::Path(const char* path) : path_{normalize(path)} {}
 

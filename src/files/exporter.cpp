@@ -11,9 +11,14 @@
 
 namespace lve {
 
-Exporter::Exporter(ColorMapper& colorMapper) : Exporter{colorMapper, ExportConfig{}} {}
+Exporter::Exporter(ColorMapper& colorMapper) : Exporter{static_cast<ColorMapSampler&>(colorMapper), ExportConfig{}} {}
 
-Exporter::Exporter(ColorMapper& colorMapper, ExportConfig cfg) : colorMapper_{colorMapper}, cfg_{cfg} {}
+Exporter::Exporter(ColorMapper& colorMapper, ExportConfig cfg)
+    : Exporter{static_cast<ColorMapSampler&>(colorMapper), cfg} {}
+
+Exporter::Exporter(ColorMapSampler& colorMapper) : Exporter{colorMapper, ExportConfig{}} {}
+
+Exporter::Exporter(ColorMapSampler& colorMapper, ExportConfig cfg) : colorMapper_{colorMapper}, cfg_{cfg} {}
 
 
 void Exporter::exportToFile(const wgen::HeightMap<float>& h) {
@@ -33,14 +38,14 @@ void Exporter::exportToCSV(const wgen::HeightMap<float>& h) {
         throw std::runtime_error("Could not open file: " + cfg_.path.get().string());
     }
 
-    for (std::size_t x = 0; x < h.width(); ++x) {
-        for (std::size_t y = 0; y < h.height(); ++y) {
+    for (std::size_t y = 0; y < h.height(); ++y) {
+        for (std::size_t x = 0; x < h.width(); ++x) {
             file << h.at(x, y);
-            if (y < h.height() - 1) {
+            if (x < h.width() - 1) {
                 file << ",";
             }
         }
-        if (x < h.width() - 1) {
+        if (y < h.height() - 1) {
             file << "\n";
         }
     }

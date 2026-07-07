@@ -27,6 +27,8 @@ class Exporter {
 public:
     explicit Exporter(ColorMapper& colorMapper);
     Exporter(ColorMapper& colorMapper, ExportConfig cfg);
+    explicit Exporter(ColorMapSampler& colorMapper);
+    Exporter(ColorMapSampler& colorMapper, ExportConfig cfg);
 
     ExportConfig& cfg() { return cfg_; }
 
@@ -36,7 +38,7 @@ public:
 private:
     void exportToCSV(const wgen::HeightMap<float>& h);
     void exportToPNG(const wgen::HeightMap<float>& h);
-    ColorMapper& colorMapper_;
+    ColorMapSampler& colorMapper_;
     ExportConfig cfg_;
 
 };

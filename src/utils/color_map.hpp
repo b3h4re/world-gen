@@ -29,8 +29,14 @@ struct ColorMapParams {
     ColorFunctions mapping{ColorFunctions::TerrainColorStandard};
 };
 
+class ColorMapSampler {
+public:
+    virtual ~ColorMapSampler() = default;
 
-class ColorMapper {
+    virtual glm::vec4 mapColor(float height) const = 0;
+};
+
+class ColorMapper : public ColorMapSampler {
 public:
     ColorMapper(LveDevice& device);
     ~ColorMapper();
@@ -38,7 +44,7 @@ public:
 
     static std::function<glm::vec3(float)> getColorFunction(ColorFunctions f);
 
-    glm::vec4 mapColor(float height) const;
+    glm::vec4 mapColor(float height) const override;
     const std::vector<std::uint8_t>& colorMapPixelsRGBA8() const { return colorMapPixelsRGBA8_; }
 
     VkDescriptorImageInfo descriptorInfo() const;

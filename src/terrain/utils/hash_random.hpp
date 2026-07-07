@@ -60,6 +60,7 @@ namespace wgen {
     SeedType hashSeed(SeedType seed);
 
     glm::vec2 randomHashDir(std::size_t x, std::size_t y, SeedType seed);
+    glm::vec3 randomHashDir3D(int x, int y, int z, SeedType seed);
 
     constexpr std::uint64_t makeKey(int i, int j) noexcept {
         auto ui = static_cast<std::uint32_t>(i);

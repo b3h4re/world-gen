@@ -214,6 +214,27 @@ if(BUILD_TESTING)
     target_compile_features(terrain_pipeline_tests PRIVATE cxx_std_20)
     add_test(NAME terrain_pipeline_tests COMMAND terrain_pipeline_tests)
 
+    # Terrain Pipeline 3D Tests
+    add_executable(terrain_pipeline_3d_tests
+        tests/terrain_pipeline_3d_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/3d/generator.hpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
+        src/terrain/generators/3d/generator_spec.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
+    )
+    target_include_directories(terrain_pipeline_3d_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_pipeline_3d_tests PRIVATE cxx_std_20)
+    add_test(NAME terrain_pipeline_3d_tests COMMAND terrain_pipeline_3d_tests)
+
     # Terrain Pipeline Octave Tests
     add_executable(terrain_pipeline_octaves_tests
         tests/terrain_pipeline_octaves_tests.cpp

@@ -11,6 +11,20 @@
 
 namespace wgen {
 
+struct PerlinNoiseComputeSpec3D {
+    float cellSize{1.0f};
+    float coordinateScale{1.0F};
+    float planetRadius{100.0f};
+    alignas(8) std::uint32_t dotsOnPlanet{100};
+    SeedType seed{};
+};
+static_assert(offsetof(PerlinNoiseComputeSpec3D, cellSize) == 0);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, coordinateScale) == 4);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, planetRadius) == 8);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, dotsOnPlanet) == 16);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, seed) == 24);
+
+
 class Generator3d {
 public:
     virtual ~Generator3d() = default;

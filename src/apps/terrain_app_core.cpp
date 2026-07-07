@@ -2,10 +2,12 @@
 
 #include "terrain/generators/2d/generator_compute_capabilities.hpp"
 #include "terrain/generators/2d/generator_factory.hpp"
+#include "terrain/generators/3d/generator_factory.hpp"
 #include "terrain/utils/hash_random.hpp"
 #include "terrain/terrain.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <future>
 #include <glm/glm.hpp>
 #include <memory>
@@ -123,13 +125,19 @@ void appendPlanetmesh(
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
-    : config_{config}, pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)} {
-    initGenerators(generators_, pipelineSpec_, activeSeed());
+    : config_{config},
+      pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)},
+      planetPipelineSpec_{defaultPlanetPipelineSpec()} {
+    const wgen::SeedType seed = activeSeed();
+    initGenerators(generators_, pipelineSpec_, seed);
+    planetPipeline_ = wgen::makePipeline3d(planetPipelineSpec_, seed);
 }
 
 TerrainMeshData TerrainAppCore::loadTerrain() {
     activeHeightMap_ = generateHeightMap(config_.terrainConfig).normal();
-    return buildMeshData(activeHeightMap_);
+    activePlanet_ = generatePlanet(config_.terrainConfig);
+    activePlanet_.normalize();
+    return buildMeshData(activeHeightMap_, activePlanet_);
 }
 
 void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
@@ -144,16 +152,20 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
     terrainJobRunning_ = true;
     terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, colorFunc] {
         wgen::HeightMap<float> heightMap;
+        wgen::Planet<float> planet;
 
         {
             std::lock_guard lock{generatorsMutex_};
 
             setGeneratorSeeds(generators_, terrainConfig.seed);
             heightMap = generateHeightMap(terrainConfig).normal();
+            planet = generatePlanet(terrainConfig);
+            planet.normalize();
         }
 
         TerrainJobResult result;
         result.heightMap = std::move(heightMap);
+        result.planet = std::move(planet);
 
         appendHeightMapMesh(
             result.heightMap,
@@ -171,11 +183,8 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed) {
             result.data.indices3d
         );
 
-        // tmp implementation that copies and resizes 2d heightmap into planet
-        const std::size_t dots = std::min(result.heightMap.width(), result.heightMap.height());
-        wgen::Planet<float> planet(std::move(result.heightMap.resized(dots, dots)));
         appendPlanetmesh(
-            planet,
+            result.planet,
             result.data.verticesPlanet,
             result.data.indicesPlanet
         );
@@ -220,6 +229,7 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
         TerrainJobResult result = terrainGenerationJob_.get();
         activeHeightMap_ = result.heightMap;
+        activePlanet_ = result.planet;
         terrainJobRunning_ = false;
         return result;
     }
@@ -277,6 +287,25 @@ wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::Terr
         };
         spec.push_back(genSpec);
     }
+    return spec;
+}
+
+wgen::Generator3dPipelineSpec TerrainAppCore::defaultPlanetPipelineSpec() {
+    wgen::Generator3dPipelineSpec spec{};
+    constexpr float baseCellSize = 1.0F;
+    constexpr float persistance = 0.5F;
+    for (std::size_t n = 0; n < 5; ++n) {
+        const float frequency = std::pow(2.0F, static_cast<float>(n));
+        spec.push_back(wgen::Generator3dSpec{
+            .kind = wgen::Generator3dKind::PerlinNoise,
+            .config = wgen::PerlinNoise3dGeneratorSpec{
+                .cellSize = baseCellSize / frequency,
+            },
+            .scale = std::pow(persistance, static_cast<float>(n)),
+            .computeMethod = wgen::TerrainComputeMethod::Cpu,
+        });
+    }
+
     return spec;
 }
 
@@ -353,12 +382,20 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMapGpu(
     return gpuPipeline_->generateHeightMap(requests, terrainConfig.width, terrainConfig.height);
 }
 
-TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap) {
+wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& terrainConfig) {
+    if (planetPipeline_ == nullptr) {
+        planetPipeline_ = wgen::makePipeline3d(planetPipelineSpec_, terrainConfig.seed);
+    }
+
+    planetPipeline_->setSeed(terrainConfig.seed);
+    const std::size_t dots = std::min(terrainConfig.width, terrainConfig.height);
+    return planetPipeline_->generatePlanet(dots);
+}
+
+TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet) {
     TerrainMeshData data;
     appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
     appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
-    std::size_t dots = std::min(heightMap.width(), heightMap.height());
-    wgen::Planet<float> planet(std::move(heightMap.resized(dots, dots)));
     appendPlanetmesh(planet, data.verticesPlanet, data.indicesPlanet);
     return data;
 }

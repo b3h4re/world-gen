@@ -25,8 +25,8 @@ struct ExportConfig {
 
 class Exporter {
 public:
-    Exporter();
-    Exporter(ExportConfig cfg);
+    explicit Exporter(ColorMapper& colorMapper);
+    Exporter(ColorMapper& colorMapper, ExportConfig cfg);
 
     ExportConfig& cfg() { return cfg_; }
 
@@ -35,6 +35,8 @@ public:
 
 private:
     void exportToCSV(const wgen::HeightMap<float>& h);
+    void exportToPNG(const wgen::HeightMap<float>& h);
+    ColorMapper& colorMapper_;
     ExportConfig cfg_;
 
 };

@@ -38,6 +38,9 @@ public:
 
     static std::function<glm::vec3(float)> getColorFunction(ColorFunctions f);
 
+    glm::vec4 mapColor(float height) const;
+    const std::vector<std::uint8_t>& colorMapPixelsRGBA8() const { return colorMapPixelsRGBA8_; }
+
     VkDescriptorImageInfo descriptorInfo() const;
     void recreateColorMap(ColorMapParams params);
     void recreateColorMap();
@@ -54,6 +57,7 @@ private:
     void clear();
 
     ColorMapParams params_{};
+    std::vector<std::uint8_t> colorMapPixelsRGBA8_{};
 
     VkImage image_ = VK_NULL_HANDLE;
     VkImageView imageView_ = VK_NULL_HANDLE;

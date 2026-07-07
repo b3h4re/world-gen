@@ -4,8 +4,8 @@
 
 #include <glm/gtc/constants.hpp>
 
+#include <algorithm>
 #include <cmath>
-#include <stdexcept>
 #include <stdexcept>
 
 namespace lve {
@@ -94,6 +94,38 @@ std::vector<std::uint8_t> ColorMapper::generateTerrainColorMapRGBA8(ColorMapPara
     return pixels;
 }
 
+glm::vec4 ColorMapper::mapColor(float height) const {
+    if (colorMapPixelsRGBA8_.empty() || params_.resolution == 0) {
+        throw std::runtime_error("color map pixels are not initialized");
+    }
+
+    const float delta = params_.maxHeight - params_.minHeight;
+    if (delta == 0.0F) {
+        throw std::runtime_error("color map height range must not be zero");
+    }
+
+    const float offset = delta / 2.0F;
+    const float normalizedHeight = std::clamp((height + offset) / delta, 0.0F, 1.0F);
+    const float texelPosition = normalizedHeight * static_cast<float>(params_.resolution) - 0.5F;
+    const float clampedPosition = std::clamp(texelPosition, 0.0F, static_cast<float>(params_.resolution - 1));
+    const auto lowerIndex = static_cast<std::uint32_t>(std::floor(clampedPosition));
+    const auto upperIndex = std::min(lowerIndex + 1, params_.resolution - 1);
+    const float blend = clampedPosition - static_cast<float>(lowerIndex);
+
+    auto texel = [this](std::uint32_t index) {
+        const std::size_t base = static_cast<std::size_t>(index) * 4;
+        constexpr float normalizeByte = 1.0F / 255.0F;
+        return glm::vec4{
+            static_cast<float>(colorMapPixelsRGBA8_[base + 0]) * normalizeByte,
+            static_cast<float>(colorMapPixelsRGBA8_[base + 1]) * normalizeByte,
+            static_cast<float>(colorMapPixelsRGBA8_[base + 2]) * normalizeByte,
+            static_cast<float>(colorMapPixelsRGBA8_[base + 3]) * normalizeByte,
+        };
+    };
+
+    return glm::mix(texel(lowerIndex), texel(upperIndex), blend);
+}
+
 ColorMapper::ColorMapper(LveDevice& device) : device_{device} {
     init();
     createColorMap({
@@ -144,6 +176,7 @@ void ColorMapper::uploadNewPixels(ColorFunctions f) {
     auto newPixels = generateTerrainColorMapRGBA8(params_);
     vkDeviceWaitIdle(device_.device());
     uploadPixels(newPixels);
+    colorMapPixelsRGBA8_ = std::move(newPixels);
 }
 
 void ColorMapper::uploadPixels(std::vector<std::uint8_t>& pixels) {
@@ -216,6 +249,7 @@ void ColorMapper::createColorMap(ColorMapParams params) {
     auto pixels = generateTerrainColorMapRGBA8(params);
     VkDeviceSize imageSize = pixels.size();
     params_ = params;
+    colorMapPixelsRGBA8_ = pixels;
 
 
     LveBuffer stagingBuffer{

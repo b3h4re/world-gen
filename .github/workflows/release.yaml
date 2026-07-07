@@ -1,0 +1,448 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: "6.7.3"
+
+jobs:
+  windows:
+    name: Windows x64 zip
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "VERSION=${{ inputs.tag }}" >> $env:GITHUB_ENV
+          } else {
+            "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
+          }
+
+      - name: Install Qt
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install aqtinstall
+          python -m aqt install-qt windows desktop $env:QT_VERSION win64_msvc2022_64 -O "$env:RUNNER_TEMP\Qt"
+
+          "QT_DIR=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64" >> $env:GITHUB_ENV
+          "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64" >> $env:GITHUB_ENV
+          "$env:RUNNER_TEMP\Qt\$env:QT_VERSION\msvc2022_64\bin" >> $env:GITHUB_PATH
+
+      - name: Install Vulkan SDK
+        shell: pwsh
+        run: |
+          choco install vulkan-sdk -y
+
+          $sdk = Get-ChildItem "C:\VulkanSDK" | Sort-Object Name -Descending | Select-Object -First 1
+
+          if (-not $sdk) {
+            Write-Error "Vulkan SDK was not found in C:\VulkanSDK"
+            exit 1
+          }
+
+          "VULKAN_SDK=$($sdk.FullName)" >> $env:GITHUB_ENV
+          "$($sdk.FullName)\Bin" >> $env:GITHUB_PATH
+
+      - name: Install GLM
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch 1.0.1 https://github.com/g-truc/glm.git "$env:RUNNER_TEMP\glm"
+          "GLM_INCLUDE_DIR=$env:RUNNER_TEMP\glm" >> $env:GITHUB_ENV
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S . -B build `
+            -G "Visual Studio 17 2022" `
+            -A x64 `
+            -DCMAKE_PREFIX_PATH="$env:CMAKE_PREFIX_PATH" `
+            -DCMAKE_CXX_FLAGS="/I$env:GLM_INCLUDE_DIR" `
+            -DWORLD_GEN_PORTABLE_BUILD=ON `
+            -DBUILD_TESTING=OFF
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Package Windows zip
+        shell: pwsh
+        run: |
+          $dist = "dist\world-gen-windows-x64"
+
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+
+          if (-not (Test-Path "build\Release\world_gen.exe")) {
+            Write-Error "build\Release\world_gen.exe was not found"
+            exit 1
+          }
+
+          Copy-Item "build\Release\world_gen.exe" "$dist\world_gen.exe"
+
+          if (Test-Path "build\shaders") {
+            Copy-Item "build\shaders" "$dist\shaders" -Recurse
+          }
+
+          if (Test-Path "assets") {
+            Copy-Item "assets" "$dist\assets" -Recurse
+          }
+
+          & "$env:QT_DIR\bin\windeployqt.exe" `
+            --release `
+            --compiler-runtime `
+            "$dist\world_gen.exe"
+
+          $vkDll = Join-Path $env:VULKAN_SDK "Bin\vulkan-1.dll"
+          if (Test-Path $vkDll) {
+            Copy-Item $vkDll "$dist\vulkan-1.dll"
+          }
+
+          Compress-Archive `
+            -Path "$dist\*" `
+            -DestinationPath "world-gen-$env:VERSION-windows-x64.zip" `
+            -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: world-gen-${{ env.VERSION }}-windows-x64.zip
+          if-no-files-found: error
+
+  macos:
+    name: macOS app zip
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          brew update
+          brew install cmake ninja shaderc glm vulkan-headers vulkan-loader molten-vk
+
+      - name: Install Qt
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install aqtinstall
+          python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
+
+          echo "QT_DIR=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
+          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/macos" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/Qt/$QT_VERSION/macos/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+            -DWORLD_GEN_PORTABLE_BUILD=ON \
+            -DBUILD_TESTING=OFF
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build build --parallel
+
+      - name: Create .app bundle
+        shell: bash
+        run: |
+          APP="dist/world_gen.app"
+
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          if [ ! -f build/world_gen ]; then
+            echo "build/world_gen was not found"
+            exit 1
+          fi
+
+          cp build/world_gen "$APP/Contents/MacOS/world_gen"
+
+          cat > "$APP/Contents/Info.plist" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>world_gen</string>
+
+            <key>CFBundleIdentifier</key>
+            <string>io.github.b3h4re.world-gen</string>
+
+            <key>CFBundleName</key>
+            <string>world-gen</string>
+
+            <key>CFBundleDisplayName</key>
+            <string>world-gen</string>
+
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+
+          if [ -d build/shaders ]; then
+            cp -R build/shaders "$APP/Contents/MacOS/shaders"
+          fi
+
+          if [ -d assets ]; then
+            cp -R assets "$APP/Contents/MacOS/assets"
+          fi
+
+          macdeployqt "$APP" -verbose=2
+
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "world-gen-$VERSION-macos.zip"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: world-gen-${{ env.VERSION }}-macos.zip
+          if-no-files-found: error
+
+  linux-appimage:
+    name: Linux AppImage
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libvulkan-dev \
+            vulkan-tools \
+            glslc \
+            libglm-dev \
+            libfuse2 \
+            wget \
+            file \
+            patchelf
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWORLD_GEN_PORTABLE_BUILD=ON \
+            -DBUILD_TESTING=OFF
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build build --parallel
+
+      - name: Prepare AppDir
+        shell: bash
+        run: |
+          APPDIR="$PWD/AppDir"
+
+          mkdir -p "$APPDIR/usr/bin"
+          mkdir -p "$APPDIR/usr/share/applications"
+          mkdir -p "$APPDIR/usr/share/icons/hicolor/scalable/apps"
+
+          if [ ! -f build/world_gen ]; then
+            echo "build/world_gen was not found"
+            exit 1
+          fi
+
+          cp build/world_gen "$APPDIR/usr/bin/world_gen"
+
+          if [ -d build/shaders ]; then
+            cp -R build/shaders "$APPDIR/usr/bin/shaders"
+          fi
+
+          if [ -d assets ]; then
+            cp -R assets "$APPDIR/usr/bin/assets"
+          fi
+
+          cat > "$APPDIR/usr/share/applications/world-gen.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=world-gen
+          Exec=world_gen
+          Icon=world-gen
+          Categories=Graphics;Science;Qt;
+          Terminal=false
+          EOF
+
+          cat > "$APPDIR/usr/share/icons/hicolor/scalable/apps/world-gen.svg" <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+            <rect width="256" height="256" rx="48" fill="#20242a"/>
+            <path d="M24 188 L72 118 L104 154 L142 92 L232 188 Z" fill="#7fb069"/>
+            <path d="M142 92 L170 136 L156 128 Z" fill="#dcecc9"/>
+          </svg>
+          EOF
+
+      - name: Build AppImage
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+
+          chmod +x linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
+
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/world_gen \
+            --desktop-file AppDir/usr/share/applications/world-gen.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/world-gen.svg \
+            --plugin qt \
+            --output appimage
+
+          APPIMAGE="$(find . -maxdepth 1 -name '*.AppImage' -type f | head -n 1)"
+
+          if [ -z "$APPIMAGE" ]; then
+            echo "No AppImage was produced"
+            exit 1
+          fi
+
+          mv "$APPIMAGE" "world-gen-$VERSION-linux-x86_64.AppImage"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: world-gen-${{ env.VERSION }}-linux-x86_64.AppImage
+          if-no-files-found: error
+
+  source-archive:
+    name: Source archive
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create source archive
+        shell: bash
+        run: |
+          git archive \
+            --format=zip \
+            --prefix="world-gen-$VERSION/" \
+            HEAD \
+            -o "world-gen-$VERSION-source.zip"
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: world-gen-${{ env.VERSION }}-source.zip
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-24.04
+    needs:
+      - windows
+      - macos
+      - linux-appimage
+      - source-archive
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ inputs.tag }}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Show release artifacts
+        shell: bash
+        run: |
+          find release-artifacts -maxdepth 2 -type f -print
+
+      - name: Create or update release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release upload "$VERSION" release-artifacts/* --clobber
+          else
+            gh release create "$VERSION" release-artifacts/* \
+              --title "$VERSION" \
+              --notes "Automated release for $VERSION"
+          fi

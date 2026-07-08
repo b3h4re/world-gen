@@ -1,9 +1,10 @@
 #include "loading_overlay_system.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <tiny_obj_loader.h>
 
-#include <array>
 #include <filesystem>
+#include <string>
 #include <stdexcept>
 #include <vector>
 
@@ -29,28 +30,57 @@ std::vector<std::uint32_t> quadIndices() {
     return {0, 1, 2, 0, 2, 3};
 }
 
-std::vector<Vertex3d> loadingPlanetVertices() {
-    constexpr float r = 1.0F;
-    return {
-        {{ 0.0F,  r,    0.0F}, 1.0F},
-        {{-r,     0.0F, 0.0F}, 0.35F},
-        {{ 0.0F,  0.0F, r},    0.75F},
-        {{ r,     0.0F, 0.0F}, 0.55F},
-        {{ 0.0F,  0.0F, -r},   0.2F},
-        {{ 0.0F, -r,    0.0F}, 0.0F},
-    };
-}
+struct LoadingPlanetMeshData {
+    std::vector<Vertex3d> vertices;
+    std::vector<std::uint32_t> indices;
+};
 
-std::vector<std::uint32_t> loadingPlanetIndices() {
+LoadingPlanetMeshData loadLoadingPlanetMesh(const std::filesystem::path& filepath) {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn;
+    std::string err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filepath.string().c_str(), nullptr, true)) {
+        throw std::runtime_error("failed to load loading planet mesh: " + warn + err);
+    }
+    if (attrib.vertices.empty() || shapes.empty()) {
+        throw std::runtime_error("loading planet mesh is empty: " + filepath.string());
+    }
+
+    std::vector<Vertex3d> vertices;
+    vertices.reserve(attrib.vertices.size() / 3);
+    for (std::size_t i = 0; i + 2 < attrib.vertices.size(); i += 3) {
+        const glm::vec3 position{
+            attrib.vertices[i],
+            attrib.vertices[i + 1],
+            attrib.vertices[i + 2],
+        };
+        vertices.push_back({
+            .position = position,
+            .height = (glm::length(position) - 1.0F) * 10.0F,
+        });
+    }
+
+    std::vector<std::uint32_t> indices;
+    for (const tinyobj::shape_t& shape : shapes) {
+        indices.reserve(indices.size() + shape.mesh.indices.size());
+        for (const tinyobj::index_t& index : shape.mesh.indices) {
+            if (index.vertex_index < 0) {
+                throw std::runtime_error("loading planet mesh contains a face without a vertex index");
+            }
+            indices.push_back(static_cast<std::uint32_t>(index.vertex_index));
+        }
+    }
+
+    if (indices.empty()) {
+        throw std::runtime_error("loading planet mesh has no indices: " + filepath.string());
+    }
+
     return {
-        0, 2, 3,
-        0, 3, 4,
-        0, 4, 1,
-        0, 1, 2,
-        5, 3, 2,
-        5, 4, 3,
-        5, 1, 4,
-        5, 2, 1,
+        std::move(vertices),
+        std::move(indices),
     };
 }
 
@@ -72,8 +102,10 @@ LoadingOverlaySystem::LoadingOverlaySystem(
     : device_{device},
       fontAtlas_{bakeFontAtlas(std::filesystem::path{"assets/fonts/Inter-Regular.ttf"}, 24.0F)},
       textRenderSystem_{device_, renderPass, descriptorPool, fontAtlas_},
-      quadMesh_{std::make_shared<Mesh2d>(device_, loadingQuadVertices(), quadIndices())},
-      planetMesh_{std::make_shared<Mesh3d>(device_, loadingPlanetVertices(), loadingPlanetIndices())} {
+      quadMesh_{std::make_shared<Mesh2d>(device_, loadingQuadVertices(), quadIndices())} {
+    LoadingPlanetMeshData planetData = loadLoadingPlanetMesh("assets/models/loading_planet.obj");
+    planetMesh_ = std::make_shared<Mesh3d>(device_, planetData.vertices, planetData.indices);
+
     auto textMesh = std::make_shared<TextMesh>(
         device_,
         fontAtlas_,
@@ -83,7 +115,7 @@ LoadingOverlaySystem::LoadingOverlaySystem(
     textObjects_.push_back({
         std::move(textMesh),
         Transform2d{
-            .translation = {-0.115F, -0.044F},
+            .translation = {-0.12F, 0.021F},
         }
     });
 

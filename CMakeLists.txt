@@ -36,6 +36,14 @@ fetchcontent_makeavailable(stb)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+# tinyobjloader
+fetchcontent_declare(
+    tinyobjloader
+    GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
+    GIT_TAG v2.0.0rc13
+)
+fetchcontent_makeavailable(tinyobjloader)
+
 # Find glm
 find_package(glm QUIET)
 
@@ -153,6 +161,7 @@ target_link_libraries(world_gen PRIVATE
     Qt6::Widgets
     tomlplusplus::tomlplusplus
     stb
+    tinyobjloader
 )
 target_compile_definitions(world_gen PRIVATE WORLD_GEN_HAS_QT_BACKEND=1)
 

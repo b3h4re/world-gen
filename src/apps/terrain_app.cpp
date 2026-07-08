@@ -3,6 +3,7 @@
 #include "game/input/input_system.hpp"
 #include "game/input/qt_input_reader.hpp"
 #include "model/buffer/lve_buffer.hpp"
+#include "renderer/systems/loading_overlay_system.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
 #include "files/exporter.hpp"
 
@@ -54,7 +55,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
       },
       limiter_{config.windowConfig.fps_max}, exporter_{renderer_.colorMapper()}, config_{config} {
     renderer_.window().setRenderParent(gui_.vulkanWidget());
-    renderer_.setTerrainMesh(core_.loadTerrain());
+    core_.regenerateTerrain(core_.config().terrainConfig.seed, TerrainGenerationTarget::All);
 }
 
 
@@ -130,6 +131,7 @@ void TerrainApp::run() {
     }
 
     TerrainRenderSystem terrainRenderSystem{device, lveRenderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
+    LoadingOverlaySystem loadingOverlaySystem{device, lveRenderer.getSwapChainRenderPass(), renderer_.descriptorPool()};
     Camera2d camera2d{};
     Camera3d camera3d{};
     Camera3d cameraPlanet{};
@@ -213,6 +215,9 @@ void TerrainApp::run() {
 
             lveRenderer.beginSwapChainRenderPass(commandBuffer);
             terrainRenderSystem.render(frameInfo);
+            if (core_.isTerrainJobRunning()) {
+                loadingOverlaySystem.render(commandBuffer, frameTime);
+            }
             lveRenderer.endSwapChainRenderPass(commandBuffer);
             if (window.shouldClose()) {
                 lveRenderer.abortFrame();

@@ -216,13 +216,20 @@ void TextRenderSystem::render(FrameInfo &frameInfo, const std::vector<GameObject
 
 void TextRenderSystem::render(VkCommandBuffer commandBuffer, const Camera2d &camera,
                               const std::vector<GameObjectText> &objects) const {
+    render(commandBuffer, camera.projectionView(), objects);
+}
+
+void TextRenderSystem::render(
+        VkCommandBuffer commandBuffer,
+        const glm::mat4& projectionView,
+        const std::vector<GameObjectText> &objects) const {
     pipeline_->bind(commandBuffer);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &fontDescriptorSet_,
                             0, nullptr);
 
     for (const auto &object : objects) {
         TextPushConstantData push{};
-        push.projectionView = camera.projectionView();
+        push.projectionView = projectionView;
         push.model = object.transform.mat4();
         vkCmdPushConstants(commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TextPushConstantData),
                            &push);

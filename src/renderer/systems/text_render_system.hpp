@@ -29,6 +29,8 @@ public:
     void render(FrameInfo &frameInfo, const std::vector<GameObjectText> &objects) const;
     void render(VkCommandBuffer commandBuffer, const Camera2d &camera,
                 const std::vector<GameObjectText> &objects) const;
+    void render(VkCommandBuffer commandBuffer, const glm::mat4& projectionView,
+                const std::vector<GameObjectText> &objects) const;
 
 private:
     void createPipelineLayout();

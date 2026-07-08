@@ -75,6 +75,7 @@ public:
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
+    bool isTerrainJobRunning() const { return terrainJobRunning_; }
 
     const wgen::AppConfig& config() const { return config_; }
 

@@ -4,6 +4,7 @@
 #include "game/input/camera_controller_2d.hpp"
 #include "game/camera/camera_3d.hpp"
 #include "game/input/camera_controller_3d.hpp"
+#include "game/input/camera_controller_planet.hpp"
 #include "game/input/input_state.hpp"
 #include "renderer/lve_frame_info.hpp"
 
@@ -37,7 +38,7 @@ public:
 private:
     CameraController2d cameraController2d_{};
     CameraController3d planeMeshCameraController3d_{};
-    CameraController3d planetCameraController3d_{};
+    CameraControllerPlanet planetCameraController3d_{};
 };
 
 } // namespace lve

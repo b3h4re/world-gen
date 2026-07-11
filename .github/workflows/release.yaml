@@ -91,6 +91,13 @@ jobs:
             cp -R assets "$DIST/assets"
           fi
 
+          if [ ! -f default.toml ]; then
+            echo "default.toml was not found"
+            exit 1
+          fi
+
+          cp default.toml "$DIST/default.toml"
+
           WINDEPLOYQT="$(command -v windeployqt6 || command -v windeployqt || true)"
 
           if [ -z "$WINDEPLOYQT" ]; then
@@ -261,6 +268,13 @@ jobs:
             cp -R assets "$APP/Contents/MacOS/assets"
           fi
 
+          if [ ! -f default.toml ]; then
+            echo "default.toml was not found"
+            exit 1
+          fi
+
+          cp default.toml "$APP/Contents/MacOS/default.toml"
+
           MACDEPLOYQT="$(command -v macdeployqt || true)"
 
           if [ -z "$MACDEPLOYQT" ]; then
@@ -312,6 +326,7 @@ jobs:
             ninja-build \
             qt6-base-dev \
             qt6-base-dev-tools \
+            qt6-wayland \
             libglm-dev \
             libgl1-mesa-dev \
             libegl1-mesa-dev \
@@ -376,6 +391,13 @@ jobs:
             cp -R assets "$APPDIR/usr/bin/assets"
           fi
 
+          if [ ! -f default.toml ]; then
+            echo "default.toml was not found"
+            exit 1
+          fi
+
+          cp default.toml "$APPDIR/usr/bin/default.toml"
+
           cat > "$APPDIR/usr/share/applications/world-gen.desktop" <<'EOF'
           [Desktop Entry]
           Type=Application
@@ -411,8 +433,13 @@ jobs:
             -O "$RUNNER_TEMP/linuxdeploy/linuxdeploy-plugin-qt-x86_64.AppImage" \
             https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
 
+          wget -q \
+            -O "$RUNNER_TEMP/linuxdeploy/appimagetool-x86_64.AppImage" \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+
           chmod +x "$RUNNER_TEMP/linuxdeploy/linuxdeploy-x86_64.AppImage"
           chmod +x "$RUNNER_TEMP/linuxdeploy/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x "$RUNNER_TEMP/linuxdeploy/appimagetool-x86_64.AppImage"
 
           export PATH="$RUNNER_TEMP/linuxdeploy:$PATH"
 
@@ -421,8 +448,58 @@ jobs:
             --executable AppDir/usr/bin/world_gen \
             --desktop-file AppDir/usr/share/applications/world-gen.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/world-gen.svg \
-            --plugin qt \
-            --output appimage
+            --plugin qt
+
+          QT_PLUGIN_DIR="$("$QMAKE" -query QT_INSTALL_PLUGINS)"
+
+          mkdir -p AppDir/usr/plugins/platforms
+
+          if compgen -G "$QT_PLUGIN_DIR/platforms/libqwayland*.so" >/dev/null; then
+            cp -n "$QT_PLUGIN_DIR/platforms"/libqwayland*.so AppDir/usr/plugins/platforms/
+          else
+            echo "Qt Wayland platform plugins were not found in $QT_PLUGIN_DIR/platforms"
+            exit 1
+          fi
+
+          if compgen -G "$QT_PLUGIN_DIR/wayland-shell-integration/*.so" >/dev/null; then
+            mkdir -p AppDir/usr/plugins/wayland-shell-integration
+            cp -n "$QT_PLUGIN_DIR/wayland-shell-integration"/*.so AppDir/usr/plugins/wayland-shell-integration/
+          fi
+
+          if compgen -G "$QT_PLUGIN_DIR/wayland-decoration-client/*.so" >/dev/null; then
+            mkdir -p AppDir/usr/plugins/wayland-decoration-client
+            cp -n "$QT_PLUGIN_DIR/wayland-decoration-client"/*.so AppDir/usr/plugins/wayland-decoration-client/
+          fi
+
+          "$RUNNER_TEMP/linuxdeploy/linuxdeploy-x86_64.AppImage" \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/world_gen
+
+          find AppDir/usr/lib \
+            -maxdepth 1 \
+            \( -type f -o -type l \) \
+            \( -name 'libvulkan.so' -o -name 'libvulkan.so.*' \) \
+            -print \
+            -delete
+
+          if ! find AppDir/usr/plugins/platforms -maxdepth 1 -type f -name 'libqxcb.so' | grep -q .; then
+            echo "Qt xcb platform plugin was not bundled"
+            exit 1
+          fi
+
+          if ! find AppDir/usr/plugins/platforms -maxdepth 1 -type f -name 'libqwayland*.so' | grep -q .; then
+            echo "Qt Wayland platform plugin was not bundled"
+            exit 1
+          fi
+
+          if find AppDir/usr/lib -maxdepth 1 \( -name 'libvulkan.so' -o -name 'libvulkan.so.*' \) | grep -q .; then
+            echo "Bundled Vulkan loader was not removed"
+            exit 1
+          fi
+
+          "$RUNNER_TEMP/linuxdeploy/appimagetool-x86_64.AppImage" \
+            AppDir \
+            "$OUTPUT"
 
           if [ ! -f "$OUTPUT" ]; then
             echo "Expected AppImage was not created: $OUTPUT"

@@ -83,12 +83,18 @@ jobs:
 
           cp build/world_gen.exe "$DIST/world_gen.exe"
 
-          if [ -d build/shaders ]; then
+          if [ -d build/shaders ] && find build/shaders -type f -name '*.spv' | grep -q .; then
             cp -R build/shaders "$DIST/shaders"
+          else
+            echo "Compiled shaders were not found in build/shaders"
+            exit 1
           fi
 
-          if [ -d assets ]; then
+          if [ -d assets ] && find assets -type f | grep -q .; then
             cp -R assets "$DIST/assets"
+          else
+            echo "Assets were not found"
+            exit 1
           fi
 
           if [ ! -f default.toml ]; then
@@ -260,12 +266,18 @@ jobs:
           </plist>
           EOF
 
-          if [ -d build/shaders ]; then
+          if [ -d build/shaders ] && find build/shaders -type f -name '*.spv' | grep -q .; then
             cp -R build/shaders "$APP/Contents/MacOS/shaders"
+          else
+            echo "Compiled shaders were not found in build/shaders"
+            exit 1
           fi
 
-          if [ -d assets ]; then
+          if [ -d assets ] && find assets -type f | grep -q .; then
             cp -R assets "$APP/Contents/MacOS/assets"
+          else
+            echo "Assets were not found"
+            exit 1
           fi
 
           if [ ! -f default.toml ]; then
@@ -383,12 +395,18 @@ jobs:
           cp build/world_gen "$APPDIR/usr/bin/world_gen"
           chmod +x "$APPDIR/usr/bin/world_gen"
 
-          if [ -d build/shaders ]; then
+          if [ -d build/shaders ] && find build/shaders -type f -name '*.spv' | grep -q .; then
             cp -R build/shaders "$APPDIR/usr/bin/shaders"
+          else
+            echo "Compiled shaders were not found in build/shaders"
+            exit 1
           fi
 
-          if [ -d assets ]; then
+          if [ -d assets ] && find assets -type f | grep -q .; then
             cp -R assets "$APPDIR/usr/bin/assets"
+          else
+            echo "Assets were not found"
+            exit 1
           fi
 
           if [ ! -f default.toml ]; then
@@ -496,6 +514,37 @@ jobs:
             echo "Bundled Vulkan loader was not removed"
             exit 1
           fi
+
+          if [ ! -d AppDir/usr/bin/shaders ] || ! find AppDir/usr/bin/shaders -type f -name '*.spv' | grep -q .; then
+            echo "Compiled shaders are missing from AppDir/usr/bin/shaders"
+            exit 1
+          fi
+
+          if [ ! -d AppDir/usr/bin/assets ] || ! find AppDir/usr/bin/assets -type f | grep -q .; then
+            echo "Assets are missing from AppDir/usr/bin/assets"
+            exit 1
+          fi
+
+          if [ ! -f AppDir/usr/bin/default.toml ]; then
+            echo "default.toml is missing from AppDir/usr/bin"
+            exit 1
+          fi
+
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          set -eu
+
+          APPDIR="${APPDIR:-$(dirname "$(readlink -f "$0")")}"
+
+          export LD_LIBRARY_PATH="$APPDIR/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export QT_PLUGIN_PATH="$APPDIR/usr/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+          export QML2_IMPORT_PATH="$APPDIR/usr/qml${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}"
+
+          cd "$APPDIR/usr/bin"
+          exec "$APPDIR/usr/bin/world_gen" "$@"
+          EOF
+
+          chmod +x AppDir/AppRun
 
           "$RUNNER_TEMP/linuxdeploy/appimagetool-x86_64.AppImage" \
             AppDir \

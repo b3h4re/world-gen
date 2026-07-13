@@ -63,6 +63,15 @@ void testPlanetConfigRejectsBadComputeMethod() {
 }
 
 void testPlanetConfigRejectsBadValues() {
+    const toml::table badResolution = parseToml(R"(
+        [planet]
+        resolution = 1
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badResolution); },
+        "planet config should reject a face resolution of one"
+    );
+
     const toml::table badCellSize = parseToml(R"(
         [planet]
         perlin_cell_size = 0.0

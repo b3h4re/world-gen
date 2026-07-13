@@ -5,7 +5,11 @@
 #include "terrain/generators/3d/generator_factory.hpp"
 #include "terrain/utils/hash_random.hpp"
 #include "terrain/terrain.hpp"
+#include "terrain/planet/cube_sphere.hpp"
+#include "renderer/objects/mesh_3d.hpp"
 
+#include <cstdint>
+#include <vector>
 #include <chrono>
 #include <cmath>
 #include <future>
@@ -14,6 +18,8 @@
 #include <random>
 #include <stdexcept>
 #include <utility>
+#include <limits>
+#include <stdexcept>
 
 namespace lve {
 
@@ -84,78 +90,44 @@ void appendHeightMapMesh3d(
     }
 }
 
-void appendPlanetmesh(
-        const wgen::Planet<float>& planet,
+void appendCubeSphereMesh(
+        const wgen::CubeSphere<float>& cubeSphere,
         std::vector<Vertex3d>& vertices,
         std::vector<std::uint32_t>& indices) {
-    const std::size_t dots = planet.width();
-
-    vertices.reserve(vertices.size() + dots * dots);
-    indices.reserve(indices.size() + (dots - 1) * (dots - 1) * 6);
-
-    const float R = planet.radius();
-
-    for (std::size_t y = 0; y < dots; ++y) {
-        for (std::size_t x = 0; x < dots; ++x) {
-            const float height = planet.at(x, y);
-
-            const glm::vec3 pointDir = planet.pointUnitDir(x, y);
-            glm::vec3 pos = pointDir * (height + R) / R;
-            vertices.push_back({
-                .position = pos,
-                .height = height
-            });
-        }
+    const std::size_t resolution = cubeSphere.resolution();
+    if (resolution < 2) {
+        throw std::invalid_argument("cube sphere mesh requires a face resolution of at least 2");
+    }
+    if (resolution > std::numeric_limits<std::uint32_t>::max() / resolution ||
+            resolution * resolution > std::numeric_limits<std::uint32_t>::max() / wgen::FACES.size()) {
+        throw std::overflow_error("cube sphere mesh vertex count overflows uint32_t indices");
     }
 
-    for (std::size_t y = 0; y + 1 < dots; ++y) {
-        for (std::size_t x = 0; x + 1 < dots; ++x) {
-            const auto topLeft = static_cast<std::uint32_t>(y * dots + x);
-            const auto topRight = static_cast<std::uint32_t>(y * dots + x + 1);
-            const auto bottomLeft = static_cast<std::uint32_t>((y + 1) * dots + x);
-            const auto bottomRight = static_cast<std::uint32_t>((y + 1) * dots + x + 1);
+    vertices.reserve(vertices.size() + wgen::FACES.size() * resolution * resolution);
+    indices.reserve(indices.size() + wgen::FACES.size() * (resolution - 1) * (resolution - 1) * 6);
 
-            indices.insert(
-                indices.end(),
-                {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
-        }
-    }
-}
-
-void appendCubeSpheremesh(
-        const wgen::CubeSphere<float>& planetCubeSphere,
-        std::vector<Vertex3d>& vertices,
-        std::vector<std::uint32_t>& indices) {
-    const std::size_t dots = planetCubeSphere.resolution();
-
-    vertices.reserve(vertices.size() + 6 * dots * dots);
-    indices.reserve(indices.size() + (dots - 1) * (dots - 1) * 36);
-
-    const float R = planetCubeSphere.radius();
-
-    for (const auto face : wgen::FACES) {
-        for (std::size_t y = 0; y < dots; ++y) {
-            for (std::size_t x = 0; x < dots; ++x) {
-                const float height = planetCubeSphere.at(face, x, y);
-
-                const glm::vec3 pointDir = planetCubeSphere.pointUnitDir(face, x, y);
-                glm::vec3 pos = pointDir * (height + R) / R;
+    const float radius = cubeSphere.radius();
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (std::size_t y = 0; y < resolution; ++y) {
+            for (std::size_t x = 0; x < resolution; ++x) {
+                const float height = cubeSphere.at(face, x, y);
+                const glm::vec3 position = cubeSphere.pointUnitDir(face, x, y) * (height + radius) / radius;
                 vertices.push_back({
-                    .position = pos,
-                    .height = height
+                    .position = position,
+                    .height = height,
                 });
             }
         }
     }
 
-    for (const auto face : wgen::FACES) {
-        const std::size_t faceId = wgen::faceID(face) + 1;
-        for (std::size_t y = 0; y + 1 < dots; ++y) {
-            for (std::size_t x = 0; x + 1 < dots; ++x) {
-                const auto topLeft = static_cast<std::uint32_t>(faceId * y * dots + x);
-                const auto topRight = static_cast<std::uint32_t>(faceId * y * dots + x + 1);
-                const auto bottomLeft = static_cast<std::uint32_t>(faceId * (y + 1) * dots + x);
-                const auto bottomRight = static_cast<std::uint32_t>(faceId * (y + 1) * dots + x + 1);
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        const std::size_t faceOffset = wgen::faceID(face) * resolution * resolution;
+        for (std::size_t y = 0; y + 1 < resolution; ++y) {
+            for (std::size_t x = 0; x + 1 < resolution; ++x) {
+                const auto topLeft = static_cast<std::uint32_t>(faceOffset + y * resolution + x);
+                const auto topRight = static_cast<std::uint32_t>(faceOffset + y * resolution + x + 1);
+                const auto bottomLeft = static_cast<std::uint32_t>(faceOffset + (y + 1) * resolution + x);
+                const auto bottomRight = static_cast<std::uint32_t>(faceOffset + (y + 1) * resolution + x + 1);
 
                 indices.insert(
                     indices.end(),
@@ -163,7 +135,6 @@ void appendCubeSpheremesh(
             }
         }
     }
-
 }
 
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
@@ -178,9 +149,9 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
 
 TerrainMeshData TerrainAppCore::loadTerrain() {
     activeHeightMap_ = generateHeightMap(config_.terrainConfig).normal();
-    activePlanet_ = generatePlanet(config_.terrainConfig);
-    activePlanet_.normalize();
-    return buildMeshData(activeHeightMap_, activePlanet_);
+    activeCubeSphere_ = generateCubeSphere(config_.terrainConfig, config_.planetConfig);
+    activeCubeSphere_.normalize();
+    return buildMeshData(activeHeightMap_, activeCubeSphere_);
 }
 
 void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target) {
@@ -190,12 +161,13 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
 
     config_.terrainConfig.seed = seed;
     const auto terrainConfig = config_.terrainConfig;
+    const auto planetConfig = config_.planetConfig;
     const auto colorFunc = getActiveColorFunc();
 
     terrainJobRunning_ = true;
-    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, colorFunc, target] {
+    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, planetConfig, colorFunc, target] {
         wgen::HeightMap<float> heightMap;
-        wgen::Planet<float> planet;
+        wgen::CubeSphere<float> cubeSphere;
 
         {
             std::lock_guard lock{generatorsMutex_};
@@ -208,16 +180,16 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
             }
 
             if (target == TerrainGenerationTarget::Planet || target == TerrainGenerationTarget::All) {
-                planet = generatePlanet(terrainConfig);
-                planet.normalize();
+                cubeSphere = generateCubeSphere(terrainConfig, planetConfig);
+                cubeSphere.normalize();
             } else {
-                planet = activePlanet_;
+                cubeSphere = activeCubeSphere_;
             }
         }
 
         TerrainJobResult result;
         result.heightMap = std::move(heightMap);
-        result.planet = std::move(planet);
+        result.cubeSphere = std::move(cubeSphere);
 
         appendHeightMapMesh(
             result.heightMap,
@@ -235,8 +207,8 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
             result.data.indices3d
         );
 
-        appendPlanetmesh(
-            result.planet,
+        appendCubeSphereMesh(
+            result.cubeSphere,
             result.data.verticesPlanet,
             result.data.indicesPlanet
         );
@@ -278,6 +250,18 @@ void TerrainAppCore::setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline) {
     planetPipelineSpec_ = std::move(pipeline);
 }
 
+void TerrainAppCore::setPlanetShape(std::size_t resolution, float radius) {
+    if (resolution == 1) {
+        throw std::invalid_argument("cube sphere resolution must be 0 (automatic) or at least 2");
+    }
+    if (!std::isfinite(radius) || radius <= 0.0F) {
+        throw std::invalid_argument("cube sphere radius must be finite and positive");
+    }
+
+    config_.planetConfig.resolution = resolution;
+    config_.planetConfig.radius = radius;
+}
+
 wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
     return pipelineSpec_;
 }
@@ -294,7 +278,7 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
         TerrainJobResult result = terrainGenerationJob_.get();
         activeHeightMap_ = result.heightMap;
-        activePlanet_ = result.planet;
+        activeCubeSphere_ = result.cubeSphere;
         terrainJobRunning_ = false;
         return result;
     }
@@ -449,12 +433,14 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMapGpu(
     return gpuPipeline_->generateHeightMap(requests, terrainConfig.width, terrainConfig.height);
 }
 
-wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& terrainConfig) {
-    const std::size_t dots = config_.planetConfig.resolution == 0
+wgen::CubeSphere<float> TerrainAppCore::generateCubeSphere(
+        const wgen::TerrainConfig& terrainConfig,
+        const wgen::PlanetConfig& planetConfig) {
+    const std::size_t resolution = planetConfig.resolution == 0
         ? std::min(terrainConfig.width, terrainConfig.height)
-        : config_.planetConfig.resolution;
-    wgen::Planet<float> result{dots, 0.0F};
-    result.setRadius(config_.planetConfig.radius);
+        : planetConfig.resolution;
+    wgen::CubeSphere<float> result{planetConfig.radius, resolution, 0.0F};
+
     std::vector<GpuPlanetGeneratorRequest> gpuRequests;
     gpuRequests.reserve(planetPipelineSpec_.size());
     const std::vector<wgen::SeedType> seeds = generatorSeeds(planetPipelineSpec_.size(), terrainConfig.seed);
@@ -472,39 +458,38 @@ wgen::Planet<float> TerrainAppCore::generatePlanet(const wgen::TerrainConfig& te
 
         std::unique_ptr<wgen::Generator3d> generator = wgen::makePipelineGenerator3d(spec, seeds[i]);
         result += wgen::map(
-            generator->generatePlanet(dots),
+            generator->generateCubeSphere(resolution),
             wgen::multiplyFunction(spec.scale * wgen::generator3dOctaveAmplitude(spec))
         );
     }
 
     if (!gpuRequests.empty()) {
-        result += generatePlanetGpu(gpuRequests, terrainConfig);
-        result.setRadius(config_.planetConfig.radius);
+        result += generateCubeSphereGpu(gpuRequests, resolution, planetConfig.radius);
     }
 
     return result;
 }
 
-wgen::Planet<float> TerrainAppCore::generatePlanetGpu(
+wgen::CubeSphere<float> TerrainAppCore::generateCubeSphereGpu(
         const std::vector<GpuPlanetGeneratorRequest>& requests,
-        const wgen::TerrainConfig& terrainConfig) {
+        std::size_t resolution,
+        float radius) {
     if (gpuPlanetPipeline_ == nullptr) {
         gpuPlanetPipeline_ = std::make_unique<GpuPlanetPipeline>();
     }
 
-    const std::size_t dots = config_.planetConfig.resolution == 0
-        ? std::min(terrainConfig.width, terrainConfig.height)
-        : config_.planetConfig.resolution;
-    wgen::Planet<float> planet = gpuPlanetPipeline_->generatePlanet(requests, dots);
-    planet.setRadius(config_.planetConfig.radius);
-    return planet;
+    wgen::CubeSphere<float> cubeSphere = gpuPlanetPipeline_->generateCubeSphere(requests, resolution);
+    cubeSphere.setRadius(radius);
+    return cubeSphere;
 }
 
-TerrainMeshData TerrainAppCore::buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet) {
+TerrainMeshData TerrainAppCore::buildMeshData(
+        const wgen::HeightMap<float>& heightMap,
+        const wgen::CubeSphere<float>& cubeSphere) {
     TerrainMeshData data;
     appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
     appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
-    appendPlanetmesh(planet, data.verticesPlanet, data.indicesPlanet);
+    appendCubeSphereMesh(cubeSphere, data.verticesPlanet, data.indicesPlanet);
     return data;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/planet/planet.hpp"
+#include "terrain/planet/cube_sphere.hpp"
 #include "terrain/utils/generator_utils.hpp"
 
 #include <cstddef>
@@ -14,30 +14,33 @@ namespace wgen {
 struct PerlinNoiseComputeSpec3D {
     float cellSize{1.0f};
     float coordinateScale{1.0F};
-    float planetRadius{100.0f};
-    std::uint32_t dotsOnPlanet{100};
+    std::uint32_t faceResolution{100};
+    std::uint32_t padding{};
     SeedType seed{};
 };
 static_assert(offsetof(PerlinNoiseComputeSpec3D, cellSize) == 0);
 static_assert(offsetof(PerlinNoiseComputeSpec3D, coordinateScale) == 4);
-static_assert(offsetof(PerlinNoiseComputeSpec3D, planetRadius) == 8);
-static_assert(offsetof(PerlinNoiseComputeSpec3D, dotsOnPlanet) == 12);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, faceResolution) == 8);
+static_assert(offsetof(PerlinNoiseComputeSpec3D, padding) == 12);
 static_assert(offsetof(PerlinNoiseComputeSpec3D, seed) == 16);
+static_assert(sizeof(PerlinNoiseComputeSpec3D) == 24);
 
 
 class Generator3d {
 public:
     virtual ~Generator3d() = default;
 
-    virtual Planet<float> generatePlanet(std::size_t dots) const {
-        Planet<float> planet{dots, 0.0F};
-        for (std::size_t y = 0; y < dots; ++y) {
-            for (std::size_t x = 0; x < dots; ++x) {
-                planet.at(x, y) = noise(planet.pointUnitDir(x, y));
+    virtual CubeSphere<float> generateCubeSphere(std::size_t resolution) const {
+        CubeSphere<float> cubeSphere{resolution, 0.0F};
+        for (const CubeSphereFace face : FACES) {
+            for (std::size_t y = 0; y < resolution; ++y) {
+                for (std::size_t x = 0; x < resolution; ++x) {
+                    cubeSphere.at(face, x, y) = noise(cubeSphere.pointUnitDir(face, x, y));
+                }
             }
         }
 
-        return planet;
+        return cubeSphere;
     }
 
     virtual GeneratorCapabilities capabilities() const { return {}; }

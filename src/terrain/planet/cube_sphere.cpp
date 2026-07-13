@@ -1,6 +1,8 @@
 #include "cube_sphere.hpp"
 
-
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
 
 namespace wgen {
 
@@ -19,7 +21,13 @@ std::size_t faceID(CubeSphereFace face) {
 
 
 glm::vec3 spherifyCube(glm::vec3 p) {
-    return glm::normalize(p);
+    const glm::vec3 squared = p * p;
+    const glm::vec3 scale{
+        std::sqrt(std::max(0.0F, 1.0F - squared.y / 2.0F - squared.z / 2.0F + squared.y * squared.z / 3.0F)),
+        std::sqrt(std::max(0.0F, 1.0F - squared.z / 2.0F - squared.x / 2.0F + squared.z * squared.x / 3.0F)),
+        std::sqrt(std::max(0.0F, 1.0F - squared.x / 2.0F - squared.y / 2.0F + squared.x * squared.y / 3.0F)),
+    };
+    return p * scale;
 }
 
 

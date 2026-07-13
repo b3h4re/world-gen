@@ -12,8 +12,12 @@
 #include "terrain/generators/3d/terrain_pipeline.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
-#include "terrain/planet/planet.hpp"
 #include "terrain/planet/cube_sphere.hpp"
+#include "terrain/planet/cube_sphere.hpp"
+#include "renderer/objects/mesh_3d.hpp"
+
+#include <cstdint>
+#include <vector>
 
 #include <cstdint>
 #include <future>
@@ -36,7 +40,7 @@ struct TerrainMeshData {
 
 struct TerrainJobResult {
     wgen::HeightMap<float> heightMap;
-    wgen::Planet<float> planet;
+    wgen::CubeSphere<float> cubeSphere;
     TerrainMeshData data;
 };
 
@@ -54,17 +58,10 @@ void appendHeightMapMesh3d(
     std::vector<Vertex3d>& vertices,
     std::vector<std::uint32_t>& indices);
 
-void appendPlanetmesh(
-    const wgen::Planet<float>& planet,
+void appendCubeSphereMesh(
+    const wgen::CubeSphere<float>& cubeSphere,
     std::vector<Vertex3d>& vertices,
-    std::vector<std::uint32_t>& indices
-);
-
-void appendCubeSpheremesh(
-    const wgen::CubeSphere<float>& planetCubeSphere,
-    std::vector<Vertex3d>& vertices,
-    std::vector<std::uint32_t>& indices
-);
+    std::vector<std::uint32_t>& indices);
 
 class TerrainAppCore {
 public:
@@ -79,6 +76,7 @@ public:
     void rotateColorFunction();
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
     void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);
+    void setPlanetShape(std::size_t resolution, float radius);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
@@ -108,12 +106,17 @@ private:
     wgen::HeightMap<float> generateHeightMapGpu(
         const std::vector<GpuGeneratorRequest>& requests,
         const wgen::TerrainConfig& terrainConfig);
-    wgen::Planet<float> generatePlanet(const wgen::TerrainConfig& terrainConfig);
-    wgen::Planet<float> generatePlanetGpu(
+    wgen::CubeSphere<float> generateCubeSphere(
+        const wgen::TerrainConfig& terrainConfig,
+        const wgen::PlanetConfig& planetConfig);
+    wgen::CubeSphere<float> generateCubeSphereGpu(
         const std::vector<GpuPlanetGeneratorRequest>& requests,
-        const wgen::TerrainConfig& terrainConfig);
+        std::size_t resolution,
+        float radius);
 
-    TerrainMeshData buildMeshData(const wgen::HeightMap<float>& heightMap, const wgen::Planet<float>& planet);
+    TerrainMeshData buildMeshData(
+        const wgen::HeightMap<float>& heightMap,
+        const wgen::CubeSphere<float>& cubeSphere);
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
@@ -127,7 +130,7 @@ private:
     std::unique_ptr<GpuPlanetPipeline> gpuPlanetPipeline_{};
     wgen::ThreadPool threadPool_{};
     wgen::HeightMap<float> activeHeightMap_{};
-    wgen::Planet<float> activePlanet_{};
+    wgen::CubeSphere<float> activeCubeSphere_{};
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};

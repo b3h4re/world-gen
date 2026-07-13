@@ -11,23 +11,81 @@
 
 namespace {
 
-void expectPlanetNear(
-        const wgen::Planet<float>& actual,
-        const wgen::Planet<float>& expected,
+void expectCubeSphereNear(
+        const wgen::CubeSphere<float>& actual,
+        const wgen::CubeSphere<float>& expected,
         std::string_view message) {
     wgen::tests::expectMapNear(actual, expected, message);
 }
 
-void testEmptyPipelineReturnsZeroPlanet() {
+void expectVectorNear(const glm::vec3& actual, const glm::vec3& expected, std::string_view message) {
+    wgen::tests::expectNear(actual.x, expected.x, 0.00001F, message);
+    wgen::tests::expectNear(actual.y, expected.y, 0.00001F, message);
+    wgen::tests::expectNear(actual.z, expected.z, 0.00001F, message);
+}
+
+void testCubeSphereLayoutAndValidation() {
+    const wgen::CubeSphere<float> cubeSphere{42.0F, 5, 0.0F};
+    wgen::tests::require(cubeSphere.resolution() == 5, "cube sphere resolution is wrong");
+    wgen::tests::require(cubeSphere.width() == 5, "cube sphere buffer width is wrong");
+    wgen::tests::require(cubeSphere.height() == 30, "cube sphere buffer height is wrong");
+    wgen::tests::expectNear(cubeSphere.radius(), 42.0F, 0.00001F, "cube sphere radius is wrong");
+
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { wgen::CubeSphere<float> invalid{wgen::HeightMap<float>{4, 4, 0.0F}}; },
+        "cube sphere should reject a height map that is not N x 6N");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { wgen::CubeSphere<float> invalid{0.0F, 4, 0.0F}; },
+        "cube sphere should reject a non-positive radius");
+}
+
+void testCubeSphereDirectionsAndSeams() {
+    const wgen::CubeSphere<float> cubeSphere{5, 0.0F};
+    const std::size_t center = cubeSphere.resolution() / 2;
+
+    expectVectorNear(
+        cubeSphere.pointUnitDir(wgen::CubeSphereFace::Top, center, center),
+        {0.0F, 0.0F, 1.0F},
+        "top face center direction is wrong");
+    expectVectorNear(
+        cubeSphere.pointUnitDir(wgen::CubeSphereFace::Bottom, center, center),
+        {0.0F, 0.0F, -1.0F},
+        "bottom face center direction is wrong");
+    expectVectorNear(
+        cubeSphere.pointUnitDir(wgen::CubeSphereFace::Right, center, center),
+        {1.0F, 0.0F, 0.0F},
+        "right face center direction is wrong");
+
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (std::size_t y = 0; y < cubeSphere.resolution(); ++y) {
+            for (std::size_t x = 0; x < cubeSphere.resolution(); ++x) {
+                wgen::tests::expectNear(
+                    glm::length(cubeSphere.pointUnitDir(face, x, y)),
+                    1.0F,
+                    0.00001F,
+                    "cube sphere projection should produce unit directions");
+            }
+        }
+    }
+
+    for (std::size_t y = 0; y < cubeSphere.resolution(); ++y) {
+        expectVectorNear(
+            cubeSphere.pointUnitDir(wgen::CubeSphereFace::Top, cubeSphere.resolution() - 1, y),
+            cubeSphere.pointUnitDir(wgen::CubeSphereFace::Right, 0, y),
+            "adjacent cube sphere faces should share edge directions");
+    }
+}
+
+void testEmptyPipelineReturnsZeroCubeSphere() {
     const wgen::TerrainPipeline3d pipeline;
-    const auto planet = pipeline.generatePlanet(4);
+    const auto cubeSphere = pipeline.generateCubeSphere(4);
 
-    wgen::tests::require(planet.width() == 4, "empty 3D pipeline width is wrong");
-    wgen::tests::require(planet.height() == 4, "empty 3D pipeline height is wrong");
+    wgen::tests::require(cubeSphere.width() == 4, "empty 3D pipeline width is wrong");
+    wgen::tests::require(cubeSphere.height() == 24, "empty 3D pipeline height is wrong");
 
-    for (std::size_t y = 0; y < planet.height(); ++y) {
-        for (std::size_t x = 0; x < planet.width(); ++x) {
-            wgen::tests::expectNear(planet.at(x, y), 0.0F, 0.00001F, "empty 3D pipeline should produce zero planet");
+    for (std::size_t y = 0; y < cubeSphere.height(); ++y) {
+        for (std::size_t x = 0; x < cubeSphere.width(); ++x) {
+            wgen::tests::expectNear(cubeSphere.at(x, y), 0.0F, 0.00001F, "empty 3D pipeline should produce zero cube sphere");
         }
     }
 }
@@ -42,9 +100,9 @@ void testSingleGeneratorPipeline() {
     const auto pipeline = wgen::makePipeline3d(specs, 17);
     const wgen::PerlinNoise3d expectedGenerator{17, 0.5F};
 
-    expectPlanetNear(
-        pipeline->generatePlanet(5),
-        expectedGenerator.generatePlanet(5),
+    expectCubeSphereNear(
+        pipeline->generateCubeSphere(5),
+        expectedGenerator.generateCubeSphere(5),
         "single 3D generator pipeline result is wrong"
     );
 }
@@ -60,18 +118,18 @@ void testGeneratorImpactFunction() {
     const auto pipeline = wgen::makePipeline3d(specs, 17);
     const wgen::PerlinNoise3d expectedGenerator{17, 0.5F};
     const auto expected = wgen::map(
-        expectedGenerator.generatePlanet(5),
+        expectedGenerator.generateCubeSphere(5),
         wgen::multiplyFunction(2.5F)
     );
 
-    expectPlanetNear(
-        pipeline->generatePlanet(5),
-        wgen::Planet<float>{expected},
+    expectCubeSphereNear(
+        pipeline->generateCubeSphere(5),
+        wgen::CubeSphere<float>{expected},
         "3D pipeline should apply generator impact function"
     );
 }
 
-void testNoiseMatchesPlanetSamples() {
+void testNoiseMatchesCubeSphereSamples() {
     wgen::Generator3dPipelineSpec specs{
         wgen::Generator3dSpec{
             .kind = wgen::Generator3dKind::PerlinNoise,
@@ -85,16 +143,18 @@ void testNoiseMatchesPlanetSamples() {
         },
     };
     const auto pipeline = wgen::makePipeline3d(specs, 17);
-    const auto planet = pipeline->generatePlanet(5);
+    const auto cubeSphere = pipeline->generateCubeSphere(5);
 
-    for (std::size_t y = 0; y < planet.height(); ++y) {
-        for (std::size_t x = 0; x < planet.width(); ++x) {
-            wgen::tests::expectNear(
-                pipeline->noise(planet.pointUnitDir(x, y)),
-                planet.at(x, y),
-                0.00001F,
-                "3D pipeline noise should match generated planet sample"
-            );
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (std::size_t y = 0; y < cubeSphere.resolution(); ++y) {
+            for (std::size_t x = 0; x < cubeSphere.resolution(); ++x) {
+                wgen::tests::expectNear(
+                    pipeline->noise(cubeSphere.pointUnitDir(face, x, y)),
+                    cubeSphere.at(face, x, y),
+                    0.00001F,
+                    "3D pipeline noise should match generated cube sphere sample"
+                );
+            }
         }
     }
 }
@@ -113,11 +173,11 @@ void testSetSeedChainsGeneratorSeeds() {
     const auto pipeline = wgen::makePipeline3d(specs, 42);
     const wgen::PerlinNoise3d first{42, 0.5F};
     const wgen::PerlinNoise3d second{wgen::hashSeed(42), 0.25F};
-    const auto expected = first.generatePlanet(5) + second.generatePlanet(5);
+    const auto expected = first.generateCubeSphere(5) + second.generateCubeSphere(5);
 
-    expectPlanetNear(
-        pipeline->generatePlanet(5),
-        wgen::Planet<float>{expected},
+    expectCubeSphereNear(
+        pipeline->generateCubeSphere(5),
+        wgen::CubeSphere<float>{expected},
         "3D pipeline setSeed should seed each generator deterministically"
     );
 }
@@ -158,15 +218,18 @@ void testOctaveAmplitudeScalesPipelineOutput() {
     const auto pipeline = wgen::makePipeline3d({spec}, 17);
 
     const wgen::PerlinNoise3d expectedGenerator{17, 0.5F};
-    wgen::Planet<float> expected{5, 0.0F};
-    for (std::size_t y = 0; y < expected.height(); ++y) {
-        for (std::size_t x = 0; x < expected.width(); ++x) {
-            expected.at(x, y) = expectedGenerator.noise(expected.pointUnitDir(x, y) * 4.0F) * 1.5F * 0.25F;
+    wgen::CubeSphere<float> expected{5, 0.0F};
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (std::size_t y = 0; y < expected.resolution(); ++y) {
+            for (std::size_t x = 0; x < expected.resolution(); ++x) {
+                expected.at(face, x, y) = expectedGenerator.noise(
+                    expected.pointUnitDir(face, x, y) * 4.0F) * 1.5F * 0.25F;
+            }
         }
     }
 
-    expectPlanetNear(
-        pipeline->generatePlanet(5),
+    expectCubeSphereNear(
+        pipeline->generateCubeSphere(5),
         expected,
         "3D octave amplitude should scale pipeline output"
     );
@@ -236,10 +299,12 @@ void testPerlinRejectsInvalidCellSize() {
 
 int main() {
     try {
-        wgen::tests::runTest("empty 3D pipeline returns zero planet", testEmptyPipelineReturnsZeroPlanet);
+        wgen::tests::runTest("cube sphere layout and validation", testCubeSphereLayoutAndValidation);
+        wgen::tests::runTest("cube sphere directions and seams", testCubeSphereDirectionsAndSeams);
+        wgen::tests::runTest("empty 3D pipeline returns zero cube sphere", testEmptyPipelineReturnsZeroCubeSphere);
         wgen::tests::runTest("single 3D generator pipeline", testSingleGeneratorPipeline);
         wgen::tests::runTest("3D generator impact function", testGeneratorImpactFunction);
-        wgen::tests::runTest("3D noise matches planet samples", testNoiseMatchesPlanetSamples);
+        wgen::tests::runTest("3D noise matches cube sphere samples", testNoiseMatchesCubeSphereSamples);
         wgen::tests::runTest("3D setSeed chains generator seeds", testSetSeedChainsGeneratorSeeds);
         wgen::tests::runTest("3D octave frequency scales coordinates", testOctaveFrequencyScalesCoordinates);
         wgen::tests::runTest("3D octave amplitude scales pipeline output", testOctaveAmplitudeScalesPipelineOutput);

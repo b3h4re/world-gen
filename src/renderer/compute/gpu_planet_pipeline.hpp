@@ -4,7 +4,7 @@
 #include "renderer/compute/gpu_height_map_accumulator.hpp"
 #include "renderer/compute/gpu_planet_generator.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
-#include "terrain/planet/planet.hpp"
+#include "terrain/planet/cube_sphere.hpp"
 
 #include <memory>
 #include <vector>
@@ -23,9 +23,9 @@ public:
     GpuPlanetPipeline(const GpuPlanetPipeline&) = delete;
     GpuPlanetPipeline& operator=(const GpuPlanetPipeline&) = delete;
 
-    wgen::Planet<float> generatePlanet(
+    wgen::CubeSphere<float> generateCubeSphere(
         const std::vector<GpuPlanetGeneratorRequest>& requests,
-        std::size_t dots);
+        std::size_t resolution);
 
 private:
     GpuPlanetGenerator& generatorFor(wgen::Generator3dKind kind);

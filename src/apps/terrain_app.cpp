@@ -19,7 +19,7 @@ namespace lve {
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
-    : core_{config}, renderer_{config.windowConfig},
+    : config_{config}, core_{config_}, renderer_{config_.windowConfig},
       gui_{
           renderer_.window().controlsWidget(),
           Callbacks{
@@ -34,6 +34,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               },
               .planetPipelineChanged = [this](wgen::Generator3dPipelineSpec pipeline) {
                   core_.setPlanetPipeline(std::move(pipeline));
+              },
+              .planetShapeChanged = [this](std::size_t resolution, float radius) {
+                  applyPlanetShape(resolution, radius);
               },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
@@ -53,7 +56,7 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               }
           }
       },
-      limiter_{config.windowConfig.fps_max}, exporter_{renderer_.colorMapper()}, config_{config} {
+      limiter_{config.windowConfig.fps_max}, exporter_{renderer_.colorMapper()} {
     renderer_.window().setRenderParent(gui_.vulkanWidget());
     core_.regenerateTerrain(core_.config().terrainConfig.seed, TerrainGenerationTarget::All);
 }
@@ -63,6 +66,12 @@ void TerrainApp::applyWindowConfig(const wgen::WindowConfig& cfg) {
     config_.windowConfig = cfg;
     limiter_.settargetFps(cfg.fps_max);
     renderer_.setDesiredPresentMode(cfg.present_mode);
+}
+
+void TerrainApp::applyPlanetShape(std::size_t resolution, float radius) {
+    core_.setPlanetShape(resolution, radius);
+    config_.planetConfig.resolution = resolution;
+    config_.planetConfig.radius = radius;
 }
 
 TerrainApp::~TerrainApp() {

@@ -2,6 +2,7 @@
 #include <toml++/toml.hpp>
 
 
+#include <cmath>
 #include <stdexcept>
 #include <iostream>
 
@@ -260,14 +261,17 @@ namespace wgen {
             config.resolution,
             "planet.resolution"
         );
+        if (config.resolution == 1) {
+            throw std::runtime_error("planet.resolution must be 0 (automatic) or at least 2");
+        }
 
         config.radius = checked_float(
             root["planet"]["radius"],
             config.radius,
             "planet.radius"
         );
-        if (config.radius <= 0.0F) {
-            throw std::runtime_error("planet.radius must be positive");
+        if (!std::isfinite(config.radius) || config.radius <= 0.0F) {
+            throw std::runtime_error("planet.radius must be finite and positive");
         }
 
         const std::string computeMethod = checked_string(

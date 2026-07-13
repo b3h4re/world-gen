@@ -26,6 +26,7 @@ public:
 
 private:
     void applyWindowConfig(const wgen::WindowConfig& cfg);
+    void applyPlanetShape(std::size_t resolution, float radius);
     void applyFinishedTerrainJob(int frameIndex);
     TerrainGenerationTarget currentGenerationTarget() const;
     void regenerateWithRandomSeed();
@@ -34,12 +35,12 @@ private:
     void rotateCameraViews();
     void updateCamerasStatus(std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>>& cameraTargets);
 
+    wgen::AppConfig config_;
     TerrainAppCore core_;
     TerrainAppRenderer renderer_;
     TerrainAppGui gui_;
     FrameLimiter limiter_;
     Exporter exporter_;
-    wgen::AppConfig config_;
     TerrainRenderModes renderMode_{TerrainRenderModes::FlatPicture};
 };
 

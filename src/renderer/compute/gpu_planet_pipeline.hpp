@@ -4,7 +4,7 @@
 #include "renderer/compute/gpu_height_map_accumulator.hpp"
 #include "renderer/compute/gpu_planet_generator.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
-#include "terrain/planet.hpp"
+#include "terrain/planet/planet.hpp"
 
 #include <memory>
 #include <vector>

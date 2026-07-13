@@ -12,7 +12,7 @@
 #include "terrain/generators/3d/terrain_pipeline.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
-#include "terrain/planet.hpp"
+#include "terrain/planet/planet.hpp"
 
 #include <cstdint>
 #include <future>

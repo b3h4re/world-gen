@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain/planet.hpp"
+#include "terrain/planet/planet.hpp"
 #include "terrain/utils/generator_utils.hpp"
 
 #include <cstddef>

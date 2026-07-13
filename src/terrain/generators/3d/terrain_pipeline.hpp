@@ -16,7 +16,7 @@ public:
     void push_back(std::unique_ptr<Generator3d> generator, HeightFunc impact);
 
     float noise(glm::vec3 point) const override;
-    Planet<float> generatePlanet(std::size_t dots) const override;
+    CubeSphere<float> generateCubeSphere(std::size_t resolution) const override;
 
 private:
     std::vector<std::unique_ptr<Generator3d>> generators_{};

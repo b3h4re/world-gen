@@ -11,11 +11,17 @@
 
 #include <QAbstractItemModel>
 #include <QAction>
+#include <QCheckBox>
+#include <QDoubleSpinBox>
 #include <QListView>
 #include <QMenu>
 #include <QPoint>
 #include <QMessageBox>
 #include <QTabWidget>
+#include <QSpinBox>
+
+#include <algorithm>
+#include <limits>
 #include <utility>
 
 namespace lve {
@@ -58,6 +64,46 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
 
     planetPipelineModel_ = std::make_unique<PlanetPipelineListModel>(std::move(initialPlanetPipeline));
     ui_->planetListView->setModel(planetPipelineModel_.get());
+
+    const wgen::AppConfig initialAppConfig = callbacks_.getConfig
+        ? callbacks_.getConfig()
+        : wgen::AppConfig{};
+    const wgen::PlanetConfig& initialPlanetConfig = initialAppConfig.planetConfig;
+    const bool automaticResolution = initialPlanetConfig.resolution == 0;
+    const std::size_t displayedResolution = automaticResolution
+        ? std::min(initialAppConfig.terrainConfig.width, initialAppConfig.terrainConfig.height)
+        : initialPlanetConfig.resolution;
+    ui_->planetResolutionSpinBox->setMaximum(std::numeric_limits<int>::max());
+    ui_->planetRadiusSpinBox->setMaximum(std::numeric_limits<float>::max());
+    ui_->automaticPlanetResolutionCheckBox->setChecked(automaticResolution);
+    ui_->planetResolutionSpinBox->setEnabled(!automaticResolution);
+    ui_->planetResolutionSpinBox->setValue(static_cast<int>(std::min<std::size_t>(
+        displayedResolution,
+        static_cast<std::size_t>(std::numeric_limits<int>::max()))));
+    ui_->planetRadiusSpinBox->setValue(initialPlanetConfig.radius);
+
+    auto notifyPlanetShapeChanged = [this] {
+        if (callbacks_.planetShapeChanged) {
+            const std::size_t resolution = ui_->automaticPlanetResolutionCheckBox->isChecked()
+                ? 0
+                : static_cast<std::size_t>(ui_->planetResolutionSpinBox->value());
+            callbacks_.planetShapeChanged(resolution, static_cast<float>(ui_->planetRadiusSpinBox->value()));
+        }
+    };
+    connect(
+        ui_->automaticPlanetResolutionCheckBox,
+        &QCheckBox::toggled,
+        this,
+        [this, notifyPlanetShapeChanged](bool checked) {
+            ui_->planetResolutionSpinBox->setEnabled(!checked);
+            notifyPlanetShapeChanged();
+        });
+    connect(ui_->planetResolutionSpinBox, &QSpinBox::valueChanged, this, [notifyPlanetShapeChanged](int) {
+        notifyPlanetShapeChanged();
+    });
+    connect(ui_->planetRadiusSpinBox, &QDoubleSpinBox::valueChanged, this, [notifyPlanetShapeChanged](double) {
+        notifyPlanetShapeChanged();
+    });
 
     auto notifyPipelineChanged = [this] {
         if (callbacks_.pipelineChanged) {

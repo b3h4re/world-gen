@@ -30,15 +30,15 @@ void PerlinNoise3dGpuGenerator::dispatch(
     if (spec.kind != wgen::Generator3dKind::PerlinNoise || perlinSpec == nullptr) {
         throw std::invalid_argument("3D perlin GPU generator received wrong spec");
     }
-    if (output.width() != output.height()) {
-        throw std::invalid_argument("3D perlin GPU generator requires a square planet buffer");
+    if (output.height() % wgen::FACES.size() != 0 ||
+            output.height() / wgen::FACES.size() != output.width()) {
+        throw std::invalid_argument("3D perlin GPU generator requires an N x 6N cube sphere buffer");
     }
 
     const wgen::PerlinNoiseComputeSpec3D computeSpec{
         .cellSize = perlinSpec->cellSize,
         .coordinateScale = wgen::generator3dOctaveFrequency(spec),
-        .planetRadius = 1.0F,
-        .dotsOnPlanet = checkedComputeDimension3d(output.width(), "GPU planet dots"),
+        .faceResolution = checkedComputeDimension3d(output.width(), "GPU cube sphere face resolution"),
         .seed = seed,
     };
 
@@ -46,9 +46,9 @@ void PerlinNoise3dGpuGenerator::dispatch(
         computeSpec,
         output.descriptorInfo(),
         ComputeDispatchSize{
-            .groupCountX = checkedComputeDimension3d(output.width(), "GPU planet width"),
-            .groupCountY = checkedComputeDimension3d(output.height(), "GPU planet height"),
-            .groupCountZ = 1,
+            .groupCountX = checkedComputeDimension3d(output.width(), "GPU cube sphere width"),
+            .groupCountY = checkedComputeDimension3d(output.width(), "GPU cube sphere face height"),
+            .groupCountZ = checkedComputeDimension3d(wgen::FACES.size(), "GPU cube sphere face count"),
         });
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "terrain.hpp"
+#include "terrain/terrain.hpp"
 
 #include <cstddef>
 

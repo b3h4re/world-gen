@@ -7,8 +7,8 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(push_constant) uniform Params {
     float cellSize;
     float coordinateScale;
-    float planetRadius;
-    uint dotsOnPlanet;
+    uint faceResolution;
+    uint padding;
     uint64_t seed;
 } params;
 
@@ -74,23 +74,44 @@ float perlinNoise(uint64_t seed, vec3 point, float cellSize) {
     return lerp(y0, y1, fadeZ);
 }
 
+vec3 spherifyCube(vec3 point) {
+    const vec3 squared = point * point;
+    const vec3 scale = sqrt(max(vec3(0.0), vec3(
+        1.0 - squared.y / 2.0 - squared.z / 2.0 + squared.y * squared.z / 3.0,
+        1.0 - squared.z / 2.0 - squared.x / 2.0 + squared.z * squared.x / 3.0,
+        1.0 - squared.x / 2.0 - squared.y / 2.0 + squared.x * squared.y / 3.0
+    )));
+    return point * scale;
+}
+
+vec3 cubeSphereDirection(uint face, float u, float v) {
+    vec3 point;
+    switch (face) {
+        case 0: point = vec3( u,  v,  1.0); break;
+        case 1: point = vec3(-u,  v, -1.0); break;
+        case 2: point = vec3(1.0, v, -u); break;
+        case 3: point = vec3(-1.0, v, u); break;
+        case 4: point = vec3(u, -1.0, v); break;
+        default: point = vec3(u, 1.0, -v); break;
+    }
+    return spherifyCube(point);
+}
+
 void main() {
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
+    uint face = gl_GlobalInvocationID.z;
 
-    if (x >= params.dotsOnPlanet || y >= params.dotsOnPlanet) {
+    if (x >= params.faceResolution || y >= params.faceResolution || face >= 6) {
         return;
     }
-    uint index = y * params.dotsOnPlanet + x;
+    uint index = face * params.faceResolution * params.faceResolution
+        + y * params.faceResolution + x;
 
-    const float phi = 2 * PI * float(x) / float(params.dotsOnPlanet);
-    const float psi = 2 * PI * float(y) / float(params.dotsOnPlanet);
-
-    vec3 pos = vec3(
-        cos(phi) * cos(psi),
-        sin(phi) * cos(psi),
-        sin(psi)
-    ) * params.coordinateScale;
+    const float denominator = float(params.faceResolution - 1);
+    const float u = -1.0 + 2.0 * float(x) / denominator;
+    const float v = -1.0 + 2.0 * float(y) / denominator;
+    const vec3 pos = cubeSphereDirection(face, u, v) * params.coordinateScale;
 
     heightMap.values[index] = perlinNoise(params.seed, pos, params.cellSize);
 }

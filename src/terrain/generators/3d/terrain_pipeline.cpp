@@ -39,12 +39,12 @@ float TerrainPipeline3d::noise(glm::vec3 point) const {
     return noiseVal;
 }
 
-Planet<float> TerrainPipeline3d::generatePlanet(std::size_t dots) const {
-    Planet<float> planet{dots, 0.0F};
+CubeSphere<float> TerrainPipeline3d::generateCubeSphere(std::size_t resolution) const {
+    CubeSphere<float> cubeSphere{resolution, 0.0F};
     for (std::size_t i = 0; i < generators_.size(); ++i) {
-        planet += map(generators_[i]->generatePlanet(dots), generatorsImpact_[i]);
+        cubeSphere += map(generators_[i]->generateCubeSphere(resolution), generatorsImpact_[i]);
     }
-    return planet;
+    return cubeSphere;
 }
 
 } // namespace wgen

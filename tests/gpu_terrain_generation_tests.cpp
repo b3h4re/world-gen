@@ -361,10 +361,9 @@ void testPerlinNoise3d() {
     wgen::PerlinNoiseComputeSpec3D spec{
         .cellSize = cellSize,
         .coordinateScale = 1.0F,
-        .planetRadius = 1.0F,
-        .dotsOnPlanet = static_cast<std::uint32_t>(dots),
+        .faceResolution = static_cast<std::uint32_t>(dots),
     };
-    std::string message = "3D Perlin planet generated on cpu must match GPU";
+    std::string message = "3D Perlin cube sphere generated on CPU must match GPU";
 
     wgen::SeedType seeds[5] = {0, 42, 12323, 12333214, 1287612763};
     lve::Computer computer{*device, gen.compShader(), gen.specSize()};
@@ -373,19 +372,21 @@ void testPerlinNoise3d() {
         gen.setSeed(seed);
         spec.seed = seed;
 
-        lve::GpuHeightMap gpuHeightMap{*device, dots, dots};
+        lve::GpuHeightMap gpuHeightMap{*device, dots, dots * wgen::FACES.size()};
         computer.dispatch(
             spec,
             gpuHeightMap.descriptorInfo(),
             lve::ComputeDispatchSize{
                 .groupCountX = static_cast<std::uint32_t>(dots),
                 .groupCountY = static_cast<std::uint32_t>(dots),
-                .groupCountZ = 1,
+                .groupCountZ = static_cast<std::uint32_t>(wgen::FACES.size()),
             });
 
-        const wgen::Planet<float> planetGpu{gpuHeightMap.copyToCpu()};
-        const wgen::Planet<float> planetCpu = gen.generatePlanet(dots);
-        wgen::tests::require(planetGpu.isClose(planetCpu, 0.0001F), message + " seed = " + std::to_string(seed));
+        const wgen::CubeSphere<float> cubeSphereGpu{gpuHeightMap.copyToCpu()};
+        const wgen::CubeSphere<float> cubeSphereCpu = gen.generateCubeSphere(dots);
+        wgen::tests::require(
+            cubeSphereGpu.isClose(cubeSphereCpu, 0.0001F),
+            message + " seed = " + std::to_string(seed));
     }
 }
 
@@ -405,7 +406,7 @@ void testGpuPlanetPipeline() {
     };
 
     lve::GpuPlanetPipeline pipeline;
-    const wgen::Planet<float> planetGpu = pipeline.generatePlanet(
+    const wgen::CubeSphere<float> cubeSphereGpu = pipeline.generateCubeSphere(
         {
             lve::GpuPlanetGeneratorRequest{
                 .spec = perlinSpec,
@@ -415,12 +416,12 @@ void testGpuPlanetPipeline() {
         dots);
 
     wgen::PerlinNoise3d perlin{seed, cellSize};
-    const wgen::Planet<float> planetCpu{
-        wgen::map(perlin.generatePlanet(dots), wgen::multiplyFunction(scale))
+    const wgen::CubeSphere<float> cubeSphereCpu{
+        wgen::map(perlin.generateCubeSphere(dots), wgen::multiplyFunction(scale))
     };
 
     wgen::tests::require(
-        planetGpu.isClose(planetCpu, 0.0001F),
+        cubeSphereGpu.isClose(cubeSphereCpu, 0.0001F),
         "GPU planet pipeline must accumulate scaled 3D generator outputs");
 }
 
@@ -443,7 +444,7 @@ void testGpuPlanetPipelinePerlinOctave() {
     };
 
     lve::GpuPlanetPipeline gpuPipeline;
-    const wgen::Planet<float> planetGpu = gpuPipeline.generatePlanet(
+    const wgen::CubeSphere<float> cubeSphereGpu = gpuPipeline.generateCubeSphere(
         {
             lve::GpuPlanetGeneratorRequest{
                 .spec = perlinSpec,
@@ -453,10 +454,10 @@ void testGpuPlanetPipelinePerlinOctave() {
         dots);
 
     const std::unique_ptr<wgen::TerrainPipeline3d> cpuPipeline = wgen::makePipeline3d({perlinSpec}, seed);
-    const wgen::Planet<float> planetCpu = cpuPipeline->generatePlanet(dots);
+    const wgen::CubeSphere<float> cubeSphereCpu = cpuPipeline->generateCubeSphere(dots);
 
     wgen::tests::require(
-        planetGpu.isClose(planetCpu, 0.0001F),
+        cubeSphereGpu.isClose(cubeSphereCpu, 0.0001F),
         "GPU planet pipeline must apply octave coordinate scale and amplitude");
 }
 

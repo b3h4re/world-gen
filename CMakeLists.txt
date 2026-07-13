@@ -265,6 +265,8 @@ if(BUILD_TESTING)
         src/terrain/generators/3d/coordinate_scaled_generator.hpp
         src/terrain/generators/3d/noise/perlin.cpp
         src/terrain/generators/3d/noise/perlin.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
     )
     target_include_directories(terrain_pipeline_3d_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
     target_compile_features(terrain_pipeline_3d_tests PRIVATE cxx_std_20)
@@ -403,6 +405,8 @@ if(BUILD_TESTING)
         src/terrain/generators/3d/coordinate_scaled_generator.hpp
         src/terrain/generators/3d/noise/perlin.cpp
         src/terrain/generators/3d/noise/perlin.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
         src/renderer/compute/computer.cpp
         src/renderer/compute/computer.hpp
         src/renderer/compute/gpu_height_map.cpp

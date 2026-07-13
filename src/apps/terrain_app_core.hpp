@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config/app_config.hpp"
-#include "gui_helpers.hpp"
+#include "ui/gui_helpers.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
 #include "renderer/compute/gpu_planet_pipeline.hpp"

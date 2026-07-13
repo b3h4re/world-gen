@@ -1,7 +1,7 @@
 #pragma once
 
-#include "apps/terrain_controls_widget.hpp"
-#include "gui_helpers.hpp"
+#include "apps/ui/terrain_controls_widget.hpp"
+#include "ui/gui_helpers.hpp"
 
 #include <memory>
 

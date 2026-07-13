@@ -1,5 +1,5 @@
 #include "terrain_app_gui.hpp"
-#include "gui_helpers.hpp"
+#include "ui/gui_helpers.hpp"
 
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QWidget>

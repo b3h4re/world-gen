@@ -13,6 +13,7 @@
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
 #include "terrain/planet/planet.hpp"
+#include "terrain/planet/cube_sphere.hpp"
 
 #include <cstdint>
 #include <future>
@@ -55,6 +56,12 @@ void appendHeightMapMesh3d(
 
 void appendPlanetmesh(
     const wgen::Planet<float>& planet,
+    std::vector<Vertex3d>& vertices,
+    std::vector<std::uint32_t>& indices
+);
+
+void appendCubeSpheremesh(
+    const wgen::CubeSphere<float>& planetCubeSphere,
     std::vector<Vertex3d>& vertices,
     std::vector<std::uint32_t>& indices
 );

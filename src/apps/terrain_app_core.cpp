@@ -122,6 +122,50 @@ void appendPlanetmesh(
     }
 }
 
+void appendCubeSpheremesh(
+        const wgen::CubeSphere<float>& planetCubeSphere,
+        std::vector<Vertex3d>& vertices,
+        std::vector<std::uint32_t>& indices) {
+    const std::size_t dots = planetCubeSphere.resolution();
+
+    vertices.reserve(vertices.size() + 6 * dots * dots);
+    indices.reserve(indices.size() + (dots - 1) * (dots - 1) * 36);
+
+    const float R = planetCubeSphere.radius();
+
+    for (const auto face : wgen::FACES) {
+        for (std::size_t y = 0; y < dots; ++y) {
+            for (std::size_t x = 0; x < dots; ++x) {
+                const float height = planetCubeSphere.at(face, x, y);
+
+                const glm::vec3 pointDir = planetCubeSphere.pointUnitDir(face, x, y);
+                glm::vec3 pos = pointDir * (height + R) / R;
+                vertices.push_back({
+                    .position = pos,
+                    .height = height
+                });
+            }
+        }
+    }
+
+    for (const auto face : wgen::FACES) {
+        const std::size_t faceId = wgen::faceID(face) + 1;
+        for (std::size_t y = 0; y + 1 < dots; ++y) {
+            for (std::size_t x = 0; x + 1 < dots; ++x) {
+                const auto topLeft = static_cast<std::uint32_t>(faceId * y * dots + x);
+                const auto topRight = static_cast<std::uint32_t>(faceId * y * dots + x + 1);
+                const auto bottomLeft = static_cast<std::uint32_t>(faceId * (y + 1) * dots + x);
+                const auto bottomRight = static_cast<std::uint32_t>(faceId * (y + 1) * dots + x + 1);
+
+                indices.insert(
+                    indices.end(),
+                    {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
+            }
+        }
+    }
+
+}
+
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)

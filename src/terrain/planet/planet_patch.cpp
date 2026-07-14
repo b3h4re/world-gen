@@ -108,6 +108,18 @@ void validate(const PlanetPatchId& id) {
     }
 }
 
+PlanetPatchBounds patchBounds(const PlanetPatchId& id) {
+    validate(id);
+
+    const double count = static_cast<double>(patchesPerAxis(id.level));
+    return {
+        -1.0 + 2.0 * static_cast<double>(id.x) / count,
+        -1.0 + 2.0 * static_cast<double>(id.x + 1) / count,
+        -1.0 + 2.0 * static_cast<double>(id.y) / count,
+        -1.0 + 2.0 * static_cast<double>(id.y + 1) / count,
+    };
+}
+
 std::optional<PlanetPatchId> parent(const PlanetPatchId& id) {
     validate(id);
     if (id.level == 0) {

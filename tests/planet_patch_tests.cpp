@@ -246,6 +246,103 @@ void testPatchHierarchyValidation() {
         "edge children should reject subdivision at the maximum level");
 }
 
+void requireValidBounds(const wgen::PlanetPatchBounds& bounds) {
+    wgen::tests::require(bounds.uMin >= -1.0 && bounds.uMax <= 1.0, "patch u bounds are outside the face");
+    wgen::tests::require(bounds.vMin >= -1.0 && bounds.vMax <= 1.0, "patch v bounds are outside the face");
+    wgen::tests::require(bounds.uMin < bounds.uMax, "patch u bounds should have positive width");
+    wgen::tests::require(bounds.vMin < bounds.vMax, "patch v bounds should have positive height");
+}
+
+void testPatchBounds() {
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        const wgen::PlanetPatchBounds root = wgen::patchBounds({face, 0, 0, 0});
+        wgen::tests::require(
+            root.uMin == -1.0 && root.uMax == 1.0 && root.vMin == -1.0 && root.vMax == 1.0,
+            "root patch should cover its complete face");
+
+        for (std::uint8_t level = 0; level <= 7; ++level) {
+            const std::uint32_t count = wgen::patchesPerAxis(level);
+            for (std::uint32_t y = 0; y < count; ++y) {
+                for (std::uint32_t x = 0; x < count; ++x) {
+                    const wgen::PlanetPatchBounds bounds = wgen::patchBounds({face, level, x, y});
+                    requireValidBounds(bounds);
+
+                    if (x + 1 < count) {
+                        const wgen::PlanetPatchBounds right = wgen::patchBounds({face, level, x + 1, y});
+                        wgen::tests::require(
+                            bounds.uMax == right.uMin,
+                            "horizontally adjacent patches should share an exact boundary");
+                    }
+                    if (y + 1 < count) {
+                        const wgen::PlanetPatchBounds above = wgen::patchBounds({face, level, x, y + 1});
+                        wgen::tests::require(
+                            bounds.vMax == above.vMin,
+                            "vertically adjacent patches should share an exact boundary");
+                    }
+                }
+            }
+        }
+
+        for (std::uint8_t level = 8; level <= wgen::MAX_PLANET_PATCH_LEVEL; ++level) {
+            const std::uint32_t count = wgen::patchesPerAxis(level);
+            const std::array<std::uint32_t, 3> coordinates{0, count / 2, count - 1};
+            for (const std::uint32_t y : coordinates) {
+                for (const std::uint32_t x : coordinates) {
+                    requireValidBounds(wgen::patchBounds({face, level, x, y}));
+                }
+            }
+
+            const std::uint32_t lowerMiddle = count / 2 - 1;
+            const wgen::PlanetPatchBounds left = wgen::patchBounds({face, level, lowerMiddle, lowerMiddle});
+            const wgen::PlanetPatchBounds right = wgen::patchBounds({face, level, lowerMiddle + 1, lowerMiddle});
+            const wgen::PlanetPatchBounds above = wgen::patchBounds({face, level, lowerMiddle, lowerMiddle + 1});
+            wgen::tests::require(left.uMax == right.uMin, "deep adjacent patches should share a u boundary");
+            wgen::tests::require(left.vMax == above.vMin, "deep adjacent patches should share a v boundary");
+        }
+    }
+}
+
+void testChildBoundsCoverParent() {
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (std::uint8_t level = 0; level <= 7; ++level) {
+            const std::uint32_t count = wgen::patchesPerAxis(level);
+            const std::array<wgen::PlanetPatchId, 3> ids{
+                wgen::PlanetPatchId{face, level, 0, 0},
+                wgen::PlanetPatchId{face, level, count / 2, count / 2},
+                wgen::PlanetPatchId{face, level, count - 1, count - 1},
+            };
+
+            for (const wgen::PlanetPatchId& id : ids) {
+                const wgen::PlanetPatchBounds bounds = wgen::patchBounds(id);
+                const std::array<wgen::PlanetPatchId, 4> childIds = wgen::children(id);
+                const wgen::PlanetPatchBounds lowerLeft = wgen::patchBounds(childIds[0]);
+                const wgen::PlanetPatchBounds lowerRight = wgen::patchBounds(childIds[1]);
+                const wgen::PlanetPatchBounds upperLeft = wgen::patchBounds(childIds[2]);
+                const wgen::PlanetPatchBounds upperRight = wgen::patchBounds(childIds[3]);
+
+                wgen::tests::require(
+                    lowerLeft.uMin == bounds.uMin && lowerLeft.vMin == bounds.vMin,
+                    "first child should start at the parent minimum");
+                wgen::tests::require(
+                    upperRight.uMax == bounds.uMax && upperRight.vMax == bounds.vMax,
+                    "last child should end at the parent maximum");
+                wgen::tests::require(
+                    lowerLeft.uMax == lowerRight.uMin && upperLeft.uMax == upperRight.uMin,
+                    "child columns should share the parent u midpoint");
+                wgen::tests::require(
+                    lowerLeft.vMax == upperLeft.vMin && lowerRight.vMax == upperRight.vMin,
+                    "child rows should share the parent v midpoint");
+            }
+        }
+    }
+}
+
+void testPatchBoundsValidation() {
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { wgen::patchBounds({wgen::CubeSphereFace::Front, 2, 4, 0}); },
+        "patch bounds should reject an invalid patch ID");
+}
+
 } // namespace
 
 int main() {
@@ -258,6 +355,9 @@ int main() {
         wgen::tests::runTest("planet patch hierarchy", testPatchHierarchy);
         wgen::tests::runTest("planet patch edge children", testPatchEdgeChildren);
         wgen::tests::runTest("planet patch hierarchy validation", testPatchHierarchyValidation);
+        wgen::tests::runTest("planet patch bounds", testPatchBounds);
+        wgen::tests::runTest("planet child bounds cover parent", testChildBoundsCoverParent);
+        wgen::tests::runTest("planet patch bounds validation", testPatchBoundsValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

@@ -770,6 +770,45 @@ void testCrossFacePatchSampleSeams() {
     }
 }
 
+void testProjectedCubeCorners() {
+    struct CornerGroup {
+        glm::dvec3 direction;
+        std::size_t representationCount;
+    };
+
+    constexpr std::uint32_t QUAD_COUNT = 32;
+    std::vector<CornerGroup> cornerGroups;
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        const wgen::PlanetPatchId root{face, 0, 0, 0};
+        for (const std::uint32_t localX : {std::uint32_t{0}, QUAD_COUNT}) {
+            for (const std::uint32_t localY : {std::uint32_t{0}, QUAD_COUNT}) {
+                const glm::dvec3 direction =
+                    wgen::patchSurfaceSample(root, QUAD_COUNT, localX, localY).direction;
+                requireValidDirection(direction);
+
+                const auto existing = std::find_if(
+                    cornerGroups.begin(),
+                    cornerGroups.end(),
+                    [&direction](const CornerGroup& group) {
+                        return glm::length(direction - group.direction) <= 0.000001;
+                    });
+                if (existing == cornerGroups.end()) {
+                    cornerGroups.push_back({direction, 1});
+                } else {
+                    ++existing->representationCount;
+                }
+            }
+        }
+    }
+
+    wgen::tests::require(cornerGroups.size() == 8, "cube sphere should have eight projected corners");
+    for (const CornerGroup& group : cornerGroups) {
+        wgen::tests::require(
+            group.representationCount == 3,
+            "each projected cube corner should have three face representations");
+    }
+}
+
 void testPatchSurfaceSampleValidation() {
     const wgen::PlanetPatchId id{wgen::CubeSphereFace::Top, 2, 1, 1};
     wgen::tests::requireThrows<std::invalid_argument>(
@@ -817,6 +856,7 @@ int main() {
         wgen::tests::runTest("planet patch surface samples", testPatchSurfaceSamples);
         wgen::tests::runTest("planet same-face sample seams", testSameFacePatchSampleSeams);
         wgen::tests::runTest("planet cross-face sample seams", testCrossFacePatchSampleSeams);
+        wgen::tests::runTest("planet projected cube corners", testProjectedCubeCorners);
         wgen::tests::runTest("planet patch surface sample validation", testPatchSurfaceSampleValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

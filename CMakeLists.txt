@@ -272,6 +272,18 @@ if(BUILD_TESTING)
     target_compile_features(terrain_pipeline_3d_tests PRIVATE cxx_std_20)
     add_test(NAME terrain_pipeline_3d_tests COMMAND terrain_pipeline_3d_tests)
 
+    # Planet patch topology tests
+    add_executable(planet_patch_tests
+        tests/planet_patch_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+    )
+    target_include_directories(planet_patch_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_patch_tests PRIVATE cxx_std_20)
+    add_test(NAME planet_patch_tests COMMAND planet_patch_tests)
+
     # Terrain Pipeline Octave Tests
     add_executable(terrain_pipeline_octaves_tests
         tests/terrain_pipeline_octaves_tests.cpp

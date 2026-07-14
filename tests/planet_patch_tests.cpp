@@ -159,6 +159,93 @@ void testPatchValidation() {
     }
 }
 
+void testPatchHierarchy() {
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        wgen::tests::require(
+            !wgen::parent({face, 0, 0, 0}).has_value(),
+            "root patch should not have a parent");
+
+        for (std::uint8_t level = 0; level < 6; ++level) {
+            const std::uint32_t count = wgen::patchesPerAxis(level);
+            for (std::uint32_t y = 0; y < count; ++y) {
+                for (std::uint32_t x = 0; x < count; ++x) {
+                    const wgen::PlanetPatchId id{face, level, x, y};
+                    const std::array<wgen::PlanetPatchId, 4> actual = wgen::children(id);
+                    const std::array<wgen::PlanetPatchId, 4> expected{
+                        wgen::child(id, 0, 0),
+                        wgen::child(id, 1, 0),
+                        wgen::child(id, 0, 1),
+                        wgen::child(id, 1, 1),
+                    };
+
+                    wgen::tests::require(actual == expected, "patch children have the wrong stable order");
+                    for (const wgen::PlanetPatchId& childId : actual) {
+                        wgen::tests::require(
+                            wgen::parent(childId) == id,
+                            "child patch should map back to its parent");
+                    }
+                }
+            }
+        }
+    }
+}
+
+void testPatchEdgeChildren() {
+    const wgen::PlanetPatchId id{wgen::CubeSphereFace::Left, 3, 5, 2};
+    const std::array<wgen::PlanetPatchId, 4> all = wgen::children(id);
+
+    wgen::tests::require(
+        wgen::childrenTouchingEdge(id, wgen::PlanetPatchEdge::UMin) ==
+            std::array<wgen::PlanetPatchId, 2>{all[0], all[2]},
+        "UMin children should be ordered by increasing v");
+    wgen::tests::require(
+        wgen::childrenTouchingEdge(id, wgen::PlanetPatchEdge::UMax) ==
+            std::array<wgen::PlanetPatchId, 2>{all[1], all[3]},
+        "UMax children should be ordered by increasing v");
+    wgen::tests::require(
+        wgen::childrenTouchingEdge(id, wgen::PlanetPatchEdge::VMin) ==
+            std::array<wgen::PlanetPatchId, 2>{all[0], all[1]},
+        "VMin children should be ordered by increasing u");
+    wgen::tests::require(
+        wgen::childrenTouchingEdge(id, wgen::PlanetPatchEdge::VMax) ==
+            std::array<wgen::PlanetPatchId, 2>{all[2], all[3]},
+        "VMax children should be ordered by increasing u");
+}
+
+void testPatchHierarchyValidation() {
+    const wgen::PlanetPatchId id{wgen::CubeSphereFace::Top, 3, 2, 4};
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] { wgen::child(id, 2, 0); },
+        "child should reject an x bit above one");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] { wgen::child(id, 0, 2); },
+        "child should reject a y bit above one");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] {
+            wgen::childrenTouchingEdge(id, static_cast<wgen::PlanetPatchEdge>(4));
+        },
+        "edge children should reject an invalid edge");
+
+    const std::uint32_t maxCoordinate = wgen::patchesPerAxis(wgen::MAX_PLANET_PATCH_LEVEL) - 1;
+    const wgen::PlanetPatchId maximumPatch{
+        wgen::CubeSphereFace::Bottom,
+        wgen::MAX_PLANET_PATCH_LEVEL,
+        maxCoordinate,
+        maxCoordinate,
+    };
+    wgen::tests::requireThrows<std::overflow_error>(
+        [&maximumPatch] { wgen::child(maximumPatch, 0, 0); },
+        "child should reject subdivision at the maximum level");
+    wgen::tests::requireThrows<std::overflow_error>(
+        [&maximumPatch] { wgen::children(maximumPatch); },
+        "children should reject subdivision at the maximum level");
+    wgen::tests::requireThrows<std::overflow_error>(
+        [&maximumPatch] {
+            wgen::childrenTouchingEdge(maximumPatch, wgen::PlanetPatchEdge::UMin);
+        },
+        "edge children should reject subdivision at the maximum level");
+}
+
 } // namespace
 
 int main() {
@@ -168,6 +255,9 @@ int main() {
         wgen::tests::runTest("planet patch ordering", testPatchOrdering);
         wgen::tests::runTest("planet patches per axis", testPatchesPerAxis);
         wgen::tests::runTest("planet patch validation", testPatchValidation);
+        wgen::tests::runTest("planet patch hierarchy", testPatchHierarchy);
+        wgen::tests::runTest("planet patch edge children", testPatchEdgeChildren);
+        wgen::tests::runTest("planet patch hierarchy validation", testPatchHierarchyValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

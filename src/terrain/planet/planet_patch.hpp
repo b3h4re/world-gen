@@ -63,6 +63,9 @@ PlanetPatchBounds patchBounds(const PlanetPatchId& id);
 std::optional<PlanetPatchId> parent(const PlanetPatchId& id);
 PlanetPatchId child(const PlanetPatchId& id, std::uint8_t xBit, std::uint8_t yBit);
 std::array<PlanetPatchId, 4> children(const PlanetPatchId& id);
+std::array<PlanetPatchId, 2> childrenTouchingEdge(
+    const PlanetPatchId& id,
+    PlanetPatchEdge edge);
 PlanetFaceEdgeConnection faceEdgeConnection(
     CubeSphereFace face,
     PlanetPatchEdge edge);

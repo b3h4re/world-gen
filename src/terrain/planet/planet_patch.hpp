@@ -5,11 +5,13 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 
 namespace wgen {
 
 inline constexpr std::uint8_t MAX_PLANET_PATCH_LEVEL = 24;
+static_assert(MAX_PLANET_PATCH_LEVEL < std::numeric_limits<std::uint32_t>::digits);
 
 enum class PlanetPatchEdge : std::uint8_t {
     UMin,

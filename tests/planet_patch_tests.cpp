@@ -3,7 +3,9 @@
 #include "helpers.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
@@ -90,6 +92,73 @@ void testPatchOrdering() {
     wgen::tests::require(actual == expected, "patch ID ordering should be deterministic");
 }
 
+void testPatchesPerAxis() {
+    std::uint64_t expectedPerFace = 1;
+    for (std::uint8_t level = 0; level <= wgen::MAX_PLANET_PATCH_LEVEL; ++level) {
+        const std::uint64_t count = wgen::patchesPerAxis(level);
+        wgen::tests::require(count == (std::uint64_t{1} << level), "patch count per axis is wrong");
+
+        wgen::tests::require(
+            count <= std::numeric_limits<std::uint64_t>::max() / count,
+            "test patch count per face overflows");
+        const std::uint64_t patchesPerFace = count * count;
+        wgen::tests::require(patchesPerFace == expectedPerFace, "patch count per face is wrong");
+
+        wgen::tests::require(
+            patchesPerFace <= std::numeric_limits<std::uint64_t>::max() / wgen::FACES.size(),
+            "test planet patch count overflows");
+        const std::uint64_t patchesOnPlanet = patchesPerFace * wgen::FACES.size();
+        wgen::tests::require(
+            patchesOnPlanet == expectedPerFace * wgen::FACES.size(),
+            "planet patch count is wrong");
+
+        if (level < wgen::MAX_PLANET_PATCH_LEVEL) {
+            wgen::tests::require(
+                expectedPerFace <= std::numeric_limits<std::uint64_t>::max() / 4,
+                "test expected patch count overflows");
+            expectedPerFace *= 4;
+        }
+    }
+
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { wgen::patchesPerAxis(wgen::MAX_PLANET_PATCH_LEVEL + 1); },
+        "patch count should reject a level above the supported maximum");
+}
+
+void testPatchValidation() {
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        const wgen::PlanetPatchId root{face, 0, 0, 0};
+        wgen::tests::require(wgen::isValid(root), "root patch should be valid");
+        wgen::validate(root);
+    }
+
+    const std::uint32_t maxCoordinate = wgen::patchesPerAxis(wgen::MAX_PLANET_PATCH_LEVEL) - 1;
+    const wgen::PlanetPatchId maximumValid{
+        wgen::CubeSphereFace::Front,
+        wgen::MAX_PLANET_PATCH_LEVEL,
+        maxCoordinate,
+        maxCoordinate,
+    };
+    wgen::tests::require(wgen::isValid(maximumValid), "maximum supported patch ID should be valid");
+    wgen::validate(maximumValid);
+
+    const std::vector<wgen::PlanetPatchId> invalidIds{
+        {static_cast<wgen::CubeSphereFace>(wgen::FACES.size()), 0, 0, 0},
+        {wgen::CubeSphereFace::Top, static_cast<std::uint8_t>(wgen::MAX_PLANET_PATCH_LEVEL + 1), 0, 0},
+        {wgen::CubeSphereFace::Top, 0, 1, 0},
+        {wgen::CubeSphereFace::Top, 0, 0, 1},
+        {wgen::CubeSphereFace::Bottom, 4, 16, 0},
+        {wgen::CubeSphereFace::Bottom, 4, 0, 16},
+    };
+
+    for (const wgen::PlanetPatchId& id : invalidIds) {
+        wgen::tests::require(!wgen::isValid(id), "invalid patch ID should fail non-throwing validation");
+        wgen::tests::requireThrows<std::invalid_argument>(
+            [&id] { wgen::validate(id); },
+            "invalid patch ID should be rejected");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -97,6 +166,8 @@ int main() {
         wgen::tests::runTest("planet patch value types", testPatchValueTypes);
         wgen::tests::runTest("planet patch hash", testPatchHash);
         wgen::tests::runTest("planet patch ordering", testPatchOrdering);
+        wgen::tests::runTest("planet patches per axis", testPatchesPerAxis);
+        wgen::tests::runTest("planet patch validation", testPatchValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

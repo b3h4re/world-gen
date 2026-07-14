@@ -19,15 +19,14 @@ bool isKnownFace(CubeSphereFace face) noexcept {
     return false;
 }
 
-bool isKnownEdge(PlanetPatchEdge edge) noexcept {
+std::size_t edgeIndex(PlanetPatchEdge edge) {
     switch (edge) {
-        case PlanetPatchEdge::UMin:
-        case PlanetPatchEdge::UMax:
-        case PlanetPatchEdge::VMin:
-        case PlanetPatchEdge::VMax:
-            return true;
+        case PlanetPatchEdge::UMin: return 0;
+        case PlanetPatchEdge::UMax: return 1;
+        case PlanetPatchEdge::VMin: return 2;
+        case PlanetPatchEdge::VMax: return 3;
     }
-    return false;
+    throw std::invalid_argument{"planet patch edge is invalid"};
 }
 
 void hashCombine(std::size_t& seed, std::size_t value) noexcept {
@@ -62,6 +61,45 @@ PlanetPatchId makeChild(const PlanetPatchId& id, std::uint8_t xBit, std::uint8_t
         childCoordinate(id.y, yBit),
     };
 }
+
+constexpr std::array FACE_EDGE_CONNECTIONS{
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Left, PlanetPatchEdge::UMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Right, PlanetPatchEdge::UMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Back, PlanetPatchEdge::VMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Front, PlanetPatchEdge::VMin, false},
+    },
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Right, PlanetPatchEdge::UMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Left, PlanetPatchEdge::UMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Back, PlanetPatchEdge::VMin, true},
+        PlanetFaceEdgeConnection{CubeSphereFace::Front, PlanetPatchEdge::VMax, true},
+    },
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Top, PlanetPatchEdge::UMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Bottom, PlanetPatchEdge::UMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Back, PlanetPatchEdge::UMax, true},
+        PlanetFaceEdgeConnection{CubeSphereFace::Front, PlanetPatchEdge::UMax, false},
+    },
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Bottom, PlanetPatchEdge::UMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Top, PlanetPatchEdge::UMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Back, PlanetPatchEdge::UMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Front, PlanetPatchEdge::UMin, true},
+    },
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Left, PlanetPatchEdge::VMin, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Right, PlanetPatchEdge::VMin, true},
+        PlanetFaceEdgeConnection{CubeSphereFace::Bottom, PlanetPatchEdge::VMin, true},
+        PlanetFaceEdgeConnection{CubeSphereFace::Top, PlanetPatchEdge::VMin, false},
+    },
+    std::array{
+        PlanetFaceEdgeConnection{CubeSphereFace::Left, PlanetPatchEdge::VMax, true},
+        PlanetFaceEdgeConnection{CubeSphereFace::Right, PlanetPatchEdge::VMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Top, PlanetPatchEdge::VMax, false},
+        PlanetFaceEdgeConnection{CubeSphereFace::Bottom, PlanetPatchEdge::VMax, true},
+    },
+};
 
 } // namespace
 
@@ -156,9 +194,7 @@ std::array<PlanetPatchId, 2> childrenTouchingEdge(
         const PlanetPatchId& id,
         PlanetPatchEdge edge) {
     validate(id);
-    if (!isKnownEdge(edge)) {
-        throw std::invalid_argument{"planet patch edge is invalid"};
-    }
+    static_cast<void>(edgeIndex(edge));
     validateCanSubdivide(id);
 
     switch (edge) {
@@ -172,6 +208,12 @@ std::array<PlanetPatchId, 2> childrenTouchingEdge(
             return {makeChild(id, 0, 1), makeChild(id, 1, 1)};
     }
     throw std::invalid_argument{"planet patch edge is invalid"};
+}
+
+PlanetFaceEdgeConnection faceEdgeConnection(
+        CubeSphereFace face,
+        PlanetPatchEdge edge) {
+    return FACE_EDGE_CONNECTIONS[faceID(face)][edgeIndex(edge)];
 }
 
 } // namespace wgen

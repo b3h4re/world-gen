@@ -6,8 +6,10 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <stdexcept>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -343,6 +345,105 @@ void testPatchBoundsValidation() {
         "patch bounds should reject an invalid patch ID");
 }
 
+struct ExpectedFaceEdgeConnection {
+    wgen::CubeSphereFace sourceFace;
+    wgen::PlanetPatchEdge sourceEdge;
+    wgen::CubeSphereFace targetFace;
+    wgen::PlanetPatchEdge targetEdge;
+    bool reversed;
+};
+
+constexpr std::array EXPECTED_FACE_EDGE_CONNECTIONS{
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::UMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::UMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::VMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::VMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::UMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::UMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::VMin, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::VMax, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::UMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::UMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::UMax, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::UMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::UMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::UMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::UMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::UMin, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::VMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::VMin, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::VMin, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Back, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::VMin, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::UMin, wgen::CubeSphereFace::Left, wgen::PlanetPatchEdge::VMax, true},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::UMax, wgen::CubeSphereFace::Right, wgen::PlanetPatchEdge::VMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::VMin, wgen::CubeSphereFace::Top, wgen::PlanetPatchEdge::VMax, false},
+    ExpectedFaceEdgeConnection{wgen::CubeSphereFace::Front, wgen::PlanetPatchEdge::VMax, wgen::CubeSphereFace::Bottom, wgen::PlanetPatchEdge::VMax, true},
+};
+
+void testFaceEdgeConnections() {
+    for (const ExpectedFaceEdgeConnection& expected : EXPECTED_FACE_EDGE_CONNECTIONS) {
+        const wgen::PlanetFaceEdgeConnection actual =
+            wgen::faceEdgeConnection(expected.sourceFace, expected.sourceEdge);
+        wgen::tests::require(actual.face == expected.targetFace, "face edge target face is wrong");
+        wgen::tests::require(actual.edge == expected.targetEdge, "face edge target edge is wrong");
+        wgen::tests::require(
+            actual.coordinateReversed == expected.reversed,
+            "face edge coordinate direction is wrong");
+    }
+}
+
+void testFaceEdgeConnectionsAreReciprocal() {
+    constexpr std::array EDGES{
+        wgen::PlanetPatchEdge::UMin,
+        wgen::PlanetPatchEdge::UMax,
+        wgen::PlanetPatchEdge::VMin,
+        wgen::PlanetPatchEdge::VMax,
+    };
+
+    using EdgeEndpoint = std::pair<wgen::CubeSphereFace, wgen::PlanetPatchEdge>;
+    using UndirectedEdge = std::pair<EdgeEndpoint, EdgeEndpoint>;
+    std::set<UndirectedEdge> undirectedEdges;
+
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (const wgen::PlanetPatchEdge edge : EDGES) {
+            const wgen::PlanetFaceEdgeConnection connection = wgen::faceEdgeConnection(face, edge);
+            const wgen::PlanetFaceEdgeConnection reciprocal =
+                wgen::faceEdgeConnection(connection.face, connection.edge);
+            wgen::tests::require(reciprocal.face == face, "reciprocal edge should return to the source face");
+            wgen::tests::require(reciprocal.edge == edge, "reciprocal edge should return to the source edge");
+            wgen::tests::require(
+                reciprocal.coordinateReversed == connection.coordinateReversed,
+                "reciprocal edge should preserve the reversal flag");
+
+            EdgeEndpoint source{face, edge};
+            EdgeEndpoint target{connection.face, connection.edge};
+            if (target < source) {
+                std::swap(source, target);
+            }
+            undirectedEdges.emplace(source, target);
+        }
+    }
+
+    wgen::tests::require(undirectedEdges.size() == 12, "cube should have exactly 12 undirected edges");
+}
+
+void testFaceEdgeConnectionValidation() {
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
+            wgen::faceEdgeConnection(
+                static_cast<wgen::CubeSphereFace>(wgen::FACES.size()),
+                wgen::PlanetPatchEdge::UMin);
+        },
+        "face edge connection should reject an invalid face");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
+            wgen::faceEdgeConnection(
+                wgen::CubeSphereFace::Top,
+                static_cast<wgen::PlanetPatchEdge>(4));
+        },
+        "face edge connection should reject an invalid edge");
+}
+
 } // namespace
 
 int main() {
@@ -358,6 +459,9 @@ int main() {
         wgen::tests::runTest("planet patch bounds", testPatchBounds);
         wgen::tests::runTest("planet child bounds cover parent", testChildBoundsCoverParent);
         wgen::tests::runTest("planet patch bounds validation", testPatchBoundsValidation);
+        wgen::tests::runTest("planet face edge connections", testFaceEdgeConnections);
+        wgen::tests::runTest("planet face edge reciprocity", testFaceEdgeConnectionsAreReciprocal);
+        wgen::tests::runTest("planet face edge validation", testFaceEdgeConnectionValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

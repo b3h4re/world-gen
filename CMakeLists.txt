@@ -277,6 +277,8 @@ if(BUILD_TESTING)
         tests/planet_patch_tests.cpp
         tests/helpers.cpp
         tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
         src/terrain/planet/planet_patch.cpp
         src/terrain/planet/planet_patch.hpp
     )

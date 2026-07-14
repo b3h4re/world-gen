@@ -158,6 +158,36 @@ PlanetPatchBounds patchBounds(const PlanetPatchId& id) {
     };
 }
 
+PlanetSurfaceSample patchSurfaceSample(
+        const PlanetPatchId& id,
+        std::uint32_t quadCount,
+        std::uint32_t localX,
+        std::uint32_t localY) {
+    validate(id);
+    if (quadCount == 0) {
+        throw std::invalid_argument{"planet patch quad count must be positive"};
+    }
+    if (localX > quadCount || localY > quadCount) {
+        throw std::invalid_argument{"planet patch local sample coordinate exceeds quad count"};
+    }
+
+    const std::uint64_t patches = patchesPerAxis(id.level);
+    if (patches > std::numeric_limits<std::uint64_t>::max() / quadCount) {
+        throw std::overflow_error{"planet patch global sample grid overflows uint64_t"};
+    }
+    const std::uint64_t segments = patches * quadCount;
+    const std::uint64_t globalX = std::uint64_t{id.x} * quadCount + localX;
+    const std::uint64_t globalY = std::uint64_t{id.y} * quadCount + localY;
+
+    const double u = -1.0 + 2.0 * static_cast<double>(globalX) / static_cast<double>(segments);
+    const double v = -1.0 + 2.0 * static_cast<double>(globalY) / static_cast<double>(segments);
+    const glm::vec3 direction = cubeSphereDirection(
+        id.face,
+        static_cast<float>(u),
+        static_cast<float>(v));
+    return {id.face, u, v, glm::dvec3{direction}};
+}
+
 std::optional<PlanetPatchId> parent(const PlanetPatchId& id) {
     validate(id);
     if (id.level == 0) {

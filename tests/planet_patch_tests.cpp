@@ -3,6 +3,7 @@
 #include "helpers.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <limits>
@@ -608,6 +609,189 @@ void testSameLevelNeighborValidation() {
         "same-level neighbor should reject an invalid edge");
 }
 
+void requireDirectionNear(
+        const glm::dvec3& actual,
+        const glm::dvec3& expected,
+        std::string_view message) {
+    wgen::tests::require(glm::length(actual - expected) <= 0.000001, message);
+}
+
+void requireValidDirection(const glm::dvec3& direction) {
+    wgen::tests::require(
+        std::isfinite(direction.x) && std::isfinite(direction.y) && std::isfinite(direction.z),
+        "patch sample direction should be finite");
+    wgen::tests::require(
+        std::abs(glm::length(direction) - 1.0) <= 0.000001,
+        "patch sample direction should have unit length");
+}
+
+void testPatchSurfaceSamples() {
+    constexpr std::array<std::uint32_t, 3> QUAD_COUNTS{1, 7, 32};
+    constexpr std::array<std::uint8_t, 3> LEVELS{0, 4, wgen::MAX_PLANET_PATCH_LEVEL};
+
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        for (const std::uint8_t level : LEVELS) {
+            const std::uint32_t count = wgen::patchesPerAxis(level);
+            const wgen::PlanetPatchId id{face, level, count / 3, count - 1};
+            const wgen::PlanetPatchBounds bounds = wgen::patchBounds(id);
+
+            for (const std::uint32_t quadCount : QUAD_COUNTS) {
+                const wgen::PlanetSurfaceSample minimum =
+                    wgen::patchSurfaceSample(id, quadCount, 0, 0);
+                const wgen::PlanetSurfaceSample maximum =
+                    wgen::patchSurfaceSample(id, quadCount, quadCount, quadCount);
+                const wgen::PlanetSurfaceSample repeated =
+                    wgen::patchSurfaceSample(id, quadCount, 0, 0);
+
+                wgen::tests::require(minimum.face == face, "patch sample face is wrong");
+                wgen::tests::require(
+                    minimum.u == bounds.uMin && minimum.v == bounds.vMin,
+                    "patch minimum sample should match patch bounds");
+                wgen::tests::require(
+                    maximum.u == bounds.uMax && maximum.v == bounds.vMax,
+                    "patch maximum sample should match patch bounds");
+                wgen::tests::require(
+                    repeated.u == minimum.u && repeated.v == minimum.v,
+                    "patch sample UV should be deterministic");
+                wgen::tests::require(
+                    repeated.direction.x == minimum.direction.x &&
+                        repeated.direction.y == minimum.direction.y &&
+                        repeated.direction.z == minimum.direction.z,
+                    "patch sample direction should be deterministic");
+                requireValidDirection(minimum.direction);
+                requireValidDirection(maximum.direction);
+            }
+        }
+    }
+
+    const std::uint32_t last = wgen::patchesPerAxis(wgen::MAX_PLANET_PATCH_LEVEL) - 1;
+    const std::uint32_t maximumQuadCount = std::numeric_limits<std::uint32_t>::max();
+    const wgen::PlanetSurfaceSample maximumAddress = wgen::patchSurfaceSample(
+        {wgen::CubeSphereFace::Front, wgen::MAX_PLANET_PATCH_LEVEL, last, last},
+        maximumQuadCount,
+        maximumQuadCount,
+        maximumQuadCount);
+    wgen::tests::require(
+        maximumAddress.u == 1.0 && maximumAddress.v == 1.0,
+        "maximum patch sample address should not overflow");
+}
+
+wgen::PlanetSurfaceSample patchEdgeSample(
+        const wgen::PlanetPatchId& id,
+        wgen::PlanetPatchEdge edge,
+        std::uint32_t quadCount,
+        std::uint32_t edgeSample) {
+    switch (edge) {
+        case wgen::PlanetPatchEdge::UMin:
+            return wgen::patchSurfaceSample(id, quadCount, 0, edgeSample);
+        case wgen::PlanetPatchEdge::UMax:
+            return wgen::patchSurfaceSample(id, quadCount, quadCount, edgeSample);
+        case wgen::PlanetPatchEdge::VMin:
+            return wgen::patchSurfaceSample(id, quadCount, edgeSample, 0);
+        case wgen::PlanetPatchEdge::VMax:
+            return wgen::patchSurfaceSample(id, quadCount, edgeSample, quadCount);
+    }
+    throw std::invalid_argument{"test patch edge is invalid"};
+}
+
+void testSameFacePatchSampleSeams() {
+    constexpr std::uint32_t QUAD_COUNT = 32;
+    for (std::uint8_t level = 1; level <= 5; ++level) {
+        const std::uint32_t count = wgen::patchesPerAxis(level);
+        for (const wgen::CubeSphereFace face : wgen::FACES) {
+            for (std::uint32_t coordinate = 0; coordinate + 1 < count; ++coordinate) {
+                const wgen::PlanetPatchId left{face, level, coordinate, count / 2};
+                const wgen::PlanetPatchId right{face, level, coordinate + 1, count / 2};
+                const wgen::PlanetPatchId lower{face, level, count / 2, coordinate};
+                const wgen::PlanetPatchId upper{face, level, count / 2, coordinate + 1};
+
+                for (std::uint32_t sample = 0; sample <= QUAD_COUNT; ++sample) {
+                    const wgen::PlanetSurfaceSample leftSample =
+                        patchEdgeSample(left, wgen::PlanetPatchEdge::UMax, QUAD_COUNT, sample);
+                    const wgen::PlanetSurfaceSample rightSample =
+                        patchEdgeSample(right, wgen::PlanetPatchEdge::UMin, QUAD_COUNT, sample);
+                    const wgen::PlanetSurfaceSample lowerSample =
+                        patchEdgeSample(lower, wgen::PlanetPatchEdge::VMax, QUAD_COUNT, sample);
+                    const wgen::PlanetSurfaceSample upperSample =
+                        patchEdgeSample(upper, wgen::PlanetPatchEdge::VMin, QUAD_COUNT, sample);
+
+                    wgen::tests::require(
+                        leftSample.u == rightSample.u && leftSample.v == rightSample.v,
+                        "same-face u-edge samples should have identical UV coordinates");
+                    wgen::tests::require(
+                        lowerSample.u == upperSample.u && lowerSample.v == upperSample.v,
+                        "same-face v-edge samples should have identical UV coordinates");
+                    requireDirectionNear(
+                        leftSample.direction,
+                        rightSample.direction,
+                        "same-face u-edge sample directions should match");
+                    requireDirectionNear(
+                        lowerSample.direction,
+                        upperSample.direction,
+                        "same-face v-edge sample directions should match");
+                }
+            }
+        }
+    }
+}
+
+void testCrossFacePatchSampleSeams() {
+    constexpr std::uint32_t QUAD_COUNT = 32;
+    constexpr std::array<std::uint8_t, 4> LEVELS{0, 1, 3, 5};
+
+    for (const std::uint8_t level : LEVELS) {
+        const std::uint32_t count = wgen::patchesPerAxis(level);
+        for (const wgen::CubeSphereFace face : wgen::FACES) {
+            for (const wgen::PlanetPatchEdge edge : PATCH_EDGES) {
+                for (std::uint32_t patchCoordinate = 0; patchCoordinate < count; ++patchCoordinate) {
+                    const wgen::PlanetPatchId id = boundaryPatch(face, level, edge, patchCoordinate);
+                    const wgen::PlanetPatchNeighbor neighbor = wgen::sameLevelNeighbor(id, edge);
+
+                    for (std::uint32_t sample = 0; sample <= QUAD_COUNT; ++sample) {
+                        const std::uint32_t targetSample = neighbor.edgeCoordinateReversed
+                            ? QUAD_COUNT - sample
+                            : sample;
+                        const wgen::PlanetSurfaceSample source =
+                            patchEdgeSample(id, edge, QUAD_COUNT, sample);
+                        const wgen::PlanetSurfaceSample target = patchEdgeSample(
+                            neighbor.id,
+                            neighbor.touchingEdge,
+                            QUAD_COUNT,
+                            targetSample);
+                        requireValidDirection(source.direction);
+                        requireDirectionNear(
+                            source.direction,
+                            target.direction,
+                            "cross-face edge sample directions should match");
+                    }
+                }
+            }
+        }
+    }
+}
+
+void testPatchSurfaceSampleValidation() {
+    const wgen::PlanetPatchId id{wgen::CubeSphereFace::Top, 2, 1, 1};
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
+            wgen::patchSurfaceSample(
+                {wgen::CubeSphereFace::Top, 2, 4, 0},
+                32,
+                0,
+                0);
+        },
+        "patch sampling should reject an invalid patch ID");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] { wgen::patchSurfaceSample(id, 0, 0, 0); },
+        "patch sampling should reject zero quads");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] { wgen::patchSurfaceSample(id, 32, 33, 0); },
+        "patch sampling should reject a local x coordinate beyond the patch");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&id] { wgen::patchSurfaceSample(id, 32, 0, 33); },
+        "patch sampling should reject a local y coordinate beyond the patch");
+}
+
 } // namespace
 
 int main() {
@@ -630,6 +814,10 @@ int main() {
         wgen::tests::runTest("planet boundary same-level neighbors", testBoundarySameLevelNeighbors);
         wgen::tests::runTest("planet same-level neighbor corners", testSameLevelNeighborCorners);
         wgen::tests::runTest("planet same-level neighbor validation", testSameLevelNeighborValidation);
+        wgen::tests::runTest("planet patch surface samples", testPatchSurfaceSamples);
+        wgen::tests::runTest("planet same-face sample seams", testSameFacePatchSampleSeams);
+        wgen::tests::runTest("planet cross-face sample seams", testCrossFacePatchSampleSeams);
+        wgen::tests::runTest("planet patch surface sample validation", testPatchSurfaceSampleValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

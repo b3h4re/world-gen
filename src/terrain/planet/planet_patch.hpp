@@ -36,6 +36,13 @@ struct PlanetPatchBounds {
     double vMax{};
 };
 
+struct PlanetSurfaceSample {
+    CubeSphereFace face{};
+    double u{};
+    double v{};
+    glm::dvec3 direction{};
+};
+
 struct PlanetPatchNeighbor {
     PlanetPatchId id{};
     PlanetPatchEdge touchingEdge{};
@@ -60,6 +67,11 @@ std::uint32_t patchesPerAxis(std::uint8_t level);
 bool isValid(const PlanetPatchId& id);
 void validate(const PlanetPatchId& id);
 PlanetPatchBounds patchBounds(const PlanetPatchId& id);
+PlanetSurfaceSample patchSurfaceSample(
+    const PlanetPatchId& id,
+    std::uint32_t quadCount,
+    std::uint32_t localX,
+    std::uint32_t localY);
 std::optional<PlanetPatchId> parent(const PlanetPatchId& id);
 PlanetPatchId child(const PlanetPatchId& id, std::uint8_t xBit, std::uint8_t yBit);
 std::array<PlanetPatchId, 4> children(const PlanetPatchId& id);

@@ -216,4 +216,62 @@ PlanetFaceEdgeConnection faceEdgeConnection(
     return FACE_EDGE_CONNECTIONS[faceID(face)][edgeIndex(edge)];
 }
 
+PlanetPatchNeighbor sameLevelNeighbor(
+        const PlanetPatchId& id,
+        PlanetPatchEdge edge) {
+    validate(id);
+    static_cast<void>(edgeIndex(edge));
+
+    const std::uint32_t count = patchesPerAxis(id.level);
+    switch (edge) {
+        case PlanetPatchEdge::UMin:
+            if (id.x > 0) {
+                return {{id.face, id.level, id.x - 1, id.y}, PlanetPatchEdge::UMax, false};
+            }
+            break;
+        case PlanetPatchEdge::UMax:
+            if (id.x < count - 1) {
+                return {{id.face, id.level, id.x + 1, id.y}, PlanetPatchEdge::UMin, false};
+            }
+            break;
+        case PlanetPatchEdge::VMin:
+            if (id.y > 0) {
+                return {{id.face, id.level, id.x, id.y - 1}, PlanetPatchEdge::VMax, false};
+            }
+            break;
+        case PlanetPatchEdge::VMax:
+            if (id.y < count - 1) {
+                return {{id.face, id.level, id.x, id.y + 1}, PlanetPatchEdge::VMin, false};
+            }
+            break;
+    }
+
+    const PlanetFaceEdgeConnection connection = faceEdgeConnection(id.face, edge);
+    const std::uint32_t sourceCoordinate =
+        edge == PlanetPatchEdge::UMin || edge == PlanetPatchEdge::UMax ? id.y : id.x;
+    const std::uint32_t targetCoordinate = connection.coordinateReversed
+        ? count - 1 - sourceCoordinate
+        : sourceCoordinate;
+
+    PlanetPatchId target{connection.face, id.level, 0, 0};
+    switch (connection.edge) {
+        case PlanetPatchEdge::UMin:
+            target.y = targetCoordinate;
+            break;
+        case PlanetPatchEdge::UMax:
+            target.x = count - 1;
+            target.y = targetCoordinate;
+            break;
+        case PlanetPatchEdge::VMin:
+            target.x = targetCoordinate;
+            break;
+        case PlanetPatchEdge::VMax:
+            target.x = targetCoordinate;
+            target.y = count - 1;
+            break;
+    }
+
+    return {target, connection.edge, connection.coordinateReversed};
+}
+
 } // namespace wgen

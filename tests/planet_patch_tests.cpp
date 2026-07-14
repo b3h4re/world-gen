@@ -14,6 +14,13 @@
 
 namespace {
 
+constexpr std::array PATCH_EDGES{
+    wgen::PlanetPatchEdge::UMin,
+    wgen::PlanetPatchEdge::UMax,
+    wgen::PlanetPatchEdge::VMin,
+    wgen::PlanetPatchEdge::VMax,
+};
+
 void testPatchValueTypes() {
     const wgen::PlanetPatchId first{
         .face = wgen::CubeSphereFace::Front,
@@ -393,19 +400,12 @@ void testFaceEdgeConnections() {
 }
 
 void testFaceEdgeConnectionsAreReciprocal() {
-    constexpr std::array EDGES{
-        wgen::PlanetPatchEdge::UMin,
-        wgen::PlanetPatchEdge::UMax,
-        wgen::PlanetPatchEdge::VMin,
-        wgen::PlanetPatchEdge::VMax,
-    };
-
     using EdgeEndpoint = std::pair<wgen::CubeSphereFace, wgen::PlanetPatchEdge>;
     using UndirectedEdge = std::pair<EdgeEndpoint, EdgeEndpoint>;
     std::set<UndirectedEdge> undirectedEdges;
 
     for (const wgen::CubeSphereFace face : wgen::FACES) {
-        for (const wgen::PlanetPatchEdge edge : EDGES) {
+        for (const wgen::PlanetPatchEdge edge : PATCH_EDGES) {
             const wgen::PlanetFaceEdgeConnection connection = wgen::faceEdgeConnection(face, edge);
             const wgen::PlanetFaceEdgeConnection reciprocal =
                 wgen::faceEdgeConnection(connection.face, connection.edge);
@@ -444,6 +444,170 @@ void testFaceEdgeConnectionValidation() {
         "face edge connection should reject an invalid edge");
 }
 
+void testInteriorSameLevelNeighbors() {
+    for (const wgen::CubeSphereFace face : wgen::FACES) {
+        const wgen::PlanetPatchId id{face, 3, 3, 4};
+        const std::array<wgen::PlanetPatchNeighbor, 4> expected{
+            wgen::PlanetPatchNeighbor{{face, 3, 2, 4}, wgen::PlanetPatchEdge::UMax, false},
+            wgen::PlanetPatchNeighbor{{face, 3, 4, 4}, wgen::PlanetPatchEdge::UMin, false},
+            wgen::PlanetPatchNeighbor{{face, 3, 3, 3}, wgen::PlanetPatchEdge::VMax, false},
+            wgen::PlanetPatchNeighbor{{face, 3, 3, 5}, wgen::PlanetPatchEdge::VMin, false},
+        };
+
+        for (std::size_t i = 0; i < PATCH_EDGES.size(); ++i) {
+            const wgen::PlanetPatchNeighbor actual = wgen::sameLevelNeighbor(id, PATCH_EDGES[i]);
+            wgen::tests::require(actual.id == expected[i].id, "interior neighbor patch ID is wrong");
+            wgen::tests::require(
+                actual.touchingEdge == expected[i].touchingEdge,
+                "interior neighbor touching edge is wrong");
+            wgen::tests::require(
+                !actual.edgeCoordinateReversed,
+                "interior neighbor should not reverse its edge coordinate");
+
+            const wgen::PlanetPatchNeighbor back =
+                wgen::sameLevelNeighbor(actual.id, actual.touchingEdge);
+            wgen::tests::require(back.id == id, "interior neighbor traversal should be reciprocal");
+            wgen::tests::require(back.touchingEdge == PATCH_EDGES[i], "interior reciprocal edge is wrong");
+        }
+    }
+}
+
+wgen::PlanetPatchId boundaryPatch(
+        wgen::CubeSphereFace face,
+        std::uint8_t level,
+        wgen::PlanetPatchEdge edge,
+        std::uint32_t edgeCoordinate) {
+    const std::uint32_t last = wgen::patchesPerAxis(level) - 1;
+    switch (edge) {
+        case wgen::PlanetPatchEdge::UMin: return {face, level, 0, edgeCoordinate};
+        case wgen::PlanetPatchEdge::UMax: return {face, level, last, edgeCoordinate};
+        case wgen::PlanetPatchEdge::VMin: return {face, level, edgeCoordinate, 0};
+        case wgen::PlanetPatchEdge::VMax: return {face, level, edgeCoordinate, last};
+    }
+    throw std::invalid_argument{"test patch edge is invalid"};
+}
+
+wgen::PlanetPatchId expectedCrossFaceNeighbor(
+        const wgen::PlanetPatchId& source,
+        wgen::PlanetPatchEdge sourceEdge,
+        const wgen::PlanetFaceEdgeConnection& connection) {
+    const std::uint32_t count = wgen::patchesPerAxis(source.level);
+    const std::uint32_t sourceCoordinate =
+        sourceEdge == wgen::PlanetPatchEdge::UMin || sourceEdge == wgen::PlanetPatchEdge::UMax
+        ? source.y
+        : source.x;
+    const std::uint32_t targetCoordinate = connection.coordinateReversed
+        ? count - 1 - sourceCoordinate
+        : sourceCoordinate;
+    return boundaryPatch(connection.face, source.level, connection.edge, targetCoordinate);
+}
+
+void testBoundarySameLevelNeighbors() {
+    for (std::uint8_t level = 0; level <= 5; ++level) {
+        const std::uint32_t count = wgen::patchesPerAxis(level);
+        for (const wgen::CubeSphereFace face : wgen::FACES) {
+            for (const wgen::PlanetPatchEdge edge : PATCH_EDGES) {
+                const wgen::PlanetFaceEdgeConnection connection = wgen::faceEdgeConnection(face, edge);
+                for (std::uint32_t edgeCoordinate = 0; edgeCoordinate < count; ++edgeCoordinate) {
+                    const wgen::PlanetPatchId id = boundaryPatch(face, level, edge, edgeCoordinate);
+                    const wgen::PlanetPatchNeighbor actual = wgen::sameLevelNeighbor(id, edge);
+                    const wgen::PlanetPatchId expected = expectedCrossFaceNeighbor(id, edge, connection);
+
+                    wgen::tests::require(actual.id == expected, "cross-face neighbor patch ID is wrong");
+                    wgen::tests::require(
+                        actual.touchingEdge == connection.edge,
+                        "cross-face neighbor touching edge is wrong");
+                    wgen::tests::require(
+                        actual.edgeCoordinateReversed == connection.coordinateReversed,
+                        "cross-face neighbor reversal flag is wrong");
+
+                    const wgen::PlanetPatchNeighbor back =
+                        wgen::sameLevelNeighbor(actual.id, actual.touchingEdge);
+                    wgen::tests::require(back.id == id, "cross-face neighbor traversal should be reciprocal");
+                    wgen::tests::require(back.touchingEdge == edge, "cross-face reciprocal edge is wrong");
+                    wgen::tests::require(
+                        back.edgeCoordinateReversed == actual.edgeCoordinateReversed,
+                        "cross-face reciprocal reversal flag is wrong");
+                }
+            }
+        }
+    }
+}
+
+wgen::PlanetPatchEdge otherCornerEdge(
+        const wgen::PlanetPatchId& id,
+        wgen::PlanetPatchEdge excludedEdge) {
+    const std::uint32_t last = wgen::patchesPerAxis(id.level) - 1;
+    const wgen::PlanetPatchEdge uEdge = id.x == 0
+        ? wgen::PlanetPatchEdge::UMin
+        : wgen::PlanetPatchEdge::UMax;
+    const wgen::PlanetPatchEdge vEdge = id.y == 0
+        ? wgen::PlanetPatchEdge::VMin
+        : wgen::PlanetPatchEdge::VMax;
+    wgen::tests::require(id.x == 0 || id.x == last, "test patch should touch a u boundary");
+    wgen::tests::require(id.y == 0 || id.y == last, "test patch should touch a v boundary");
+    wgen::tests::require(
+        excludedEdge == uEdge || excludedEdge == vEdge,
+        "excluded edge should touch the test patch corner");
+    return excludedEdge == uEdge ? vEdge : uEdge;
+}
+
+void testSameLevelNeighborCorners() {
+    for (std::uint8_t level = 1; level <= 5; ++level) {
+        const std::uint32_t last = wgen::patchesPerAxis(level) - 1;
+        for (const wgen::CubeSphereFace face : wgen::FACES) {
+            for (const bool useUMax : {false, true}) {
+                for (const bool useVMax : {false, true}) {
+                    const wgen::PlanetPatchId corner{
+                        face,
+                        level,
+                        useUMax ? last : 0,
+                        useVMax ? last : 0,
+                    };
+                    const wgen::PlanetPatchEdge uEdge = useUMax
+                        ? wgen::PlanetPatchEdge::UMax
+                        : wgen::PlanetPatchEdge::UMin;
+                    const wgen::PlanetPatchEdge vEdge = useVMax
+                        ? wgen::PlanetPatchEdge::VMax
+                        : wgen::PlanetPatchEdge::VMin;
+                    const wgen::PlanetPatchNeighbor acrossU = wgen::sameLevelNeighbor(corner, uEdge);
+                    const wgen::PlanetPatchNeighbor acrossV = wgen::sameLevelNeighbor(corner, vEdge);
+
+                    const wgen::PlanetPatchNeighbor uToV = wgen::sameLevelNeighbor(
+                        acrossU.id,
+                        otherCornerEdge(acrossU.id, acrossU.touchingEdge));
+                    const wgen::PlanetPatchNeighbor vToU = wgen::sameLevelNeighbor(
+                        acrossV.id,
+                        otherCornerEdge(acrossV.id, acrossV.touchingEdge));
+                    wgen::tests::require(
+                        uToV.id == acrossV.id,
+                        "cube corner traversal from the u neighbor should reach the v neighbor");
+                    wgen::tests::require(
+                        vToU.id == acrossU.id,
+                        "cube corner traversal from the v neighbor should reach the u neighbor");
+                }
+            }
+        }
+    }
+}
+
+void testSameLevelNeighborValidation() {
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
+            wgen::sameLevelNeighbor(
+                {wgen::CubeSphereFace::Top, 2, 4, 0},
+                wgen::PlanetPatchEdge::UMin);
+        },
+        "same-level neighbor should reject an invalid patch ID");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
+            wgen::sameLevelNeighbor(
+                {wgen::CubeSphereFace::Top, 0, 0, 0},
+                static_cast<wgen::PlanetPatchEdge>(4));
+        },
+        "same-level neighbor should reject an invalid edge");
+}
+
 } // namespace
 
 int main() {
@@ -462,6 +626,10 @@ int main() {
         wgen::tests::runTest("planet face edge connections", testFaceEdgeConnections);
         wgen::tests::runTest("planet face edge reciprocity", testFaceEdgeConnectionsAreReciprocal);
         wgen::tests::runTest("planet face edge validation", testFaceEdgeConnectionValidation);
+        wgen::tests::runTest("planet interior same-level neighbors", testInteriorSameLevelNeighbors);
+        wgen::tests::runTest("planet boundary same-level neighbors", testBoundarySameLevelNeighbors);
+        wgen::tests::runTest("planet same-level neighbor corners", testSameLevelNeighborCorners);
+        wgen::tests::runTest("planet same-level neighbor validation", testSameLevelNeighborValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

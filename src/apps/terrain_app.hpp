@@ -41,7 +41,7 @@ private:
     TerrainAppGui gui_;
     FrameLimiter limiter_;
     Exporter exporter_;
-    TerrainRenderModes renderMode_{TerrainRenderModes::FlatPicture};
+    TerrainRenderModes renderMode_{TerrainRenderModes::PlanetView};
 };
 
 } // namespace lve

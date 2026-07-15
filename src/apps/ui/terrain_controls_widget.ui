@@ -125,7 +125,7 @@
        <rect>
         <x>0</x>
         <y>20</y>
-        <width>221</width>
+        <width>233</width>
         <height>391</height>
        </rect>
       </property>
@@ -135,30 +135,6 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="terrainPipelineTab">
-          <attribute name="title">
-           <string>Terrain</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="terrainPipelineLayout">
-           <item>
-            <widget class="QListView" name="listView"/>
-           </item>
-           <item>
-            <widget class="QPushButton" name="addGeneratorButton">
-             <property name="text">
-              <string>Add</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="clearPipelineButton">
-             <property name="text">
-              <string>Clear</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
          <widget class="QWidget" name="planetPipelineTab">
           <attribute name="title">
            <string>Planet</string>
@@ -250,6 +226,30 @@
            </item>
            <item>
             <widget class="QPushButton" name="clearPlanetPipelineButton">
+             <property name="text">
+              <string>Clear</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="terrainPipelineTab">
+          <attribute name="title">
+           <string>Terrain</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="terrainPipelineLayout">
+           <item>
+            <widget class="QListView" name="listView"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="addGeneratorButton">
+             <property name="text">
+              <string>Add</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="clearPipelineButton">
              <property name="text">
               <string>Clear</string>
              </property>

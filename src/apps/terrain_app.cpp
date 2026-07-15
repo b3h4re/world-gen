@@ -38,6 +38,9 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .planetShapeChanged = [this](std::size_t resolution, float radius) {
                   applyPlanetShape(resolution, radius);
               },
+              .fixedPlanetPatchLevelChanged = [this](std::uint8_t level) {
+                  core_.requestFixedPlanetPatchLevel(level);
+              },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
               },

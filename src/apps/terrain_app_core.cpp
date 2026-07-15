@@ -5,8 +5,7 @@
 #include "terrain/generators/3d/generator_factory.hpp"
 #include "terrain/utils/hash_random.hpp"
 #include "terrain/terrain.hpp"
-#include "terrain/planet/cube_sphere.hpp"
-#include "renderer/objects/mesh_3d.hpp"
+#include "terrain/planet/planet_patch_mesh.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -18,8 +17,6 @@
 #include <random>
 #include <stdexcept>
 #include <utility>
-#include <limits>
-#include <stdexcept>
 
 namespace lve {
 
@@ -90,53 +87,6 @@ void appendHeightMapMesh3d(
     }
 }
 
-void appendCubeSphereMesh(
-        const wgen::CubeSphere<float>& cubeSphere,
-        std::vector<Vertex3d>& vertices,
-        std::vector<std::uint32_t>& indices) {
-    const std::size_t resolution = cubeSphere.resolution();
-    if (resolution < 2) {
-        throw std::invalid_argument("cube sphere mesh requires a face resolution of at least 2");
-    }
-    if (resolution > std::numeric_limits<std::uint32_t>::max() / resolution ||
-            resolution * resolution > std::numeric_limits<std::uint32_t>::max() / wgen::FACES.size()) {
-        throw std::overflow_error("cube sphere mesh vertex count overflows uint32_t indices");
-    }
-
-    vertices.reserve(vertices.size() + wgen::FACES.size() * resolution * resolution);
-    indices.reserve(indices.size() + wgen::FACES.size() * (resolution - 1) * (resolution - 1) * 6);
-
-    const float radius = cubeSphere.radius();
-    for (const wgen::CubeSphereFace face : wgen::FACES) {
-        for (std::size_t y = 0; y < resolution; ++y) {
-            for (std::size_t x = 0; x < resolution; ++x) {
-                const float height = cubeSphere.at(face, x, y);
-                const glm::vec3 position = cubeSphere.pointUnitDir(face, x, y) * (height + radius) / radius;
-                vertices.push_back({
-                    .position = position,
-                    .height = height,
-                });
-            }
-        }
-    }
-
-    for (const wgen::CubeSphereFace face : wgen::FACES) {
-        const std::size_t faceOffset = wgen::faceID(face) * resolution * resolution;
-        for (std::size_t y = 0; y + 1 < resolution; ++y) {
-            for (std::size_t x = 0; x + 1 < resolution; ++x) {
-                const auto topLeft = static_cast<std::uint32_t>(faceOffset + y * resolution + x);
-                const auto topRight = static_cast<std::uint32_t>(faceOffset + y * resolution + x + 1);
-                const auto bottomLeft = static_cast<std::uint32_t>(faceOffset + (y + 1) * resolution + x);
-                const auto bottomRight = static_cast<std::uint32_t>(faceOffset + (y + 1) * resolution + x + 1);
-
-                indices.insert(
-                    indices.end(),
-                    {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
-            }
-        }
-    }
-}
-
 TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
@@ -151,7 +101,7 @@ TerrainMeshData TerrainAppCore::loadTerrain() {
     activeHeightMap_ = generateHeightMap(config_.terrainConfig).normal();
     activeCubeSphere_ = generateCubeSphere(config_.terrainConfig, config_.planetConfig);
     activeCubeSphere_.normalize();
-    return buildMeshData(activeHeightMap_, activeCubeSphere_);
+    return buildMeshData(activeHeightMap_, activeCubeSphere_, fixedPlanetPatchLevel_);
 }
 
 void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target) {
@@ -163,9 +113,10 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
     const auto terrainConfig = config_.terrainConfig;
     const auto planetConfig = config_.planetConfig;
     const auto colorFunc = getActiveColorFunc();
+    const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
 
     terrainJobRunning_ = true;
-    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, planetConfig, colorFunc, target] {
+    terrainGenerationJob_ = std::async(std::launch::async, [this, terrainConfig, planetConfig, colorFunc, target, planetPatchLevel] {
         wgen::HeightMap<float> heightMap;
         wgen::CubeSphere<float> cubeSphere;
 
@@ -207,11 +158,7 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
             result.data.indices3d
         );
 
-        appendCubeSphereMesh(
-            result.cubeSphere,
-            result.data.verticesPlanet,
-            result.data.indicesPlanet
-        );
+        result.data.planetPatches = buildFixedLevelPlanetPatchMeshes(result.cubeSphere, planetPatchLevel);
 
         return result;
     });
@@ -262,6 +209,25 @@ void TerrainAppCore::setPlanetShape(std::size_t resolution, float radius) {
     config_.planetConfig.radius = radius;
 }
 
+void TerrainAppCore::requestFixedPlanetPatchLevel(std::uint8_t level) {
+    if (level > MAX_FIXED_PLANET_PATCH_LEVEL) {
+        throw std::invalid_argument("fixed planet patch level exceeds the supported maximum");
+    }
+    if (level == fixedPlanetPatchLevel_) {
+        return;
+    }
+
+    fixedPlanetPatchLevel_ = level;
+    if (terrainJobRunning_) {
+        planetRemeshPending_ = true;
+        return;
+    }
+
+    if (activeCubeSphere_.resolution() >= 2) {
+        startPlanetRemeshJob();
+    }
+}
+
 wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
     return pipelineSpec_;
 }
@@ -280,6 +246,9 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
         activeHeightMap_ = result.heightMap;
         activeCubeSphere_ = result.cubeSphere;
         terrainJobRunning_ = false;
+        if (planetRemeshPending_) {
+            startPlanetRemeshJob();
+        }
         return result;
     }
 
@@ -485,12 +454,31 @@ wgen::CubeSphere<float> TerrainAppCore::generateCubeSphereGpu(
 
 TerrainMeshData TerrainAppCore::buildMeshData(
         const wgen::HeightMap<float>& heightMap,
-        const wgen::CubeSphere<float>& cubeSphere) {
+        const wgen::CubeSphere<float>& cubeSphere,
+        std::uint8_t planetPatchLevel) {
     TerrainMeshData data;
     appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
     appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
-    appendCubeSphereMesh(cubeSphere, data.verticesPlanet, data.indicesPlanet);
+    data.planetPatches = buildFixedLevelPlanetPatchMeshes(cubeSphere, planetPatchLevel);
     return data;
+}
+
+void TerrainAppCore::startPlanetRemeshJob() {
+    const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
+    wgen::HeightMap<float> heightMap = activeHeightMap_;
+    wgen::CubeSphere<float> cubeSphere = activeCubeSphere_;
+
+    planetRemeshPending_ = false;
+    terrainJobRunning_ = true;
+    terrainGenerationJob_ = std::async(
+        std::launch::async,
+        [heightMap = std::move(heightMap), cubeSphere = std::move(cubeSphere), planetPatchLevel]() mutable {
+            TerrainJobResult result;
+            result.heightMap = std::move(heightMap);
+            result.cubeSphere = std::move(cubeSphere);
+            result.data = buildMeshData(result.heightMap, result.cubeSphere, planetPatchLevel);
+            return result;
+        });
 }
 
 std::function<glm::vec3(float)> TerrainAppCore::getActiveColorFunc() const {

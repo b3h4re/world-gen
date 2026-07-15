@@ -10,14 +10,10 @@
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
 #include "terrain/generators/3d/terrain_pipeline.hpp"
+#include "terrain/planet/planet_patch_mesh.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
 #include "terrain/planet/cube_sphere.hpp"
-#include "terrain/planet/cube_sphere.hpp"
-#include "renderer/objects/mesh_3d.hpp"
-
-#include <cstdint>
-#include <vector>
 
 #include <cstdint>
 #include <future>
@@ -33,9 +29,7 @@ struct TerrainMeshData {
     std::vector<std::uint32_t> indices2d;
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
-    std::vector<Vertex3d> verticesPlanet;
-    std::vector<std::uint32_t> indicesPlanet;
-
+    std::vector<PlanetPatchMeshData> planetPatches;
 };
 
 struct TerrainJobResult {
@@ -58,11 +52,6 @@ void appendHeightMapMesh3d(
     std::vector<Vertex3d>& vertices,
     std::vector<std::uint32_t>& indices);
 
-void appendCubeSphereMesh(
-    const wgen::CubeSphere<float>& cubeSphere,
-    std::vector<Vertex3d>& vertices,
-    std::vector<std::uint32_t>& indices);
-
 class TerrainAppCore {
 public:
     TerrainAppCore();
@@ -77,6 +66,7 @@ public:
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
     void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);
     void setPlanetShape(std::size_t resolution, float radius);
+    void requestFixedPlanetPatchLevel(std::uint8_t level);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
@@ -114,9 +104,11 @@ private:
         std::size_t resolution,
         float radius);
 
-    TerrainMeshData buildMeshData(
+    static TerrainMeshData buildMeshData(
         const wgen::HeightMap<float>& heightMap,
-        const wgen::CubeSphere<float>& cubeSphere);
+        const wgen::CubeSphere<float>& cubeSphere,
+        std::uint8_t planetPatchLevel);
+    void startPlanetRemeshJob();
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
     wgen::AppConfig config_{};
@@ -134,6 +126,8 @@ private:
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};
+    std::uint8_t fixedPlanetPatchLevel_{0};
+    bool planetRemeshPending_{false};
     std::mutex generatorsMutex_{};
 };
 

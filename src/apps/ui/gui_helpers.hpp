@@ -5,6 +5,7 @@
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
 
+#include <cstdint>
 #include <functional>
 
 namespace lve {
@@ -22,6 +23,7 @@ struct Callbacks {
     std::function<void(wgen::GeneratorPipelineSpec)> pipelineChanged;
     std::function<void(wgen::Generator3dPipelineSpec)> planetPipelineChanged;
     std::function<void(std::size_t, float)> planetShapeChanged;
+    std::function<void(std::uint8_t)> fixedPlanetPatchLevelChanged;
     std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
     std::function<wgen::Generator3dPipelineSpec()> currentPlanetPipeline;
     std::function<wgen::AppConfig()> getConfig;

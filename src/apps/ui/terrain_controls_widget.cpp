@@ -104,6 +104,11 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     connect(ui_->planetRadiusSpinBox, &QDoubleSpinBox::valueChanged, this, [notifyPlanetShapeChanged](double) {
         notifyPlanetShapeChanged();
     });
+    connect(ui_->fixedPlanetPatchLevelSpinBox, &QSpinBox::valueChanged, this, [this](int level) {
+        if (callbacks_.fixedPlanetPatchLevelChanged) {
+            callbacks_.fixedPlanetPatchLevelChanged(static_cast<std::uint8_t>(level));
+        }
+    });
 
     auto notifyPipelineChanged = [this] {
         if (callbacks_.pipelineChanged) {

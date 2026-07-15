@@ -96,8 +96,11 @@ std::vector<GameObject3d> TerrainAppRenderer::makeObjects3d(const TerrainMeshDat
 
 std::vector<GameObject3d> TerrainAppRenderer::makeObjectsPlanet(const TerrainMeshData& data) {
     std::vector<GameObject3d> objects;
-    auto mesh = std::make_shared<Mesh3d>(device_, data.verticesPlanet, data.indicesPlanet);
-    objects.push_back({std::move(mesh), {}});
+    objects.reserve(data.planetPatches.size());
+    for (const PlanetPatchMeshData& patch : data.planetPatches) {
+        auto mesh = std::make_shared<Mesh3d>(device_, patch.vertices, patch.indices);
+        objects.push_back({std::move(mesh), {}});
+    }
     return objects;
 }
 

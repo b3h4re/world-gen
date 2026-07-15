@@ -12,6 +12,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -48,6 +49,7 @@ public:
 
     void applyTerrainMesh(int frameIndex, TerrainPlaneMeshData data);
     void applyPlanetPatchBatch(int frameIndex, PlanetPatchMeshBatch batch);
+    void setPlanetDrawPatches(std::span<const wgen::PlanetPatchId> ids);
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
     void shutdownVulkanResources();
@@ -63,6 +65,7 @@ public:
     const std::vector<GameObject2d>& objects2d() const { return objects2d_; }
     const std::vector<GameObject3d>& objects3d() const { return objects3d_; }
     const std::vector<GameObject3d>& objectsPlanet() const { return objectsPlanet_; }
+    std::size_t residentPlanetPatchCount() const { return residentPlanetPatches_.size(); }
 
 private:
     void initDescriptorPool();

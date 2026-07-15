@@ -172,7 +172,34 @@ void testEmptyAndConstantFieldsReturnZero() {
 
     wgen::tests::expectNear(empty->sample(surface, 0), 0.0F, 0.0F, "empty field should return zero");
     wgen::tests::expectNear(constant->sample(surface, 0), 0.0F, 0.0F, "constant field should return zero");
+    wgen::tests::expectNear(empty->maximumAbsoluteHeight(), 0.0F, 0.0F, "empty field should have a zero height bound");
+    wgen::tests::expectNear(constant->maximumAbsoluteHeight(), 0.0F, 0.0F, "constant field should have a zero height bound");
     wgen::tests::require(constant->calibration().scale == 0.0F, "constant field should have zero calibration scale");
+}
+
+void testConservativeHeightBound() {
+    wgen::Generator3dSpec broad = makeSpec(0, 0);
+    broad.scale = -1.25F;
+    wgen::Generator3dSpec detail = makeSpec(2, 3);
+    detail.scale = 0.8F;
+    const auto field = wgen::buildTerrainFieldSnapshot({broad, detail}, 53, 100.0F);
+    const float bound = field->maximumAbsoluteHeight();
+    wgen::tests::require(std::isfinite(bound) && bound > 0.0F, "terrain field height bound must be finite and positive");
+
+    constexpr std::size_t resolution = 17;
+    constexpr std::uint8_t detailLevels[]{0, 2, 3, wgen::MAX_PLANET_PATCH_LEVEL};
+    for (const std::uint8_t detailLevel : detailLevels) {
+        const wgen::CubeSphere<float> samples = field->generateCubeSphere(resolution, detailLevel);
+        for (const wgen::CubeSphereFace face : wgen::FACES) {
+            for (std::size_t y = 0; y < resolution; ++y) {
+                for (std::size_t x = 0; x < resolution; ++x) {
+                    wgen::tests::require(
+                        std::abs(samples.at(face, x, y)) <= bound + 0.0001F,
+                        "terrain sample exceeded the conservative field height bound");
+                }
+            }
+        }
+    }
 }
 
 void testSeamsAndArbitraryDenseResolution() {
@@ -251,6 +278,7 @@ int main() {
         wgen::tests::runTest("terrain field compute metadata", testComputeMetadataDoesNotChangeRuntimeSampling);
         wgen::tests::runTest("terrain field determinism", testDeterminismAndSeedChanges);
         wgen::tests::runTest("terrain field constant handling", testEmptyAndConstantFieldsReturnZero);
+        wgen::tests::runTest("terrain field conservative height bound", testConservativeHeightBound);
         wgen::tests::runTest("terrain field seams and dense output", testSeamsAndArbitraryDenseResolution);
         wgen::tests::runTest("terrain field validation", testValidation);
     } catch (const std::exception& exception) {

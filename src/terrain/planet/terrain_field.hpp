@@ -37,6 +37,7 @@ public:
         std::uint8_t maxDetailLevel) const;
 
     float radius() const { return radius_; }
+    float maximumAbsoluteHeight() const { return maximumAbsoluteHeight_; }
     const TerrainHeightCalibration& calibration() const { return calibration_; }
 
 private:
@@ -51,6 +52,8 @@ private:
 
     std::vector<Contributor> contributors_{};
     float radius_{};
+    float maximumAbsoluteRawHeight_{};
+    float maximumAbsoluteHeight_{};
     TerrainHeightCalibration calibration_{};
 };
 

@@ -54,10 +54,18 @@ TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, floa
             amplitude,
             spec.firstVisibleLod,
         });
+        maximumAbsoluteRawHeight_ +=
+            std::abs(amplitude) * generator3dMaximumAbsoluteNoise(spec.kind);
+        if (!std::isfinite(maximumAbsoluteRawHeight_)) {
+            throw std::overflow_error{"terrain field height bound is not finite"};
+        }
         generatorSeed = hashSeed(generatorSeed);
     }
 
     calibrate();
+    maximumAbsoluteHeight_ = std::max(
+        std::abs(calibration_.apply(-maximumAbsoluteRawHeight_)),
+        std::abs(calibration_.apply(maximumAbsoluteRawHeight_)));
 }
 
 float TerrainField::sample(const PlanetSurfaceSample& surface, std::uint8_t maxDetailLevel) const {

@@ -38,8 +38,8 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .planetShapeChanged = [this](std::size_t resolution, float radius) {
                   applyPlanetShape(resolution, radius);
               },
-              .fixedPlanetPatchLevelChanged = [this](std::uint8_t level) {
-                  core_.requestFixedPlanetPatchLevel(level);
+              .maximumPlanetPatchLevelChanged = [this](std::uint8_t level) {
+                  core_.setMaximumPlanetPatchLevel(level);
               },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
@@ -182,12 +182,26 @@ void TerrainApp::run() {
 
         updateCamerasStatus(cameraTargets);
         appInputSystem.updateCameras(input, frameTime, lveRenderer.getAspectRatio(), cameraTargets);
+        if (renderMode_ == TerrainRenderModes::PlanetView) {
+            core_.updatePlanetLod({
+                .position = glm::dvec3{cameraPlanet.position()},
+                .forward = glm::dvec3{cameraPlanet.forward()},
+                .right = glm::dvec3{cameraPlanet.right()},
+                .up = glm::dvec3{cameraPlanet.up()},
+                .verticalFov = cameraPlanet.verticalFov(),
+                .aspectRatio = cameraPlanet.aspectRatio(),
+                .nearPlane = cameraPlanet.nearPlane(),
+                .farPlane = cameraPlanet.farPlane(),
+                .viewportHeight = lveRenderer.getViewportHeight(),
+            });
+        }
 
         if (const VkCommandBuffer commandBuffer = lveRenderer.beginFrame()) {
             const int frameIndex = lveRenderer.getFrameIndex();
 
             renderer_.clearRetiredObjects(frameIndex);
             applyFinishedTerrainJob(frameIndex);
+            renderer_.setPlanetDrawPatches(core_.planetDrawPatchIds());
 
             FrameInfo frameInfo{
                 frameIndex,
@@ -227,7 +241,7 @@ void TerrainApp::run() {
 
             lveRenderer.beginSwapChainRenderPass(commandBuffer);
             terrainRenderSystem.render(frameInfo);
-            if (core_.isTerrainJobRunning()) {
+            if (core_.isBlockingTerrainJobRunning()) {
                 loadingOverlaySystem.render(commandBuffer, frameTime);
             }
             lveRenderer.endSwapChainRenderPass(commandBuffer);

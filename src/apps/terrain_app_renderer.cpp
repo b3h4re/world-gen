@@ -103,12 +103,14 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
     }
 
     std::vector<wgen::PlanetPatchId> nextDrawOrder;
-    nextDrawOrder.reserve(nextResidents.size());
-    for (const auto& [id, resident] : nextResidents) {
-        static_cast<void>(resident);
-        nextDrawOrder.push_back(id);
+    if (!replacesEpoch) {
+        nextDrawOrder.reserve(planetDrawOrder_.size());
+        for (const wgen::PlanetPatchId& id : planetDrawOrder_) {
+            if (nextResidents.contains(id)) {
+                nextDrawOrder.push_back(id);
+            }
+        }
     }
-    std::sort(nextDrawOrder.begin(), nextDrawOrder.end(), wgen::PlanetPatchIdLess{});
 
     std::vector<GameObject3d> nextObjectsPlanet;
     nextObjectsPlanet.reserve(nextDrawOrder.size());
@@ -134,6 +136,31 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
         retired.push_back(std::move(nextResidents.at(id).object));
     }
     activePlanetEpoch_ = batch.terrainEpoch;
+}
+
+void TerrainAppRenderer::setPlanetDrawPatches(
+        std::span<const wgen::PlanetPatchId> ids) {
+    std::vector<wgen::PlanetPatchId> nextDrawOrder{ids.begin(), ids.end()};
+    for (const wgen::PlanetPatchId& id : nextDrawOrder) {
+        wgen::validate(id);
+        const auto resident = residentPlanetPatches_.find(id);
+        if (resident == residentPlanetPatches_.end() ||
+                resident->second.version.terrainEpoch != activePlanetEpoch_) {
+            throw std::invalid_argument{"planet draw patch is not resident in the active epoch"};
+        }
+    }
+    std::sort(nextDrawOrder.begin(), nextDrawOrder.end(), wgen::PlanetPatchIdLess{});
+    if (std::adjacent_find(nextDrawOrder.begin(), nextDrawOrder.end()) != nextDrawOrder.end()) {
+        throw std::invalid_argument{"planet draw patch list contains duplicate IDs"};
+    }
+
+    std::vector<GameObject3d> nextObjectsPlanet;
+    nextObjectsPlanet.reserve(nextDrawOrder.size());
+    for (const wgen::PlanetPatchId& id : nextDrawOrder) {
+        nextObjectsPlanet.push_back(residentPlanetPatches_.at(id).object);
+    }
+    planetDrawOrder_.swap(nextDrawOrder);
+    objectsPlanet_.swap(nextObjectsPlanet);
 }
 
 void TerrainAppRenderer::clearRetiredObjects(int frameIndex) {

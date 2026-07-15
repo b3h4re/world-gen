@@ -8,6 +8,7 @@
 #include "terrain/generators/2d/generator.hpp"
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
+#include "terrain/planet/planet_lod_coordinator.hpp"
 #include "terrain/planet/planet_patch_mesh.hpp"
 #include "terrain/planet/terrain_field.hpp"
 #include "utils/thread_pool.hpp"
@@ -18,7 +19,6 @@
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <unordered_set>
 #include <vector>
 
 namespace lve {
@@ -65,11 +65,16 @@ public:
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
     void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);
     void setPlanetShape(std::size_t resolution, float radius);
-    void requestFixedPlanetPatchLevel(std::uint8_t level);
+    void setMaximumPlanetPatchLevel(std::uint8_t level);
+    void updatePlanetLod(const wgen::PlanetLodView& view);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
     bool isTerrainJobRunning() const { return terrainJobRunning_; }
+    bool isBlockingTerrainJobRunning() const;
+    const std::vector<wgen::PlanetPatchId>& planetDrawPatchIds() const {
+        return planetLodCoordinator_.visibleActiveLeaves();
+    }
 
     const wgen::AppConfig& config() const { return config_; }
 
@@ -98,13 +103,18 @@ private:
     static TerrainPlaneMeshData buildPlaneMeshData(const wgen::HeightMap<float>& heightMap);
     static PlanetPatchMeshBatch buildPlanetPatchBatch(
         const wgen::TerrainFieldSnapshot& terrainField,
-        std::uint8_t planetPatchLevel,
         const PlanetPatchVersion& version,
-        const std::vector<wgen::PlanetPatchId>& publishedIds);
-    std::vector<wgen::PlanetPatchId> publishedPlanetPatchIds() const;
+        const std::vector<wgen::PlanetPatchId>& upsertIds,
+        const std::vector<wgen::PlanetPatchId>& removalIds);
     void publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch);
-    void startPlanetRemeshJob();
+    void startPlanetLodJob(wgen::PlanetLodPatchPlan plan);
     std::function<glm::vec3(float)> getActiveColorFunc() const;
+
+    enum class TerrainJobKind {
+        None,
+        Regeneration,
+        PlanetLodStreaming,
+    };
 
     wgen::AppConfig config_{};
     wgen::GeneratorPipelineSpec pipelineSpec_{};
@@ -120,12 +130,12 @@ private:
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};
-    std::uint8_t fixedPlanetPatchLevel_{0};
-    bool planetRemeshPending_{false};
+    TerrainJobKind terrainJobKind_{TerrainJobKind::None};
+    bool planetLodSelectionDirty_{true};
     std::uint64_t nextTerrainEpoch_{0};
     std::uint64_t activeTerrainEpoch_{0};
     std::uint64_t desiredPlanetRequestRevision_{0};
-    std::unordered_set<wgen::PlanetPatchId, wgen::PlanetPatchIdHash> publishedPlanetPatchIds_{};
+    wgen::PlanetLodCoordinator planetLodCoordinator_{};
     std::mutex generatorsMutex_{};
 };
 

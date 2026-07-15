@@ -14,10 +14,26 @@ public:
     const glm::mat4 &projection() const { return projection_; }
     const glm::mat4 &view() const { return view_; }
     glm::mat4 projectionView() const { return projection_ * view_; }
+    const glm::vec3& position() const { return position_; }
+    const glm::vec3& forward() const { return forward_; }
+    const glm::vec3& right() const { return right_; }
+    const glm::vec3& up() const { return up_; }
+    float verticalFov() const { return verticalFov_; }
+    float aspectRatio() const { return aspectRatio_; }
+    float nearPlane() const { return nearPlane_; }
+    float farPlane() const { return farPlane_; }
 
 private:
     glm::mat4 projection_{1.0F};
     glm::mat4 view_{1.0F};
+    glm::vec3 position_{};
+    glm::vec3 forward_{0.0F, 0.0F, -1.0F};
+    glm::vec3 right_{1.0F, 0.0F, 0.0F};
+    glm::vec3 up_{0.0F, 1.0F, 0.0F};
+    float verticalFov_{};
+    float aspectRatio_{};
+    float nearPlane_{};
+    float farPlane_{};
 };
 
 } // namespace lve

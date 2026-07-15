@@ -7,6 +7,7 @@
 #include "files/exporter.hpp"
 #include "planet_pipeline_list_model.hpp"
 #include "terrain_pipeline_list_model.hpp"
+#include "terrain/planet/planet_lod_selector.hpp"
 #include "ui_terrain_controls_widget.h"
 
 #include <QAbstractItemModel>
@@ -104,9 +105,11 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
     connect(ui_->planetRadiusSpinBox, &QDoubleSpinBox::valueChanged, this, [notifyPlanetShapeChanged](double) {
         notifyPlanetShapeChanged();
     });
-    connect(ui_->fixedPlanetPatchLevelSpinBox, &QSpinBox::valueChanged, this, [this](int level) {
-        if (callbacks_.fixedPlanetPatchLevelChanged) {
-            callbacks_.fixedPlanetPatchLevelChanged(static_cast<std::uint8_t>(level));
+    ui_->maximumPlanetPatchLevelSpinBox->setMaximum(wgen::MAX_PLANET_PATCH_LEVEL);
+    ui_->maximumPlanetPatchLevelSpinBox->setValue(wgen::DEFAULT_PLANET_MAX_LOD);
+    connect(ui_->maximumPlanetPatchLevelSpinBox, &QSpinBox::valueChanged, this, [this](int level) {
+        if (callbacks_.maximumPlanetPatchLevelChanged) {
+            callbacks_.maximumPlanetPatchLevelChanged(static_cast<std::uint8_t>(level));
         }
     });
 

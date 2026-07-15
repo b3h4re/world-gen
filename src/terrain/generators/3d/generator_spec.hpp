@@ -27,6 +27,14 @@ constexpr bool generator3dSupportsOctaves(Generator3dKind) {
     return true;
 }
 
+constexpr float generator3dMaximumAbsoluteNoise(Generator3dKind kind) {
+    switch (kind) {
+        case Generator3dKind::PerlinNoise:
+            return 1.7320508F;
+    }
+    return 0.0F;
+}
+
 struct PerlinNoise3dGeneratorSpec {
     float cellSize{0.5F};
 };

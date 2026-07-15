@@ -35,11 +35,11 @@ namespace lve {
             VkImageView getImageView(int index) { return swapChainImageViews[index]; }
             size_t imageCount() { return swapChainImages.size(); }
             VkFormat getSwapChainImageFormat() { return swapChainImageFormat; }
-            VkExtent2D getSwapChainExtent() { return swapChainExtent; }
-            uint32_t width() { return swapChainExtent.width; }
-            uint32_t height() { return swapChainExtent.height; }
+            VkExtent2D getSwapChainExtent() const { return swapChainExtent; }
+            uint32_t width() const { return swapChainExtent.width; }
+            uint32_t height() const { return swapChainExtent.height; }
 
-            float extentAspectRatio() {
+            float extentAspectRatio() const {
                 return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
             }
             VkFormat findDepthFormat();

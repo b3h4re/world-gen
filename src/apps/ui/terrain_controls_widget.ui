@@ -193,22 +193,22 @@
               </widget>
              </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="fixedPlanetPatchLevelLabel">
+              <widget class="QLabel" name="maximumPlanetPatchLevelLabel">
                <property name="text">
-                <string>Fixed patch LOD</string>
+                <string>Maximum patch LOD</string>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QSpinBox" name="fixedPlanetPatchLevelSpinBox">
+              <widget class="QSpinBox" name="maximumPlanetPatchLevelSpinBox">
                <property name="minimum">
                 <number>0</number>
                </property>
                <property name="maximum">
-                <number>3</number>
+                <number>24</number>
                </property>
                <property name="value">
-                <number>0</number>
+                <number>10</number>
                </property>
               </widget>
              </item>

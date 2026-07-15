@@ -109,7 +109,6 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
     const auto planetPipelineSpec = planetPipelineSpec_;
     const auto previousHeightMap = activeHeightMap_;
     const auto previousTerrainField = activeTerrainField_;
-    const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
     const bool buildPlane = target == TerrainGenerationTarget::Terrain ||
         target == TerrainGenerationTarget::All;
     const bool buildPlanet = target == TerrainGenerationTarget::Planet ||
@@ -120,9 +119,10 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
     const std::uint64_t requestRevision = buildPlanet
         ? ++desiredPlanetRequestRevision_
         : desiredPlanetRequestRevision_;
-    const std::vector<wgen::PlanetPatchId> publishedIds = publishedPlanetPatchIds();
+    const std::vector<wgen::PlanetPatchId> rootIds = fixedLevelPlanetPatchIds(0);
 
     terrainJobRunning_ = true;
+    terrainJobKind_ = TerrainJobKind::Regeneration;
     terrainGenerationJob_ = std::async(std::launch::async, [
         this,
         terrainConfig,
@@ -131,12 +131,11 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
         previousHeightMap,
         previousTerrainField,
         target,
-        planetPatchLevel,
         buildPlane,
         buildPlanet,
         terrainEpoch,
         requestRevision,
-        publishedIds
+        rootIds
     ] {
         wgen::HeightMap<float> heightMap;
         wgen::TerrainFieldSnapshot terrainField;
@@ -170,13 +169,13 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
         if (buildPlanet) {
             result.planetBatch = buildPlanetPatchBatch(
                 result.terrainField,
-                planetPatchLevel,
                 PlanetPatchVersion{
                     .terrainEpoch = terrainEpoch,
                     .dependencyRevision = 0,
                     .requestRevision = requestRevision,
                 },
-                publishedIds);
+                rootIds,
+                {});
         }
 
         return result;
@@ -228,24 +227,38 @@ void TerrainAppCore::setPlanetShape(std::size_t resolution, float radius) {
     config_.planetConfig.radius = radius;
 }
 
-void TerrainAppCore::requestFixedPlanetPatchLevel(std::uint8_t level) {
-    if (level > MAX_FIXED_PLANET_PATCH_LEVEL) {
-        throw std::invalid_argument("fixed planet patch level exceeds the supported maximum");
-    }
-    if (level == fixedPlanetPatchLevel_) {
+void TerrainAppCore::setMaximumPlanetPatchLevel(std::uint8_t level) {
+    if (level == planetLodCoordinator_.lodConfig().maximumLevel) {
         return;
     }
 
-    fixedPlanetPatchLevel_ = level;
-    ++desiredPlanetRequestRevision_;
+    planetLodCoordinator_.setMaximumLevel(level);
+    planetLodSelectionDirty_ = true;
+}
+
+void TerrainAppCore::updatePlanetLod(const wgen::PlanetLodView& view) {
     if (terrainJobRunning_) {
-        planetRemeshPending_ = true;
+        planetLodCoordinator_.updateVisibility(view);
+        return;
+    }
+    if (activeTerrainField_ == nullptr || activeTerrainEpoch_ == 0) {
         return;
     }
 
-    if (activeTerrainField_ != nullptr) {
-        startPlanetRemeshJob();
+    const bool selectionChanged = planetLodCoordinator_.updateSelection(view);
+    if (selectionChanged || planetLodSelectionDirty_) {
+        ++desiredPlanetRequestRevision_;
+        planetLodSelectionDirty_ = false;
     }
+
+    wgen::PlanetLodPatchPlan plan = planetLodCoordinator_.makePatchPlan();
+    if (!plan.upserts.empty() || !plan.removals.empty()) {
+        startPlanetLodJob(std::move(plan));
+    }
+}
+
+bool TerrainAppCore::isBlockingTerrainJobRunning() const {
+    return terrainJobRunning_ && terrainJobKind_ == TerrainJobKind::Regeneration;
 }
 
 wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
@@ -263,17 +276,29 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
 
     if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
         TerrainJobResult result = terrainGenerationJob_.get();
+        const bool replacesPlanetEpoch = result.planetBatch &&
+            result.terrainEpoch != activeTerrainEpoch_;
         activeHeightMap_ = result.heightMap;
         activeTerrainField_ = result.terrainField;
         activeTerrainEpoch_ = result.terrainEpoch;
         terrainJobRunning_ = false;
-        if (!discardStalePlanetPatchMeshBatch(
+        terrainJobKind_ = TerrainJobKind::None;
+        const bool discardedPlanetBatch = discardStalePlanetPatchMeshBatch(
                 result.planetBatch,
-                desiredPlanetRequestRevision_) && result.planetBatch) {
+                desiredPlanetRequestRevision_);
+        if (discardedPlanetBatch) {
+            planetLodCoordinator_.cancelPendingRequests();
+        } else if (result.planetBatch) {
+            if (replacesPlanetEpoch) {
+                planetLodCoordinator_.reset();
+                planetLodCoordinator_.setSurface({
+                    .radius = 1.0,
+                    .maximumDisplacement = activeTerrainField_->maximumAbsoluteHeight() /
+                        activeTerrainField_->radius(),
+                });
+                planetLodSelectionDirty_ = true;
+            }
             publishPlanetPatchBatch(*result.planetBatch);
-        }
-        if (planetRemeshPending_) {
-            startPlanetRemeshJob();
         }
         return result;
     }
@@ -441,63 +466,70 @@ TerrainPlaneMeshData TerrainAppCore::buildPlaneMeshData(
 
 PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
         const wgen::TerrainFieldSnapshot& terrainField,
-        std::uint8_t planetPatchLevel,
         const PlanetPatchVersion& version,
-        const std::vector<wgen::PlanetPatchId>& publishedIds) {
+        const std::vector<wgen::PlanetPatchId>& upsertIds,
+        const std::vector<wgen::PlanetPatchId>& removalIds) {
     if (terrainField == nullptr) {
         throw std::invalid_argument("planet patch batch requires a terrain field snapshot");
     }
 
-    return makePlanetPatchMeshBatch(
-        buildFixedLevelPlanetPatchMeshes(
-            terrainField->radius(),
-            planetPatchLevel,
-            version,
-            [&terrainField, planetPatchLevel](const wgen::PlanetSurfaceSample& surface) {
-                return terrainField->sample(surface, planetPatchLevel);
-            }),
-        publishedIds,
-        version.terrainEpoch,
-        version.requestRevision);
-}
-
-std::vector<wgen::PlanetPatchId> TerrainAppCore::publishedPlanetPatchIds() const {
-    std::vector<wgen::PlanetPatchId> result{
-        publishedPlanetPatchIds_.begin(),
-        publishedPlanetPatchIds_.end(),
+    PlanetPatchMeshBatch batch{
+        .terrainEpoch = version.terrainEpoch,
+        .requestRevision = version.requestRevision,
     };
-    std::sort(result.begin(), result.end(), wgen::PlanetPatchIdLess{});
-    return result;
+    batch.upserts.reserve(upsertIds.size());
+    for (const wgen::PlanetPatchId& id : upsertIds) {
+        batch.upserts.push_back(buildRequestedPlanetPatchMesh(
+            PlanetPatchMeshRequest{.id = id, .version = version},
+            PLANET_PATCH_QUADS,
+            terrainField->radius(),
+            [&terrainField, id](const wgen::PlanetSurfaceSample& surface) {
+                return terrainField->sample(surface, id.level);
+            }));
+    }
+    batch.removals.reserve(removalIds.size());
+    for (const wgen::PlanetPatchId& id : removalIds) {
+        batch.removals.push_back({
+            .id = id,
+            .terrainEpoch = version.terrainEpoch,
+            .requestRevision = version.requestRevision,
+        });
+    }
+    validatePlanetPatchMeshBatch(batch);
+    return batch;
 }
 
 void TerrainAppCore::publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch) {
-    for (const PlanetPatchRemoval& removal : batch.removals) {
-        publishedPlanetPatchIds_.erase(removal.id);
-    }
+    std::vector<wgen::PlanetPatchId> upserts;
+    upserts.reserve(batch.upserts.size());
     for (const PlanetPatchMeshData& upsert : batch.upserts) {
-        publishedPlanetPatchIds_.insert(upsert.id);
+        upserts.push_back(upsert.id);
     }
+    std::vector<wgen::PlanetPatchId> removals;
+    removals.reserve(batch.removals.size());
+    for (const PlanetPatchRemoval& removal : batch.removals) {
+        removals.push_back(removal.id);
+    }
+    planetLodCoordinator_.publishPatchChanges(upserts, removals);
 }
 
-void TerrainAppCore::startPlanetRemeshJob() {
-    const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
+void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
     wgen::HeightMap<float> heightMap = activeHeightMap_;
     wgen::TerrainFieldSnapshot terrainField = activeTerrainField_;
     const std::uint64_t terrainEpoch = activeTerrainEpoch_;
     const std::uint64_t requestRevision = desiredPlanetRequestRevision_;
-    const std::vector<wgen::PlanetPatchId> publishedIds = publishedPlanetPatchIds();
 
-    planetRemeshPending_ = false;
+    planetLodCoordinator_.beginPatchPlan(plan);
     terrainJobRunning_ = true;
+    terrainJobKind_ = TerrainJobKind::PlanetLodStreaming;
     terrainGenerationJob_ = std::async(
         std::launch::async,
         [
             heightMap = std::move(heightMap),
             terrainField = std::move(terrainField),
-            planetPatchLevel,
             terrainEpoch,
             requestRevision,
-            publishedIds
+            plan = std::move(plan)
         ]() mutable {
             TerrainJobResult result;
             result.heightMap = std::move(heightMap);
@@ -505,13 +537,13 @@ void TerrainAppCore::startPlanetRemeshJob() {
             result.terrainEpoch = terrainEpoch;
             result.planetBatch = buildPlanetPatchBatch(
                 result.terrainField,
-                planetPatchLevel,
                 PlanetPatchVersion{
                     .terrainEpoch = terrainEpoch,
                     .dependencyRevision = 0,
                     .requestRevision = requestRevision,
                 },
-                publishedIds);
+                plan.upserts,
+                plan.removals);
             return result;
         });
 }

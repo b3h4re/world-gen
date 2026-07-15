@@ -320,6 +320,44 @@ if(BUILD_TESTING)
     target_link_libraries(planet_patch_batch_tests PRIVATE glm::glm Vulkan::Vulkan)
     add_test(NAME planet_patch_batch_tests COMMAND planet_patch_batch_tests)
 
+    # Planet LOD selector tests
+    add_executable(planet_lod_selector_tests
+        tests/planet_lod_selector_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/game/camera/camera_3d.cpp
+        src/game/camera/camera_3d.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+        src/terrain/planet/planet_lod_selector.cpp
+        src/terrain/planet/planet_lod_selector.hpp
+    )
+    target_include_directories(planet_lod_selector_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_lod_selector_tests PRIVATE cxx_std_20)
+    target_link_libraries(planet_lod_selector_tests PRIVATE glm::glm)
+    add_test(NAME planet_lod_selector_tests COMMAND planet_lod_selector_tests)
+
+    # Planet LOD coordinator tests
+    add_executable(planet_lod_coordinator_tests
+        tests/planet_lod_coordinator_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+        src/terrain/planet/planet_lod_selector.cpp
+        src/terrain/planet/planet_lod_selector.hpp
+        src/terrain/planet/planet_lod_coordinator.cpp
+        src/terrain/planet/planet_lod_coordinator.hpp
+    )
+    target_include_directories(planet_lod_coordinator_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_lod_coordinator_tests PRIVATE cxx_std_20)
+    target_link_libraries(planet_lod_coordinator_tests PRIVATE glm::glm)
+    add_test(NAME planet_lod_coordinator_tests COMMAND planet_lod_coordinator_tests)
+
     # Terrain field tests
     add_executable(terrain_field_tests
         tests/terrain_field_tests.cpp

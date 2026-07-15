@@ -1,6 +1,7 @@
 #include "planet_generator_settings_dialog.hpp"
 
 #include "terrain_compute_method_ui.hpp"
+#include "terrain/planet/planet_patch.hpp"
 
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -54,6 +55,11 @@ PlanetGeneratorSettingsDialog::PlanetGeneratorSettingsDialog(wgen::Generator3dSp
     scaleSpinBox_->setValue(spec_.scale);
     form->addRow(QStringLiteral("Scale"), scaleSpinBox_);
 
+    firstVisibleLodSpinBox_ = new QSpinBox{this};
+    firstVisibleLodSpinBox_->setRange(0, wgen::MAX_PLANET_PATCH_LEVEL);
+    firstVisibleLodSpinBox_->setValue(spec_.firstVisibleLod);
+    form->addRow(QStringLiteral("First visible LOD"), firstVisibleLodSpinBox_);
+
     if (wgen::generator3dSupportsOctaves(spec_.kind)) {
         numOctaveSpinBox_ = new QSpinBox{this};
         numOctaveSpinBox_->setRange(0, std::numeric_limits<int>::max());
@@ -92,6 +98,7 @@ void PlanetGeneratorSettingsDialog::accept() {
     spec_.config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = cellSize};
     spec_.scale = static_cast<float>(scaleSpinBox_->value());
     spec_.computeMethod = computeMethodFromIndex(computeMethodComboBox_->currentIndex());
+    spec_.firstVisibleLod = static_cast<std::uint8_t>(firstVisibleLodSpinBox_->value());
     if (!wgen::generator3dSupportsVulkanCompute(spec_.kind) &&
             spec_.computeMethod == wgen::TerrainComputeMethod::VulkanCompute) {
         spec_.computeMethod = wgen::TerrainComputeMethod::Cpu;

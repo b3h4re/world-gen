@@ -24,6 +24,7 @@ private:
     QComboBox* computeMethodComboBox_{};
     QDoubleSpinBox* cellSizeSpinBox_{};
     QDoubleSpinBox* scaleSpinBox_{};
+    QSpinBox* firstVisibleLodSpinBox_{};
     QSpinBox* numOctaveSpinBox_{};
     QDoubleSpinBox* lacunaritySpinBox_{};
     QDoubleSpinBox* persistenceSpinBox_{};

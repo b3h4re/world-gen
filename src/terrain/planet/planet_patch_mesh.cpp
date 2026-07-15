@@ -110,19 +110,35 @@ PlanetPatchMeshData buildPlanetPatchMesh(
 std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
         const wgen::CubeSphere<float>& source,
         std::uint8_t level) {
+    if (source.resolution() < 2) {
+        throw std::invalid_argument{"fixed planet patches require a populated cube sphere"};
+    }
+
+    return buildFixedLevelPlanetPatchMeshes(
+        source.radius(),
+        level,
+        [&source](const wgen::PlanetSurfaceSample& surface) {
+            return sampleCubeSphereBilinear(source, surface);
+        });
+}
+
+std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
+        float planetRadius,
+        std::uint8_t level,
+        const PlanetHeightSampler& heightSampler) {
     if (level > MAX_FIXED_PLANET_PATCH_LEVEL) {
         throw std::invalid_argument{"fixed planet patch level exceeds the debug maximum"};
     }
-    if (source.resolution() < 2) {
-        throw std::invalid_argument{"fixed planet patches require a populated cube sphere"};
+    if (!std::isfinite(planetRadius) || planetRadius <= 0.0F) {
+        throw std::invalid_argument{"fixed planet patches require a finite positive radius"};
+    }
+    if (!heightSampler) {
+        throw std::invalid_argument{"fixed planet patches require a height sampler"};
     }
 
     const std::uint32_t count = wgen::patchesPerAxis(level);
     std::vector<PlanetPatchMeshData> result;
     result.reserve(wgen::FACES.size() * static_cast<std::size_t>(count) * count);
-    const PlanetHeightSampler sampler = [&source](const wgen::PlanetSurfaceSample& surface) {
-        return sampleCubeSphereBilinear(source, surface);
-    };
 
     for (const wgen::CubeSphereFace face : wgen::FACES) {
         for (std::uint32_t y = 0; y < count; ++y) {
@@ -130,8 +146,8 @@ std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
                 result.push_back(buildPlanetPatchMesh(
                     {face, level, x, y},
                     PLANET_PATCH_QUADS,
-                    source.radius(),
-                    sampler));
+                    planetRadius,
+                    heightSampler));
             }
         }
     }

@@ -3,6 +3,7 @@
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/terrain_compute_method.hpp"
 
+#include <cstdint>
 #include <variant>
 #include <vector>
 
@@ -38,6 +39,7 @@ struct Generator3dSpec {
     float scale{1.0F};
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator3d(kind)};
     GeneratorOctaveSettings octaveSettings{};
+    std::uint8_t firstVisibleLod{0};
 };
 
 inline float generator3dOctaveFrequency(const Generator3dSpec& spec) {

@@ -4,16 +4,14 @@
 #include "ui/gui_helpers.hpp"
 #include "renderer/objects/mesh_2d.hpp"
 #include "renderer/objects/mesh_3d.hpp"
-#include "renderer/compute/gpu_planet_pipeline.hpp"
 #include "renderer/compute/gpu_terrain_pipeline.hpp"
 #include "terrain/generators/2d/generator.hpp"
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
-#include "terrain/generators/3d/terrain_pipeline.hpp"
 #include "terrain/planet/planet_patch_mesh.hpp"
+#include "terrain/planet/terrain_field.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/color_map.hpp"
-#include "terrain/planet/cube_sphere.hpp"
 
 #include <cstdint>
 #include <future>
@@ -34,7 +32,7 @@ struct TerrainMeshData {
 
 struct TerrainJobResult {
     wgen::HeightMap<float> heightMap;
-    wgen::CubeSphere<float> cubeSphere;
+    wgen::TerrainFieldSnapshot terrainField;
     TerrainMeshData data;
 };
 
@@ -96,17 +94,9 @@ private:
     wgen::HeightMap<float> generateHeightMapGpu(
         const std::vector<GpuGeneratorRequest>& requests,
         const wgen::TerrainConfig& terrainConfig);
-    wgen::CubeSphere<float> generateCubeSphere(
-        const wgen::TerrainConfig& terrainConfig,
-        const wgen::PlanetConfig& planetConfig);
-    wgen::CubeSphere<float> generateCubeSphereGpu(
-        const std::vector<GpuPlanetGeneratorRequest>& requests,
-        std::size_t resolution,
-        float radius);
-
     static TerrainMeshData buildMeshData(
         const wgen::HeightMap<float>& heightMap,
-        const wgen::CubeSphere<float>& cubeSphere,
+        const wgen::TerrainFieldSnapshot& terrainField,
         std::uint8_t planetPatchLevel);
     void startPlanetRemeshJob();
     std::function<glm::vec3(float)> getActiveColorFunc() const;
@@ -119,10 +109,9 @@ private:
     std::size_t usedGenerator_{0};
     std::vector<std::unique_ptr<wgen::Generator>> generators_{};
     std::unique_ptr<GpuTerrainPipeline> gpuPipeline_{};
-    std::unique_ptr<GpuPlanetPipeline> gpuPlanetPipeline_{};
     wgen::ThreadPool threadPool_{};
     wgen::HeightMap<float> activeHeightMap_{};
-    wgen::CubeSphere<float> activeCubeSphere_{};
+    wgen::TerrainFieldSnapshot activeTerrainField_{};
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
     bool terrainJobRunning_{false};

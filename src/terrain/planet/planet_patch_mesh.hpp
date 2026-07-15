@@ -35,6 +35,11 @@ std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
     const wgen::CubeSphere<float>& source,
     std::uint8_t level);
 
+std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
+    float planetRadius,
+    std::uint8_t level,
+    const PlanetHeightSampler& heightSampler);
+
 void appendCubeSphereMesh(
     const wgen::CubeSphere<float>& cubeSphere,
     std::vector<Vertex3d>& vertices,

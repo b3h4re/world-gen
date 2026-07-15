@@ -203,6 +203,35 @@ void testFixedLevelPatchCountsAndOrder() {
     }
 }
 
+void testGenericFixedLevelSampler() {
+    std::size_t sampleCount = 0;
+    const std::vector<lve::PlanetPatchMeshData> meshes =
+        lve::buildFixedLevelPlanetPatchMeshes(
+            250.0F,
+            1,
+            [&sampleCount](const wgen::PlanetSurfaceSample& surface) {
+                ++sampleCount;
+                return static_cast<float>(surface.direction.z);
+            });
+
+    const std::size_t samplesPerPatch =
+        (lve::PLANET_PATCH_QUADS + 1) * (lve::PLANET_PATCH_QUADS + 1);
+    wgen::tests::require(meshes.size() == 24, "generic fixed-level patch count is wrong");
+    wgen::tests::require(
+        sampleCount == meshes.size() * samplesPerPatch,
+        "generic fixed-level builder should sample every patch vertex exactly once");
+    for (const lve::PlanetPatchMeshData& mesh : meshes) {
+        for (const lve::Vertex3d& vertex : mesh.vertices) {
+            const float expectedLength = (250.0F + vertex.height) / 250.0F;
+            wgen::tests::expectNear(
+                glm::length(vertex.position),
+                expectedLength,
+                0.00001F,
+                "generic fixed-level sampler should preserve radius scaling");
+        }
+    }
+}
+
 void testPatchMeshValidation() {
     const lve::PlanetHeightSampler zeroSampler = [](const wgen::PlanetSurfaceSample&) { return 0.0F; };
     wgen::tests::requireThrows<std::invalid_argument>(
@@ -248,6 +277,17 @@ void testPatchMeshValidation() {
         "fixed patch builder should reject a level above three");
     wgen::tests::requireThrows<std::invalid_argument>(
         [] {
+            lve::buildFixedLevelPlanetPatchMeshes(
+                0.0F,
+                0,
+                [](const wgen::PlanetSurfaceSample&) { return 0.0F; });
+        },
+        "fixed patch builder should reject zero radius");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { lve::buildFixedLevelPlanetPatchMeshes(100.0F, 0, {}); },
+        "fixed patch builder should reject an empty sampler");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] {
             lve::sampleCubeSphereBilinear(
                 wgen::CubeSphere<float>{10.0F, 2, 0.0F},
                 {wgen::CubeSphereFace::Top, 2.0, 0.0, {}});
@@ -265,6 +305,7 @@ int main() {
         wgen::tests::runTest("root patches match dense mesh", testRootPatchesMatchDenseMesh);
         wgen::tests::runTest("patch mesh seams", testPatchMeshSeams);
         wgen::tests::runTest("fixed-level patch counts and order", testFixedLevelPatchCountsAndOrder);
+        wgen::tests::runTest("generic fixed-level sampler", testGenericFixedLevelSampler);
         wgen::tests::runTest("patch mesh validation", testPatchMeshValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

@@ -303,6 +303,32 @@ if(BUILD_TESTING)
     target_link_libraries(planet_patch_mesh_tests PRIVATE glm::glm Vulkan::Vulkan)
     add_test(NAME planet_patch_mesh_tests COMMAND planet_patch_mesh_tests)
 
+    # Terrain field tests
+    add_executable(terrain_field_tests
+        tests/terrain_field_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/terrain_field.cpp
+        src/terrain/planet/terrain_field.hpp
+    )
+    target_include_directories(terrain_field_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_field_tests PRIVATE cxx_std_20)
+    target_link_libraries(terrain_field_tests PRIVATE glm::glm)
+    add_test(NAME terrain_field_tests COMMAND terrain_field_tests)
+
     # Terrain Pipeline Octave Tests
     add_executable(terrain_pipeline_octaves_tests
         tests/terrain_pipeline_octaves_tests.cpp

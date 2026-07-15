@@ -27,6 +27,9 @@ wgen::Generator3dSpec makeSpec(
             .persistance = 0.5F,
         },
         .firstVisibleLod = firstVisibleLod,
+        .terrainDetail = wgen::Generator3dTerrainDetailSpec{
+            .firstFullyVisibleLevel = firstVisibleLod,
+        },
     };
 }
 
@@ -59,7 +62,7 @@ void testCalibrationMatchesDenseCpuPipeline() {
 
     const wgen::CubeSphere<float> actual = field->generateCubeSphere(
         wgen::TERRAIN_CALIBRATION_RESOLUTION,
-        wgen::MAX_PLANET_PATCH_LEVEL);
+        wgen::MAX_TERRAIN_DETAIL_LEVEL);
     expectCubeSphereNear(actual, expected, "terrain field should match calibrated dense CPU output");
 
     float minimum = std::numeric_limits<float>::infinity();
@@ -108,6 +111,11 @@ void testDetailBandsUseFrozenCalibration() {
         calibration.apply(broadRaw + detailRaw),
         0.00001F,
         "detail should appear at its first visible level");
+    wgen::tests::expectNear(
+        field->sample(makeSurface(direction), wgen::TerrainDetailLevel{1.5}),
+        calibration.apply(broadRaw + 0.5F * detailRaw),
+        0.00001F,
+        "detail should fade continuously before its fully visible level");
 
     const wgen::TerrainHeightCalibration afterSampling = field->calibration();
     wgen::tests::require(
@@ -116,6 +124,24 @@ void testDetailBandsUseFrozenCalibration() {
             calibration.scale == afterSampling.scale &&
             calibration.bias == afterSampling.bias,
         "sampling different detail levels must not recalibrate the field");
+}
+
+void testLegacyFirstVisibleLodCompatibility() {
+    wgen::Generator3dSpec legacy = makeSpec(1);
+    legacy.terrainDetail.firstFullyVisibleLevel.reset();
+    legacy.firstVisibleLod = 2;
+    const auto field = wgen::buildTerrainFieldSnapshot({legacy}, 29, 100.0F);
+    const glm::vec3 direction = glm::normalize(glm::vec3{0.4F, -0.2F, 0.7F});
+    const float hiddenValue = field->calibration().apply(0.0F);
+
+    wgen::tests::expectNear(
+        field->sample(makeSurface(direction), 1),
+        hiddenValue,
+        0.00001F,
+        "legacy firstVisibleLod should keep detail hidden at the preceding integer level");
+    wgen::tests::require(
+        std::abs(field->sample(makeSurface(direction), 2) - hiddenValue) > 0.00001F,
+        "legacy firstVisibleLod should convert to a terrain-detail band");
 }
 
 void testComputeMetadataDoesNotChangeRuntimeSampling() {
@@ -151,14 +177,14 @@ void testDeterminismAndSeedChanges() {
              glm::normalize(glm::vec3{1.0F, 0.2F, 0.7F}),
              glm::normalize(glm::vec3{-0.3F, 0.9F, -0.4F}),
              glm::normalize(glm::vec3{0.5F, -0.8F, 0.1F})}) {
-        const float firstValue = first->sample(makeSurface(direction), wgen::MAX_PLANET_PATCH_LEVEL);
+        const float firstValue = first->sample(makeSurface(direction), wgen::MAX_TERRAIN_DETAIL_LEVEL);
         wgen::tests::expectNear(
             firstValue,
-            second->sample(makeSurface(direction), wgen::MAX_PLANET_PATCH_LEVEL),
+            second->sample(makeSurface(direction), wgen::MAX_TERRAIN_DETAIL_LEVEL),
             0.00001F,
             "identical terrain snapshots should sample identically");
         foundSeedDifference = foundSeedDifference || std::abs(
-            firstValue - changed->sample(makeSurface(direction), wgen::MAX_PLANET_PATCH_LEVEL)) > 0.00001F;
+            firstValue - changed->sample(makeSurface(direction), wgen::MAX_TERRAIN_DETAIL_LEVEL)) > 0.00001F;
     }
     wgen::tests::require(foundSeedDifference, "changing the terrain seed should change field output");
 }
@@ -187,7 +213,7 @@ void testConservativeHeightBound() {
     wgen::tests::require(std::isfinite(bound) && bound > 0.0F, "terrain field height bound must be finite and positive");
 
     constexpr std::size_t resolution = 17;
-    constexpr std::uint8_t detailLevels[]{0, 2, 3, wgen::MAX_PLANET_PATCH_LEVEL};
+    constexpr std::uint8_t detailLevels[]{0, 2, 3, wgen::MAX_TERRAIN_DETAIL_LEVEL};
     for (const std::uint8_t detailLevel : detailLevels) {
         const wgen::CubeSphere<float> samples = field->generateCubeSphere(resolution, detailLevel);
         for (const wgen::CubeSphereFace face : wgen::FACES) {
@@ -239,7 +265,8 @@ void testValidation() {
         "terrain field should reject zero radius");
 
     wgen::Generator3dSpec invalidLod = makeSpec(0);
-    invalidLod.firstVisibleLod = wgen::MAX_PLANET_PATCH_LEVEL + 1;
+    invalidLod.terrainDetail.firstFullyVisibleLevel =
+        wgen::MAX_TERRAIN_DETAIL_LEVEL + 1;
     wgen::tests::requireThrows<std::invalid_argument>(
         [&invalidLod] { wgen::buildTerrainFieldSnapshot({invalidLod}, 1, 100.0F); },
         "terrain field should reject an invalid visibility level");
@@ -261,7 +288,7 @@ void testValidation() {
         [&field] {
             field->sample(
                 makeSurface(glm::vec3{0.0F, 0.0F, 1.0F}),
-                wgen::MAX_PLANET_PATCH_LEVEL + 1);
+                wgen::MAX_TERRAIN_DETAIL_LEVEL + 1);
         },
         "terrain field should reject an invalid sample detail level");
     wgen::tests::requireThrows<std::invalid_argument>(
@@ -275,6 +302,7 @@ int main() {
     try {
         wgen::tests::runTest("terrain field dense parity", testCalibrationMatchesDenseCpuPipeline);
         wgen::tests::runTest("terrain field detail bands", testDetailBandsUseFrozenCalibration);
+        wgen::tests::runTest("terrain field legacy detail compatibility", testLegacyFirstVisibleLodCompatibility);
         wgen::tests::runTest("terrain field compute metadata", testComputeMetadataDoesNotChangeRuntimeSampling);
         wgen::tests::runTest("terrain field determinism", testDeterminismAndSeedChanges);
         wgen::tests::runTest("terrain field constant handling", testEmptyAndConstantFieldsReturnZero);

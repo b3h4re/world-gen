@@ -376,7 +376,12 @@ wgen::Generator3dPipelineSpec TerrainAppCore::defaultPlanetPipelineSpec(const wg
             },
             .firstVisibleLod = static_cast<std::uint8_t>(std::min<std::size_t>(
                 n,
-                wgen::MAX_PLANET_PATCH_LEVEL)),
+                wgen::MAX_TERRAIN_DETAIL_LEVEL)),
+            .terrainDetail = wgen::Generator3dTerrainDetailSpec{
+                .firstFullyVisibleLevel = static_cast<std::uint8_t>(std::min<std::size_t>(
+                    n,
+                    wgen::MAX_TERRAIN_DETAIL_LEVEL)),
+            },
         });
     }
 
@@ -477,14 +482,18 @@ PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
         .terrainEpoch = version.terrainEpoch,
         .requestRevision = version.requestRevision,
     };
+    const wgen::TerrainDetailPolicy& detailPolicy = terrainField->detailPolicy();
     batch.upserts.reserve(upsertIds.size());
     for (const wgen::PlanetPatchId& id : upsertIds) {
+        const wgen::TerrainDetailLevel detail = detailPolicy.detailForCubeFacePatch(
+            id.level,
+            PLANET_PATCH_QUADS);
         batch.upserts.push_back(buildRequestedPlanetPatchMesh(
             PlanetPatchMeshRequest{.id = id, .version = version},
             PLANET_PATCH_QUADS,
             terrainField->radius(),
-            [&terrainField, id](const wgen::PlanetSurfaceSample& surface) {
-                return terrainField->sample(surface, id.level);
+            [&terrainField, detail](const wgen::PlanetSurfaceSample& surface) {
+                return terrainField->sample(surface, detail);
             }));
     }
     batch.removals.reserve(removalIds.size());

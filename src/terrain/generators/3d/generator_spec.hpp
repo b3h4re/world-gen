@@ -4,6 +4,7 @@
 #include "terrain/terrain_compute_method.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -41,14 +42,28 @@ struct PerlinNoise3dGeneratorSpec {
 
 using Generator3dConfig = std::variant<PerlinNoise3dGeneratorSpec>;
 
+struct Generator3dTerrainDetailSpec {
+    // The contributor fades in during the preceding continuous detail level
+    // and is fully visible at this level. When absent, firstVisibleLod is used
+    // as a compatibility input for existing pipeline specifications.
+    std::optional<std::uint8_t> firstFullyVisibleLevel{};
+};
+
 struct Generator3dSpec {
     Generator3dKind kind{Generator3dKind::PerlinNoise};
     Generator3dConfig config{PerlinNoise3dGeneratorSpec{}};
     float scale{1.0F};
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator3d(kind)};
     GeneratorOctaveSettings octaveSettings{};
+    // Compatibility setting retained for existing callers and saved pipeline
+    // data. New code should use terrainDetail.firstFullyVisibleLevel.
     std::uint8_t firstVisibleLod{0};
+    Generator3dTerrainDetailSpec terrainDetail{};
 };
+
+inline std::uint8_t generator3dFirstFullyVisibleDetail(const Generator3dSpec& spec) {
+    return spec.terrainDetail.firstFullyVisibleLevel.value_or(spec.firstVisibleLod);
+}
 
 inline float generator3dOctaveFrequency(const Generator3dSpec& spec) {
     if (!generator3dSupportsOctaves(spec.kind)) {

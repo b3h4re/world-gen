@@ -32,7 +32,7 @@ float TerrainHeightCalibration::apply(float rawHeight) const {
 }
 
 TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, float radius)
-    : radius_{radius} {
+    : radius_{radius}, detailPolicy_{radius} {
     if (!std::isfinite(radius_) || radius_ <= 0.0F) {
         throw std::invalid_argument{"terrain field radius must be finite and positive"};
     }
@@ -40,8 +40,10 @@ TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, floa
     contributors_.reserve(pipeline.size());
     SeedType generatorSeed = seed;
     for (const Generator3dSpec& spec : pipeline) {
-        if (spec.firstVisibleLod > MAX_PLANET_PATCH_LEVEL) {
-            throw std::invalid_argument{"generator first visible LOD exceeds the maximum patch level"};
+        const std::uint8_t firstFullyVisibleDetail =
+            generator3dFirstFullyVisibleDetail(spec);
+        if (firstFullyVisibleDetail > MAX_TERRAIN_DETAIL_LEVEL) {
+            throw std::invalid_argument{"generator terrain detail exceeds the supported maximum"};
         }
 
         const float amplitude = spec.scale * generator3dOctaveAmplitude(spec);
@@ -52,7 +54,7 @@ TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, floa
         contributors_.push_back({
             makePipelineGenerator3d(spec, generatorSeed),
             amplitude,
-            spec.firstVisibleLod,
+            terrainDetailBandForFirstFullyVisibleLevel(firstFullyVisibleDetail),
         });
         maximumAbsoluteRawHeight_ +=
             std::abs(amplitude) * generator3dMaximumAbsoluteNoise(spec.kind);
@@ -68,28 +70,30 @@ TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, floa
         std::abs(calibration_.apply(maximumAbsoluteRawHeight_)));
 }
 
-float TerrainField::sample(const PlanetSurfaceSample& surface, std::uint8_t maxDetailLevel) const {
+float TerrainField::sample(
+        const PlanetSurfaceSample& surface,
+        TerrainDetailLevel detail) const {
     static_cast<void>(faceID(surface.face));
-    if (maxDetailLevel > MAX_PLANET_PATCH_LEVEL) {
-        throw std::invalid_argument{"terrain field detail level exceeds the maximum patch level"};
-    }
 
     const glm::vec3 direction{surface.direction};
     if (!isFinite(direction)) {
         throw std::invalid_argument{"terrain field sample direction must be finite"};
     }
 
-    return calibration_.apply(sampleRaw(direction, maxDetailLevel));
+    return calibration_.apply(sampleRaw(direction, detail));
+}
+
+float TerrainField::sample(
+        const PlanetSurfaceSample& surface,
+        std::uint8_t maxDetailLevel) const {
+    return sample(surface, TerrainDetailLevel::fromDiscrete(maxDetailLevel));
 }
 
 CubeSphere<float> TerrainField::generateCubeSphere(
         std::size_t resolution,
-        std::uint8_t maxDetailLevel) const {
+        TerrainDetailLevel detail) const {
     if (resolution < 2) {
         throw std::invalid_argument{"terrain field cube sphere resolution must be at least two"};
-    }
-    if (maxDetailLevel > MAX_PLANET_PATCH_LEVEL) {
-        throw std::invalid_argument{"terrain field detail level exceeds the maximum patch level"};
     }
 
     CubeSphere<float> result{radius_, resolution, 0.0F};
@@ -102,21 +106,30 @@ CubeSphere<float> TerrainField::generateCubeSphere(
                 const glm::vec3 direction = result.pointUnitDir(face, x, y);
                 result.at(face, x, y) = sample(
                     {face, static_cast<double>(u), static_cast<double>(v), glm::dvec3{direction}},
-                    maxDetailLevel);
+                    detail);
             }
         }
     }
     return result;
 }
 
-float TerrainField::sampleRaw(glm::vec3 direction, std::uint8_t maxDetailLevel) const {
+CubeSphere<float> TerrainField::generateCubeSphere(
+        std::size_t resolution,
+        std::uint8_t maxDetailLevel) const {
+    return generateCubeSphere(
+        resolution,
+        TerrainDetailLevel::fromDiscrete(maxDetailLevel));
+}
+
+float TerrainField::sampleRaw(glm::vec3 direction, TerrainDetailLevel detail) const {
     float result = 0.0F;
     for (const Contributor& contributor : contributors_) {
-        if (contributor.firstVisibleLod > maxDetailLevel) {
+        const float detailWeight = terrainDetailBandWeight(detail, contributor.detailBand);
+        if (detailWeight == 0.0F) {
             continue;
         }
 
-        result += contributor.generator->noise(direction) * contributor.amplitude;
+        result += contributor.generator->noise(direction) * contributor.amplitude * detailWeight;
         if (!std::isfinite(result)) {
             throw std::invalid_argument{"terrain field generator produced a non-finite height"};
         }
@@ -133,6 +146,8 @@ void TerrainField::calibrate() {
     float rawMinimum = std::numeric_limits<float>::infinity();
     float rawMaximum = -std::numeric_limits<float>::infinity();
     const float denominator = static_cast<float>(TERRAIN_CALIBRATION_RESOLUTION - 1);
+    const TerrainDetailLevel maximumDetail =
+        TerrainDetailLevel::fromDiscrete(MAX_TERRAIN_DETAIL_LEVEL);
     for (const CubeSphereFace face : FACES) {
         for (std::size_t y = 0; y < TERRAIN_CALIBRATION_RESOLUTION; ++y) {
             for (std::size_t x = 0; x < TERRAIN_CALIBRATION_RESOLUTION; ++x) {
@@ -140,7 +155,7 @@ void TerrainField::calibrate() {
                 const float v = -1.0F + 2.0F * static_cast<float>(y) / denominator;
                 const float rawHeight = sampleRaw(
                     cubeSphereDirection(face, u, v),
-                    MAX_PLANET_PATCH_LEVEL);
+                    maximumDetail);
                 rawMinimum = std::min(rawMinimum, rawHeight);
                 rawMaximum = std::max(rawMaximum, rawHeight);
             }

@@ -358,6 +358,18 @@ if(BUILD_TESTING)
     target_link_libraries(planet_lod_coordinator_tests PRIVATE glm::glm)
     add_test(NAME planet_lod_coordinator_tests COMMAND planet_lod_coordinator_tests)
 
+    # Renderer-independent terrain detail policy tests
+    add_executable(terrain_detail_tests
+        tests/terrain_detail_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/terrain_detail.cpp
+        src/terrain/terrain_detail.hpp
+    )
+    target_include_directories(terrain_detail_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(terrain_detail_tests PRIVATE cxx_std_20)
+    add_test(NAME terrain_detail_tests COMMAND terrain_detail_tests)
+
     # Terrain field tests
     add_executable(terrain_field_tests
         tests/terrain_field_tests.cpp
@@ -366,6 +378,8 @@ if(BUILD_TESTING)
         src/terrain/utils/hash_random.cpp
         src/terrain/utils/hash_random.hpp
         src/terrain/utils/generator_utils.cpp
+        src/terrain/terrain_detail.cpp
+        src/terrain/terrain_detail.hpp
         src/terrain/generators/3d/generator_factory.cpp
         src/terrain/generators/3d/generator_factory.hpp
         src/terrain/generators/3d/coordinate_scaled_generator.cpp

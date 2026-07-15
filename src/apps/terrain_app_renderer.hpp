@@ -10,7 +10,9 @@
 #include "window/qt_window_backend.hpp"
 
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace lve {
@@ -27,6 +29,11 @@ struct RetiredFrameObjects {
     }
 };
 
+struct ResidentPlanetPatch {
+    GameObject3d object{};
+    PlanetPatchVersion version{};
+};
+
 class TerrainAppRenderer {
 public:
     static constexpr int WIDTH = 1280;
@@ -39,8 +46,8 @@ public:
     TerrainAppRenderer(const TerrainAppRenderer&) = delete;
     TerrainAppRenderer& operator=(const TerrainAppRenderer&) = delete;
 
-    void setTerrainMesh(TerrainMeshData data);
-    void applyTerrainMesh(int frameIndex, TerrainMeshData data);
+    void applyTerrainMesh(int frameIndex, TerrainPlaneMeshData data);
+    void applyPlanetPatchBatch(int frameIndex, PlanetPatchMeshBatch batch);
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
     void shutdownVulkanResources();
@@ -59,9 +66,8 @@ public:
 
 private:
     void initDescriptorPool();
-    std::vector<GameObject2d> makeObjects2d(const TerrainMeshData& data);
-    std::vector<GameObject3d> makeObjects3d(const TerrainMeshData& data);
-    std::vector<GameObject3d> makeObjectsPlanet(const TerrainMeshData& data);
+    std::vector<GameObject2d> makeObjects2d(const TerrainPlaneMeshData& data);
+    std::vector<GameObject3d> makeObjects3d(const TerrainPlaneMeshData& data);
 
     QtWindowBackend window_;
     LveDevice device_;
@@ -71,7 +77,13 @@ private:
     std::unique_ptr<LveDescriptorPool> globalPool_{};
     std::vector<GameObject2d> objects2d_{};
     std::vector<GameObject3d> objects3d_{};
+    std::unordered_map<
+        wgen::PlanetPatchId,
+        ResidentPlanetPatch,
+        wgen::PlanetPatchIdHash> residentPlanetPatches_{};
+    std::vector<wgen::PlanetPatchId> planetDrawOrder_{};
     std::vector<GameObject3d> objectsPlanet_{};
+    std::uint64_t activePlanetEpoch_{0};
     std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
     bool vulkanResourcesShutdown_{false};
 };

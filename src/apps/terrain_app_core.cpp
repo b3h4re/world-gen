@@ -98,15 +98,6 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
     initGenerators(generators_, pipelineSpec_, seed);
 }
 
-TerrainMeshData TerrainAppCore::loadTerrain() {
-    activeHeightMap_ = generateHeightMap(config_.terrainConfig).normal();
-    activeTerrainField_ = wgen::buildTerrainFieldSnapshot(
-        planetPipelineSpec_,
-        config_.terrainConfig.seed,
-        config_.planetConfig.radius);
-    return buildMeshData(activeHeightMap_, activeTerrainField_, fixedPlanetPatchLevel_);
-}
-
 void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target) {
     if (terrainJobRunning_) {
         return;
@@ -119,6 +110,17 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
     const auto previousHeightMap = activeHeightMap_;
     const auto previousTerrainField = activeTerrainField_;
     const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
+    const bool buildPlane = target == TerrainGenerationTarget::Terrain ||
+        target == TerrainGenerationTarget::All;
+    const bool buildPlanet = target == TerrainGenerationTarget::Planet ||
+        target == TerrainGenerationTarget::All;
+    const std::uint64_t terrainEpoch = buildPlanet
+        ? ++nextTerrainEpoch_
+        : activeTerrainEpoch_;
+    const std::uint64_t requestRevision = buildPlanet
+        ? ++desiredPlanetRequestRevision_
+        : desiredPlanetRequestRevision_;
+    const std::vector<wgen::PlanetPatchId> publishedIds = publishedPlanetPatchIds();
 
     terrainJobRunning_ = true;
     terrainGenerationJob_ = std::async(std::launch::async, [
@@ -129,7 +131,12 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
         previousHeightMap,
         previousTerrainField,
         target,
-        planetPatchLevel
+        planetPatchLevel,
+        buildPlane,
+        buildPlanet,
+        terrainEpoch,
+        requestRevision,
+        publishedIds
     ] {
         wgen::HeightMap<float> heightMap;
         wgen::TerrainFieldSnapshot terrainField;
@@ -144,9 +151,7 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
             heightMap = previousHeightMap;
         }
 
-        if (target == TerrainGenerationTarget::Planet ||
-                target == TerrainGenerationTarget::All ||
-                previousTerrainField == nullptr) {
+        if (buildPlanet) {
             terrainField = wgen::buildTerrainFieldSnapshot(
                 planetPipelineSpec,
                 terrainConfig.seed,
@@ -158,7 +163,21 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
         TerrainJobResult result;
         result.heightMap = std::move(heightMap);
         result.terrainField = std::move(terrainField);
-        result.data = buildMeshData(result.heightMap, result.terrainField, planetPatchLevel);
+        result.terrainEpoch = terrainEpoch;
+        if (buildPlane) {
+            result.terrainMesh = buildPlaneMeshData(result.heightMap);
+        }
+        if (buildPlanet) {
+            result.planetBatch = buildPlanetPatchBatch(
+                result.terrainField,
+                planetPatchLevel,
+                PlanetPatchVersion{
+                    .terrainEpoch = terrainEpoch,
+                    .dependencyRevision = 0,
+                    .requestRevision = requestRevision,
+                },
+                publishedIds);
+        }
 
         return result;
     });
@@ -218,6 +237,7 @@ void TerrainAppCore::requestFixedPlanetPatchLevel(std::uint8_t level) {
     }
 
     fixedPlanetPatchLevel_ = level;
+    ++desiredPlanetRequestRevision_;
     if (terrainJobRunning_) {
         planetRemeshPending_ = true;
         return;
@@ -245,7 +265,13 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
         TerrainJobResult result = terrainGenerationJob_.get();
         activeHeightMap_ = result.heightMap;
         activeTerrainField_ = result.terrainField;
+        activeTerrainEpoch_ = result.terrainEpoch;
         terrainJobRunning_ = false;
+        if (!discardStalePlanetPatchMeshBatch(
+                result.planetBatch,
+                desiredPlanetRequestRevision_) && result.planetBatch) {
+            publishPlanetPatchBatch(*result.planetBatch);
+        }
         if (planetRemeshPending_) {
             startPlanetRemeshJob();
         }
@@ -405,40 +431,87 @@ wgen::HeightMap<float> TerrainAppCore::generateHeightMapGpu(
     return gpuPipeline_->generateHeightMap(requests, terrainConfig.width, terrainConfig.height);
 }
 
-TerrainMeshData TerrainAppCore::buildMeshData(
-        const wgen::HeightMap<float>& heightMap,
-        const wgen::TerrainFieldSnapshot& terrainField,
-        std::uint8_t planetPatchLevel) {
-    if (terrainField == nullptr) {
-        throw std::invalid_argument("terrain mesh data requires a terrain field snapshot");
-    }
-
-    TerrainMeshData data;
+TerrainPlaneMeshData TerrainAppCore::buildPlaneMeshData(
+        const wgen::HeightMap<float>& heightMap) {
+    TerrainPlaneMeshData data;
     appendHeightMapMesh(heightMap, -1.0F, 1.0F, -1.0F, 1.0F, data.vertices2d, data.indices2d);
     appendHeightMapMesh3d(heightMap, data.vertices3d, data.indices3d);
-    data.planetPatches = buildFixedLevelPlanetPatchMeshes(
-        terrainField->radius(),
-        planetPatchLevel,
-        [&terrainField, planetPatchLevel](const wgen::PlanetSurfaceSample& surface) {
-            return terrainField->sample(surface, planetPatchLevel);
-        });
     return data;
+}
+
+PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
+        const wgen::TerrainFieldSnapshot& terrainField,
+        std::uint8_t planetPatchLevel,
+        const PlanetPatchVersion& version,
+        const std::vector<wgen::PlanetPatchId>& publishedIds) {
+    if (terrainField == nullptr) {
+        throw std::invalid_argument("planet patch batch requires a terrain field snapshot");
+    }
+
+    return makePlanetPatchMeshBatch(
+        buildFixedLevelPlanetPatchMeshes(
+            terrainField->radius(),
+            planetPatchLevel,
+            version,
+            [&terrainField, planetPatchLevel](const wgen::PlanetSurfaceSample& surface) {
+                return terrainField->sample(surface, planetPatchLevel);
+            }),
+        publishedIds,
+        version.terrainEpoch,
+        version.requestRevision);
+}
+
+std::vector<wgen::PlanetPatchId> TerrainAppCore::publishedPlanetPatchIds() const {
+    std::vector<wgen::PlanetPatchId> result{
+        publishedPlanetPatchIds_.begin(),
+        publishedPlanetPatchIds_.end(),
+    };
+    std::sort(result.begin(), result.end(), wgen::PlanetPatchIdLess{});
+    return result;
+}
+
+void TerrainAppCore::publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch) {
+    for (const PlanetPatchRemoval& removal : batch.removals) {
+        publishedPlanetPatchIds_.erase(removal.id);
+    }
+    for (const PlanetPatchMeshData& upsert : batch.upserts) {
+        publishedPlanetPatchIds_.insert(upsert.id);
+    }
 }
 
 void TerrainAppCore::startPlanetRemeshJob() {
     const std::uint8_t planetPatchLevel = fixedPlanetPatchLevel_;
     wgen::HeightMap<float> heightMap = activeHeightMap_;
     wgen::TerrainFieldSnapshot terrainField = activeTerrainField_;
+    const std::uint64_t terrainEpoch = activeTerrainEpoch_;
+    const std::uint64_t requestRevision = desiredPlanetRequestRevision_;
+    const std::vector<wgen::PlanetPatchId> publishedIds = publishedPlanetPatchIds();
 
     planetRemeshPending_ = false;
     terrainJobRunning_ = true;
     terrainGenerationJob_ = std::async(
         std::launch::async,
-        [heightMap = std::move(heightMap), terrainField = std::move(terrainField), planetPatchLevel]() mutable {
+        [
+            heightMap = std::move(heightMap),
+            terrainField = std::move(terrainField),
+            planetPatchLevel,
+            terrainEpoch,
+            requestRevision,
+            publishedIds
+        ]() mutable {
             TerrainJobResult result;
             result.heightMap = std::move(heightMap);
             result.terrainField = std::move(terrainField);
-            result.data = buildMeshData(result.heightMap, result.terrainField, planetPatchLevel);
+            result.terrainEpoch = terrainEpoch;
+            result.planetBatch = buildPlanetPatchBatch(
+                result.terrainField,
+                planetPatchLevel,
+                PlanetPatchVersion{
+                    .terrainEpoch = terrainEpoch,
+                    .dependencyRevision = 0,
+                    .requestRevision = requestRevision,
+                },
+                publishedIds);
             return result;
         });
 }

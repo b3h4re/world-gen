@@ -18,22 +18,24 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 namespace lve {
 
-struct TerrainMeshData {
+struct TerrainPlaneMeshData {
     std::vector<Vertex2d> vertices2d;
     std::vector<std::uint32_t> indices2d;
     std::vector<Vertex3d> vertices3d;
     std::vector<std::uint32_t> indices3d;
-    std::vector<PlanetPatchMeshData> planetPatches;
 };
 
 struct TerrainJobResult {
     wgen::HeightMap<float> heightMap;
     wgen::TerrainFieldSnapshot terrainField;
-    TerrainMeshData data;
+    std::uint64_t terrainEpoch{};
+    std::optional<TerrainPlaneMeshData> terrainMesh;
+    std::optional<PlanetPatchMeshBatch> planetBatch;
 };
 
 void appendHeightMapMesh(
@@ -58,7 +60,6 @@ public:
     TerrainAppCore(const TerrainAppCore&) = delete;
     TerrainAppCore& operator=(const TerrainAppCore&) = delete;
 
-    TerrainMeshData loadTerrain();
     void regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target = TerrainGenerationTarget::All);
     void rotateColorFunction();
     void setPipeline(wgen::GeneratorPipelineSpec pipeline);
@@ -94,10 +95,14 @@ private:
     wgen::HeightMap<float> generateHeightMapGpu(
         const std::vector<GpuGeneratorRequest>& requests,
         const wgen::TerrainConfig& terrainConfig);
-    static TerrainMeshData buildMeshData(
-        const wgen::HeightMap<float>& heightMap,
+    static TerrainPlaneMeshData buildPlaneMeshData(const wgen::HeightMap<float>& heightMap);
+    static PlanetPatchMeshBatch buildPlanetPatchBatch(
         const wgen::TerrainFieldSnapshot& terrainField,
-        std::uint8_t planetPatchLevel);
+        std::uint8_t planetPatchLevel,
+        const PlanetPatchVersion& version,
+        const std::vector<wgen::PlanetPatchId>& publishedIds);
+    std::vector<wgen::PlanetPatchId> publishedPlanetPatchIds() const;
+    void publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch);
     void startPlanetRemeshJob();
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
@@ -117,6 +122,10 @@ private:
     bool terrainJobRunning_{false};
     std::uint8_t fixedPlanetPatchLevel_{0};
     bool planetRemeshPending_{false};
+    std::uint64_t nextTerrainEpoch_{0};
+    std::uint64_t activeTerrainEpoch_{0};
+    std::uint64_t desiredPlanetRequestRevision_{0};
+    std::unordered_set<wgen::PlanetPatchId, wgen::PlanetPatchIdHash> publishedPlanetPatchIds_{};
     std::mutex generatorsMutex_{};
 };
 

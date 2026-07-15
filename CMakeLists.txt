@@ -303,6 +303,23 @@ if(BUILD_TESTING)
     target_link_libraries(planet_patch_mesh_tests PRIVATE glm::glm Vulkan::Vulkan)
     add_test(NAME planet_patch_mesh_tests COMMAND planet_patch_mesh_tests)
 
+    # Planet patch batch tests
+    add_executable(planet_patch_batch_tests
+        tests/planet_patch_batch_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+        src/terrain/planet/planet_patch_mesh.cpp
+        src/terrain/planet/planet_patch_mesh.hpp
+    )
+    target_include_directories(planet_patch_batch_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_patch_batch_tests PRIVATE cxx_std_20)
+    target_link_libraries(planet_patch_batch_tests PRIVATE glm::glm Vulkan::Vulkan)
+    add_test(NAME planet_patch_batch_tests COMMAND planet_patch_batch_tests)
+
     # Terrain field tests
     add_executable(terrain_field_tests
         tests/terrain_field_tests.cpp

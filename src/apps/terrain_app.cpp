@@ -248,7 +248,12 @@ void TerrainApp::applyFinishedTerrainJob(int frameIndex) {
         return;
     }
 
-    renderer_.applyTerrainMesh(frameIndex, std::move(result->data));
+    if (result->terrainMesh) {
+        renderer_.applyTerrainMesh(frameIndex, std::move(*result->terrainMesh));
+    }
+    if (result->planetBatch) {
+        renderer_.applyPlanetPatchBatch(frameIndex, std::move(*result->planetBatch));
+    }
 }
 
 TerrainGenerationTarget TerrainApp::currentGenerationTarget() const {

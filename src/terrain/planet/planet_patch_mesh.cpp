@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace lve {
 
@@ -107,6 +108,20 @@ PlanetPatchMeshData buildPlanetPatchMesh(
     return result;
 }
 
+PlanetPatchMeshData buildRequestedPlanetPatchMesh(
+        const PlanetPatchMeshRequest& request,
+        std::uint32_t quadCount,
+        float planetRadius,
+        const PlanetHeightSampler& heightSampler) {
+    PlanetPatchMeshData result = buildPlanetPatchMesh(
+        request.id,
+        quadCount,
+        planetRadius,
+        heightSampler);
+    result.version = request.version;
+    return result;
+}
+
 std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
         const wgen::CubeSphere<float>& source,
         std::uint8_t level) {
@@ -126,6 +141,18 @@ std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
         float planetRadius,
         std::uint8_t level,
         const PlanetHeightSampler& heightSampler) {
+    return buildFixedLevelPlanetPatchMeshes(
+        planetRadius,
+        level,
+        PlanetPatchVersion{},
+        heightSampler);
+}
+
+std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
+        float planetRadius,
+        std::uint8_t level,
+        const PlanetPatchVersion& version,
+        const PlanetHeightSampler& heightSampler) {
     if (level > MAX_FIXED_PLANET_PATCH_LEVEL) {
         throw std::invalid_argument{"fixed planet patch level exceeds the debug maximum"};
     }
@@ -136,22 +163,170 @@ std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
         throw std::invalid_argument{"fixed planet patches require a height sampler"};
     }
 
-    const std::uint32_t count = wgen::patchesPerAxis(level);
+    const std::vector<wgen::PlanetPatchId> ids = fixedLevelPlanetPatchIds(level);
     std::vector<PlanetPatchMeshData> result;
-    result.reserve(wgen::FACES.size() * static_cast<std::size_t>(count) * count);
+    result.reserve(ids.size());
+    for (const wgen::PlanetPatchId& id : ids) {
+        result.push_back(buildRequestedPlanetPatchMesh(
+            PlanetPatchMeshRequest{.id = id, .version = version},
+            PLANET_PATCH_QUADS,
+            planetRadius,
+            heightSampler));
+    }
+    return result;
+}
 
+std::vector<wgen::PlanetPatchId> fixedLevelPlanetPatchIds(std::uint8_t level) {
+    if (level > MAX_FIXED_PLANET_PATCH_LEVEL) {
+        throw std::invalid_argument{"fixed planet patch level exceeds the debug maximum"};
+    }
+
+    const std::uint32_t count = wgen::patchesPerAxis(level);
+    std::vector<wgen::PlanetPatchId> result;
+    result.reserve(wgen::FACES.size() * static_cast<std::size_t>(count) * count);
     for (const wgen::CubeSphereFace face : wgen::FACES) {
         for (std::uint32_t y = 0; y < count; ++y) {
             for (std::uint32_t x = 0; x < count; ++x) {
-                result.push_back(buildPlanetPatchMesh(
-                    {face, level, x, y},
-                    PLANET_PATCH_QUADS,
-                    planetRadius,
-                    heightSampler));
+                result.push_back({face, level, x, y});
             }
         }
     }
     return result;
+}
+
+std::vector<wgen::PlanetPatchId> planetPatchIdDifference(
+        std::span<const wgen::PlanetPatchId> previousIds,
+        std::span<const wgen::PlanetPatchId> desiredIds) {
+    std::unordered_set<wgen::PlanetPatchId, wgen::PlanetPatchIdHash> desired;
+    desired.reserve(desiredIds.size());
+    for (const wgen::PlanetPatchId& id : desiredIds) {
+        wgen::validate(id);
+        desired.insert(id);
+    }
+
+    std::vector<wgen::PlanetPatchId> result;
+    result.reserve(previousIds.size());
+    for (const wgen::PlanetPatchId& id : previousIds) {
+        wgen::validate(id);
+        if (!desired.contains(id)) {
+            result.push_back(id);
+        }
+    }
+    std::sort(result.begin(), result.end(), wgen::PlanetPatchIdLess{});
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+}
+
+PlanetPatchMeshBatch makePlanetPatchMeshBatch(
+        std::vector<PlanetPatchMeshData> upserts,
+        std::span<const wgen::PlanetPatchId> previousIds,
+        std::uint64_t terrainEpoch,
+        std::uint64_t requestRevision) {
+    std::vector<wgen::PlanetPatchId> desiredIds;
+    desiredIds.reserve(upserts.size());
+    for (const PlanetPatchMeshData& upsert : upserts) {
+        desiredIds.push_back(upsert.id);
+    }
+
+    PlanetPatchMeshBatch result{
+        .terrainEpoch = terrainEpoch,
+        .requestRevision = requestRevision,
+        .upserts = std::move(upserts),
+    };
+    for (const wgen::PlanetPatchId& id : planetPatchIdDifference(previousIds, desiredIds)) {
+        result.removals.push_back({
+            .id = id,
+            .terrainEpoch = terrainEpoch,
+            .requestRevision = requestRevision,
+        });
+    }
+    validatePlanetPatchMeshBatch(result);
+    return result;
+}
+
+void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch) {
+    if (batch.terrainEpoch == 0 || batch.requestRevision == 0) {
+        throw std::invalid_argument{"planet patch batch versions must be initialized"};
+    }
+
+    std::unordered_set<wgen::PlanetPatchId, wgen::PlanetPatchIdHash> upsertIds;
+    upsertIds.reserve(batch.upserts.size());
+    for (const PlanetPatchMeshData& upsert : batch.upserts) {
+        wgen::validate(upsert.id);
+        if (upsert.vertices.empty() || upsert.indices.empty()) {
+            throw std::invalid_argument{"planet patch upsert mesh must not be empty"};
+        }
+        if (upsert.version.terrainEpoch != batch.terrainEpoch ||
+                upsert.version.requestRevision != batch.requestRevision) {
+            throw std::invalid_argument{"planet patch upsert version disagrees with its batch"};
+        }
+        if (!upsertIds.insert(upsert.id).second) {
+            throw std::invalid_argument{"planet patch batch contains duplicate upserts"};
+        }
+    }
+
+    std::unordered_set<wgen::PlanetPatchId, wgen::PlanetPatchIdHash> removalIds;
+    removalIds.reserve(batch.removals.size());
+    for (const PlanetPatchRemoval& removal : batch.removals) {
+        wgen::validate(removal.id);
+        if (removal.terrainEpoch != batch.terrainEpoch ||
+                removal.requestRevision != batch.requestRevision) {
+            throw std::invalid_argument{"planet patch removal version disagrees with its batch"};
+        }
+        if (upsertIds.contains(removal.id)) {
+            throw std::invalid_argument{"planet patch batch contains overlapping operations"};
+        }
+        if (!removalIds.insert(removal.id).second) {
+            throw std::invalid_argument{"planet patch batch contains duplicate removals"};
+        }
+    }
+}
+
+bool isCurrentPlanetPatchMeshBatch(
+        const PlanetPatchMeshBatch& batch,
+        std::uint64_t desiredRequestRevision) noexcept {
+    return batch.requestRevision == desiredRequestRevision;
+}
+
+bool discardStalePlanetPatchMeshBatch(
+        std::optional<PlanetPatchMeshBatch>& batch,
+        std::uint64_t desiredRequestRevision) noexcept {
+    if (batch && !isCurrentPlanetPatchMeshBatch(*batch, desiredRequestRevision)) {
+        batch.reset();
+        return true;
+    }
+    return false;
+}
+
+PlanetPatchBatchEpochAction planetPatchBatchEpochAction(
+        std::uint64_t batchTerrainEpoch,
+        std::uint64_t activeTerrainEpoch) noexcept {
+    if (batchTerrainEpoch < activeTerrainEpoch) {
+        return PlanetPatchBatchEpochAction::Discard;
+    }
+    if (batchTerrainEpoch > activeTerrainEpoch) {
+        return PlanetPatchBatchEpochAction::Replace;
+    }
+    return PlanetPatchBatchEpochAction::Apply;
+}
+
+bool shouldApplyPlanetPatchUpsert(
+        const PlanetPatchVersion& incoming,
+        const PlanetPatchVersion& resident) noexcept {
+    if (incoming.terrainEpoch != resident.terrainEpoch ||
+            incoming.requestRevision < resident.requestRevision ||
+            incoming.dependencyRevision < resident.dependencyRevision) {
+        return false;
+    }
+    return incoming.requestRevision > resident.requestRevision ||
+        incoming.dependencyRevision > resident.dependencyRevision;
+}
+
+bool shouldApplyPlanetPatchRemoval(
+        const PlanetPatchRemoval& removal,
+        const PlanetPatchVersion& resident) noexcept {
+    return removal.terrainEpoch == resident.terrainEpoch &&
+        removal.requestRevision >= resident.requestRevision;
 }
 
 void appendCubeSphereMesh(

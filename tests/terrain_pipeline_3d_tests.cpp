@@ -129,6 +129,31 @@ void testGeneratorImpactFunction() {
     );
 }
 
+void testGeneratorHeightBias() {
+    constexpr float scale = 2.5F;
+    constexpr float bias = 17.0F;
+    const wgen::Generator3dPipelineSpec specs{
+        wgen::Generator3dSpec{
+            .kind = wgen::Generator3dKind::PerlinNoise,
+            .config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = 0.5F},
+            .scale = scale,
+            .bias = bias,
+        },
+    };
+    const auto pipeline = wgen::makePipeline3d(specs, 17);
+    const wgen::PerlinNoise3d expectedGenerator{17, 0.5F};
+    const auto expected = wgen::map(
+        expectedGenerator.generateCubeSphere(5),
+        [scale, bias](float height) { return height * scale + bias; }
+    );
+
+    expectCubeSphereNear(
+        pipeline->generateCubeSphere(5),
+        wgen::CubeSphere<float>{expected},
+        "3D pipeline should apply generator height bias"
+    );
+}
+
 void testNoiseMatchesCubeSphereSamples() {
     wgen::Generator3dPipelineSpec specs{
         wgen::Generator3dSpec{
@@ -304,6 +329,7 @@ int main() {
         wgen::tests::runTest("empty 3D pipeline returns zero cube sphere", testEmptyPipelineReturnsZeroCubeSphere);
         wgen::tests::runTest("single 3D generator pipeline", testSingleGeneratorPipeline);
         wgen::tests::runTest("3D generator impact function", testGeneratorImpactFunction);
+        wgen::tests::runTest("3D generator height bias", testGeneratorHeightBias);
         wgen::tests::runTest("3D noise matches cube sphere samples", testNoiseMatchesCubeSphereSamples);
         wgen::tests::runTest("3D setSeed chains generator seeds", testSetSeedChainsGeneratorSeeds);
         wgen::tests::runTest("3D octave frequency scales coordinates", testOctaveFrequencyScalesCoordinates);

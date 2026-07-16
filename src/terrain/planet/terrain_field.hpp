@@ -4,6 +4,7 @@
 #include "terrain/generators/3d/generator_spec.hpp"
 #include "terrain/planet/planet_patch.hpp"
 #include "terrain/terrain_detail.hpp"
+#include "terrain/terrain_height.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,20 +13,15 @@
 
 namespace wgen {
 
-inline constexpr std::size_t TERRAIN_CALIBRATION_RESOLUTION = 65;
-
-struct TerrainHeightCalibration {
-    float rawMinimum{};
-    float rawMaximum{};
-    float scale{};
-    float bias{};
-
-    float apply(float rawHeight) const;
-};
+inline constexpr std::size_t LEGACY_TERRAIN_CALIBRATION_RESOLUTION = 65;
 
 class TerrainField {
 public:
-    TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, float radius);
+    TerrainField(
+        Generator3dPipelineSpec pipeline,
+        SeedType seed,
+        float radiusMeters,
+        TerrainHeightSemantics heightSemantics = TerrainHeightSemantics::PhysicalMeters);
 
     TerrainField(const TerrainField&) = delete;
     TerrainField& operator=(const TerrainField&) = delete;
@@ -41,27 +37,40 @@ public:
         std::size_t resolution,
         std::uint8_t maxDetailLevel) const;
 
-    float radius() const { return radius_; }
-    float maximumAbsoluteHeight() const { return maximumAbsoluteHeight_; }
-    const TerrainHeightCalibration& calibration() const { return calibration_; }
+    float radius() const { return radiusMeters_; }
+    TerrainHeightSemantics heightSemantics() const { return heightSemantics_; }
+    const TerrainHeightBounds& heightBounds() const { return heightBounds_; }
+    const TerrainDisplayHeightRange& displayHeightRange() const { return displayHeightRange_; }
     const TerrainDetailPolicy& detailPolicy() const { return detailPolicy_; }
 
 private:
+    struct HeightTransform {
+        float scale{1.0F};
+        float bias{};
+
+        float apply(float authoredHeight) const;
+    };
+
     struct Contributor {
         std::unique_ptr<Generator3d> generator{};
         float amplitude{};
+        float bias{};
+        float maximumAbsoluteNoiseHeight{};
+        float maximumAbsoluteAuthoredHeight{};
         TerrainDetailBand detailBand{};
     };
 
-    float sampleRaw(glm::vec3 direction, TerrainDetailLevel detail) const;
-    void calibrate();
+    float sampleAuthored(glm::vec3 direction, TerrainDetailLevel detail) const;
+    void calibrateLegacyHeightTransform();
+    void buildHeightMetadata();
 
     std::vector<Contributor> contributors_{};
-    float radius_{};
+    float radiusMeters_{};
+    TerrainHeightSemantics heightSemantics_{TerrainHeightSemantics::PhysicalMeters};
     TerrainDetailPolicy detailPolicy_;
-    float maximumAbsoluteRawHeight_{};
-    float maximumAbsoluteHeight_{};
-    TerrainHeightCalibration calibration_{};
+    HeightTransform geometryHeightTransform_{};
+    TerrainHeightBounds heightBounds_{};
+    TerrainDisplayHeightRange displayHeightRange_{};
 };
 
 using TerrainFieldSnapshot = std::shared_ptr<const TerrainField>;
@@ -69,6 +78,7 @@ using TerrainFieldSnapshot = std::shared_ptr<const TerrainField>;
 TerrainFieldSnapshot buildTerrainFieldSnapshot(
     const Generator3dPipelineSpec& pipeline,
     SeedType seed,
-    float radius);
+    float radiusMeters,
+    TerrainHeightSemantics heightSemantics = TerrainHeightSemantics::PhysicalMeters);
 
 } // namespace wgen

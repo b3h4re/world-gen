@@ -154,7 +154,8 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
             terrainField = wgen::buildTerrainFieldSnapshot(
                 planetPipelineSpec,
                 terrainConfig.seed,
-                planetConfig.radius);
+                planetConfig.radius,
+                planetConfig.heightSemantics);
         } else {
             terrainField = previousTerrainField;
         }
@@ -269,6 +270,13 @@ wgen::Generator3dPipelineSpec TerrainAppCore::currentPlanetPipeline() const {
     return planetPipelineSpec_;
 }
 
+wgen::TerrainDisplayHeightRange TerrainAppCore::activePlanetDisplayHeightRange() const {
+    if (activeTerrainField_ == nullptr) {
+        return {};
+    }
+    return activeTerrainField_->displayHeightRange();
+}
+
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
     if (!terrainJobRunning_) {
         return std::nullopt;
@@ -291,11 +299,9 @@ std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
         } else if (result.planetBatch) {
             if (replacesPlanetEpoch) {
                 planetLodCoordinator_.reset();
-                planetLodCoordinator_.setSurface({
-                    .radius = 1.0,
-                    .maximumDisplacement = activeTerrainField_->maximumAbsoluteHeight() /
-                        activeTerrainField_->radius(),
-                });
+                planetLodCoordinator_.setSurface(buildPlanetLodSurface(
+                    *activeTerrainField_,
+                    planetLodCoordinator_.lodConfig().patchQuadCount));
                 planetLodSelectionDirty_ = true;
             }
             publishPlanetPatchBatch(*result.planetBatch);
@@ -506,6 +512,27 @@ PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
     }
     validatePlanetPatchMeshBatch(batch);
     return batch;
+}
+
+wgen::PlanetLodSurface TerrainAppCore::buildPlanetLodSurface(
+        const wgen::TerrainField& terrainField,
+        std::uint32_t patchQuadCount) {
+    const double inverseRadius = 1.0 / static_cast<double>(terrainField.radius());
+    const wgen::TerrainHeightBounds& bounds = terrainField.heightBounds();
+    wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement =
+            static_cast<double>(bounds.minimumDisplacementMeters) * inverseRadius,
+        .maximumDisplacement =
+            static_cast<double>(bounds.maximumDisplacementMeters) * inverseRadius,
+    };
+    for (std::uint8_t level = 0; level <= wgen::MAX_PLANET_PATCH_LEVEL; ++level) {
+        const wgen::TerrainDetailLevel detail =
+            terrainField.detailPolicy().detailForCubeFacePatch(level, patchQuadCount);
+        surface.maximumOmittedDetailError[level] =
+            static_cast<double>(bounds.omittedDetailErrorMeters(detail)) * inverseRadius;
+    }
+    return surface;
 }
 
 void TerrainAppCore::publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch) {

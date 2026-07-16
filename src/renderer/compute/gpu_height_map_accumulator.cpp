@@ -1,6 +1,7 @@
 #include "gpu_height_map_accumulator.hpp"
 
 #include <array>
+#include <cmath>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -23,14 +24,22 @@ std::uint32_t checkedSampleCount(const GpuHeightMap& heightMap) {
 GpuHeightMapAccumulator::GpuHeightMapAccumulator(LveComputeDevice& device)
     : computer_{device, "accumulate_height", sizeof(AccumulateHeightMapSpec), 2} {}
 
-void GpuHeightMapAccumulator::accumulate(const GpuHeightMap& input, GpuHeightMap& output, float scale) const {
+void GpuHeightMapAccumulator::accumulate(
+        const GpuHeightMap& input,
+        GpuHeightMap& output,
+        float scale,
+        float bias) const {
     if (input.width() != output.width() || input.height() != output.height()) {
         throw std::invalid_argument("GPU heightmap accumulation requires matching dimensions");
+    }
+    if (!std::isfinite(scale) || !std::isfinite(bias)) {
+        throw std::invalid_argument("GPU heightmap accumulation scale and bias must be finite");
     }
 
     const AccumulateHeightMapSpec spec{
         .sampleCount = checkedSampleCount(input),
         .scale = scale,
+        .bias = bias,
     };
     const std::array<VkDescriptorBufferInfo, 2> buffers{
         input.readOnlyDescriptorInfo(),

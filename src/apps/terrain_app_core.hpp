@@ -69,6 +69,7 @@ public:
     void updatePlanetLod(const wgen::PlanetLodView& view);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
+    wgen::TerrainDisplayHeightRange activePlanetDisplayHeightRange() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
     bool isTerrainJobRunning() const { return terrainJobRunning_; }
     bool isBlockingTerrainJobRunning() const;
@@ -106,6 +107,9 @@ private:
         const PlanetPatchVersion& version,
         const std::vector<wgen::PlanetPatchId>& upsertIds,
         const std::vector<wgen::PlanetPatchId>& removalIds);
+    static wgen::PlanetLodSurface buildPlanetLodSurface(
+        const wgen::TerrainField& terrainField,
+        std::uint32_t patchQuadCount);
     void publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch);
     void startPlanetLodJob(wgen::PlanetLodPatchPlan plan);
     std::function<glm::vec3(float)> getActiveColorFunc() const;

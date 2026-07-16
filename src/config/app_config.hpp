@@ -4,6 +4,7 @@
 #include "swap_chain/lve_swap_chain.hpp"
 #include "terrain/generators/2d/generator.hpp"
 #include "terrain/terrain_compute_method.hpp"
+#include "terrain/terrain_height.hpp"
 
 #include <string>
 #include <cstdint>
@@ -139,7 +140,9 @@ namespace wgen {
 
     struct PlanetConfig {
         std::size_t resolution{0};
+        // Planet radius and physical generator heights are authored in meters.
         float radius{100.0F};
+        TerrainHeightSemantics heightSemantics{TerrainHeightSemantics::PhysicalMeters};
         TerrainComputeMethod computeMethod{TerrainComputeMethod::VulkanCompute};
         float perlinCellSize{1.0F};
         std::size_t octaves{5};

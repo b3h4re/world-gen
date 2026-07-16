@@ -3,6 +3,7 @@
 #include "terrain/generators/3d/coordinate_scaled_generator.hpp"
 #include "terrain/generators/3d/noise/perlin.hpp"
 
+#include <cmath>
 #include <stdexcept>
 
 namespace wgen {
@@ -52,9 +53,15 @@ std::unique_ptr<TerrainPipeline3d> makePipeline3d(const Generator3dPipelineSpec&
     auto pipeline = std::make_unique<TerrainPipeline3d>();
 
     for (const Generator3dSpec& spec : specs) {
+        if (!std::isfinite(spec.scale) || !std::isfinite(spec.bias)) {
+            throw std::invalid_argument("3D generator scale and bias must be finite");
+        }
+        const float scale = spec.scale * generator3dOctaveAmplitude(spec);
         pipeline->push_back(
             makePipelineGenerator3d(spec, seed),
-            multiplyFunction(spec.scale * generator3dOctaveAmplitude(spec))
+            [scale, bias = spec.bias](float height) {
+                return height * scale + bias;
+            }
         );
     }
 

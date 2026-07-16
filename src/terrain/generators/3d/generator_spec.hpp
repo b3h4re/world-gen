@@ -52,7 +52,10 @@ struct Generator3dTerrainDetailSpec {
 struct Generator3dSpec {
     Generator3dKind kind{Generator3dKind::PerlinNoise};
     Generator3dConfig config{PerlinNoise3dGeneratorSpec{}};
+    // In physical-height mode, scale and bias are meters. Legacy-normalized
+    // fields interpret both values in the old normalized authoring space.
     float scale{1.0F};
+    float bias{};
     TerrainComputeMethod computeMethod{defaultComputeMethodForGenerator3d(kind)};
     GeneratorOctaveSettings octaveSettings{};
     // Compatibility setting retained for existing callers and saved pipeline

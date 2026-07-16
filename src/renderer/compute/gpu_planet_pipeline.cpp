@@ -31,7 +31,8 @@ wgen::CubeSphere<float> GpuPlanetPipeline::generateCubeSphere(
         accumulator_.accumulate(
             generated,
             accumulated,
-            request.spec.scale * wgen::generator3dOctaveAmplitude(request.spec)
+            request.spec.scale * wgen::generator3dOctaveAmplitude(request.spec),
+            request.spec.bias
         );
     }
 

@@ -70,6 +70,17 @@ Octave-capable generators also expose:
 
 Pipeline changes update the active generator spec immediately. Terrain regeneration only happens when you explicitly trigger it from the controls.
 
+## Planet height units
+
+Planet radii and terrain heights use meters when `planet.height_mode` is
+`"physical_meters"`. Each 3D generator's scale is its height amplitude in
+meters, and its bias is also measured in meters. Geometry uses those physical
+heights directly; color normalization is a separate display-only range.
+
+Configuration files that predate `height_mode` are loaded as
+`"legacy_normalized"`, preserving the previous frozen global normalization.
+Set the mode explicitly to opt into stable physical-height authoring.
+
 ## Build
 
 Requirements:

@@ -2,6 +2,7 @@
 
 #include "terrain/planet/planet_patch.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -43,7 +44,12 @@ struct PlanetLodView {
 
 struct PlanetLodSurface {
     double radius{1.0};
+    // Displacement and error values use the same render-space unit as radius.
+    // Both displacement bounds include the zero-displacement reference sphere.
+    double minimumDisplacement{};
     double maximumDisplacement{};
+    std::array<double, static_cast<std::size_t>(MAX_PLANET_PATCH_LEVEL) + 1>
+        maximumOmittedDetailError{};
 };
 
 struct PlanetLodSelection {

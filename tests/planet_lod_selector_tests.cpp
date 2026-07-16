@@ -113,7 +113,7 @@ void testSelectionCoverageBalanceAndBudget() {
     config.selectedLeafBudget = 256;
     const wgen::PlanetLodSelection selection = wgen::PlanetLodSelector{}.select(
         makeView(1.4),
-        {.radius = 1.0, .maximumDisplacement = 0.01},
+        {.radius = 1.0, .minimumDisplacement = -0.01, .maximumDisplacement = 0.01},
         config);
 
     wgen::tests::require(
@@ -125,7 +125,11 @@ void testSelectionCoverageBalanceAndBudget() {
 
 void testSelectionHysteresis() {
     const wgen::PlanetLodView view = makeView();
-    const wgen::PlanetLodSurface surface{.radius = 1.0, .maximumDisplacement = 0.01};
+    const wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    };
     const wgen::PlanetPatchId topRoot{wgen::CubeSphereFace::Top, 0, 0, 0};
     const double rootError = wgen::planetPatchScreenErrorPixels(topRoot, view, surface);
 
@@ -173,7 +177,11 @@ void testCullingAndDeterminism() {
     config.maximumLevel = 5;
     config.selectedLeafBudget = 128;
     const wgen::PlanetLodView view = makeView(2.0);
-    const wgen::PlanetLodSurface surface{.radius = 1.0, .maximumDisplacement = 0.01};
+    const wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    };
     const wgen::PlanetLodSelector selector;
     const wgen::PlanetLodSelection first = selector.select(view, surface, config);
     const wgen::PlanetLodSelection second = selector.select(view, surface, config);
@@ -200,8 +208,25 @@ void testCullingAndDeterminism() {
         wgen::isPlanetPatchVisible(
             {wgen::CubeSphereFace::Bottom, 0, 0, 0},
             view,
-            {.radius = 1.0, .maximumDisplacement = 1.0}),
-        "horizon culling should remain conservative when terrain can reach the planet center");
+            {.radius = 1.0, .minimumDisplacement = -1.0, .maximumDisplacement = 0.01}),
+        "horizon culling should use the conservative minimum displacement bound");
+}
+
+void testOmittedDetailErrorContributesToScreenError() {
+    const wgen::PlanetLodView view = makeView(3.0);
+    const wgen::PlanetPatchId patch{wgen::CubeSphereFace::Top, 0, 0, 0};
+    wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    };
+    const double spacingOnly = wgen::planetPatchScreenErrorPixels(patch, view, surface);
+    surface.maximumOmittedDetailError[0] = 0.5;
+    const double withOmittedDetail = wgen::planetPatchScreenErrorPixels(patch, view, surface);
+
+    wgen::tests::require(
+        withOmittedDetail > spacingOnly,
+        "omitted terrain detail should increase patch screen-space error");
 }
 
 void testValidation() {
@@ -231,6 +256,12 @@ void testValidation() {
             });
         },
         "selector should reject negative terrain displacement");
+
+    wgen::PlanetLodSurface invalidError{};
+    invalidError.maximumOmittedDetailError[0] = -0.1;
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&invalidError] { wgen::validatePlanetLodSurface(invalidError); },
+        "selector should reject negative omitted-detail error");
 }
 
 void testCameraLodState() {
@@ -283,6 +314,9 @@ int main() {
             testSelectionCoverageBalanceAndBudget);
         wgen::tests::runTest("selection hysteresis", testSelectionHysteresis);
         wgen::tests::runTest("culling and determinism", testCullingAndDeterminism);
+        wgen::tests::runTest(
+            "omitted detail screen error",
+            testOmittedDetailErrorContributesToScreenError);
         wgen::tests::runTest("LOD validation", testValidation);
         wgen::tests::runTest("camera LOD state", testCameraLodState);
     } catch (const std::exception& exception) {

@@ -17,8 +17,7 @@ void main() {
     float maxHeight = ubo.heightParams.y;
     float minHeight = ubo.heightParams.x;
     float delta = maxHeight - minHeight;
-    float offset = (maxHeight - minHeight) / 2.0F;
-    float height = (fragmentHeight + offset) / delta;
+    float height = (fragmentHeight - minHeight) / delta;
 
     outColor = texture(uHeightColorMap, vec2(height, 0.5));
 }

@@ -233,6 +233,12 @@ void TerrainApp::run() {
                     ubo.projection = cameraPlanet.projection();
                     ubo.view = cameraPlanet.view();
                     ubo.inverseView = glm::inverse(cameraPlanet.view());
+                    const wgen::TerrainDisplayHeightRange displayRange =
+                        core_.activePlanetDisplayHeightRange();
+                    ubo.heightParams = {
+                        displayRange.minimumMeters,
+                        displayRange.maximumMeters,
+                    };
                     break;
                 }
             }

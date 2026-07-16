@@ -395,6 +395,7 @@ void testGpuPlanetPipeline() {
     const wgen::SeedType seed = 42;
     const float cellSize = 0.5F;
     const float scale = 1.25F;
+    const float bias = 0.35F;
 
     const wgen::Generator3dSpec perlinSpec{
         .kind = wgen::Generator3dKind::PerlinNoise,
@@ -402,6 +403,7 @@ void testGpuPlanetPipeline() {
             .cellSize = cellSize,
         },
         .scale = scale,
+        .bias = bias,
         .computeMethod = wgen::TerrainComputeMethod::VulkanCompute,
     };
 
@@ -417,12 +419,14 @@ void testGpuPlanetPipeline() {
 
     wgen::PerlinNoise3d perlin{seed, cellSize};
     const wgen::CubeSphere<float> cubeSphereCpu{
-        wgen::map(perlin.generateCubeSphere(dots), wgen::multiplyFunction(scale))
+        wgen::map(
+            perlin.generateCubeSphere(dots),
+            [scale, bias](float height) { return height * scale + bias; })
     };
 
     wgen::tests::require(
         cubeSphereGpu.isClose(cubeSphereCpu, 0.0001F),
-        "GPU planet pipeline must accumulate scaled 3D generator outputs");
+        "GPU planet pipeline must accumulate scaled and biased 3D generator outputs");
 }
 
 void testGpuPlanetPipelinePerlinOctave() {

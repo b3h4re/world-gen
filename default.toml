@@ -32,6 +32,8 @@ jiggle=0.021
 
 [planet]
 resolution=0
+# Planet radius, generator scale, and generator bias are meters in this mode.
+height_mode="physical_meters"
 radius=10.0
 compute_method="vulkan_compute"
 perlin_cell_size=1.0

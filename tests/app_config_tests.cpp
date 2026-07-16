@@ -14,11 +14,17 @@ toml::table parseToml(std::string_view source) {
 }
 
 void testPlanetConfigDefaults() {
+    wgen::tests::require(
+        wgen::PlanetConfig{}.heightSemantics == wgen::TerrainHeightSemantics::PhysicalMeters,
+        "new in-memory planet configs should use physical meter heights");
     const toml::table root = parseToml("");
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
     wgen::tests::require(config.resolution == 0, "default planet resolution should be automatic");
     wgen::tests::expectNear(config.radius, 100.0F, 0.00001F, "default planet radius is wrong");
+    wgen::tests::require(
+        config.heightSemantics == wgen::TerrainHeightSemantics::LegacyNormalized,
+        "configuration files without height_mode should retain legacy height semantics");
     wgen::tests::require(
         config.computeMethod == wgen::TerrainComputeMethod::VulkanCompute,
         "default planet compute should be Vulkan compute");
@@ -33,6 +39,7 @@ void testPlanetConfigOverrides() {
         [planet]
         resolution = 128
         radius = 42.5
+        height_mode = "physical_meters"
         compute_method = "vulkan_compute"
         perlin_cell_size = 0.25
         octaves = 3
@@ -43,6 +50,9 @@ void testPlanetConfigOverrides() {
 
     wgen::tests::require(config.resolution == 128, "planet resolution override is wrong");
     wgen::tests::expectNear(config.radius, 42.5F, 0.00001F, "planet radius override is wrong");
+    wgen::tests::require(
+        config.heightSemantics == wgen::TerrainHeightSemantics::PhysicalMeters,
+        "planet height mode override is wrong");
     wgen::tests::require(config.computeMethod == wgen::TerrainComputeMethod::VulkanCompute, "planet compute override is wrong");
     wgen::tests::expectNear(config.perlinCellSize, 0.25F, 0.00001F, "planet cell size override is wrong");
     wgen::tests::require(config.octaves == 3, "planet octaves override is wrong");
@@ -60,6 +70,25 @@ void testPlanetConfigRejectsBadComputeMethod() {
         [&] { wgen::parse_planet_config(root); },
         "planet config should reject unknown compute method"
     );
+}
+
+void testPlanetConfigHeightCompatibility() {
+    const toml::table legacy = parseToml(R"(
+        [planet]
+        height_mode = "legacy_normalized"
+    )");
+    wgen::tests::require(
+        wgen::parse_planet_config(legacy).heightSemantics ==
+            wgen::TerrainHeightSemantics::LegacyNormalized,
+        "explicit legacy height mode should be supported");
+
+    const toml::table invalid = parseToml(R"(
+        [planet]
+        height_mode = "centimeters"
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&invalid] { wgen::parse_planet_config(invalid); },
+        "planet config should reject unknown height semantics");
 }
 
 void testPlanetConfigRejectsBadValues() {
@@ -116,6 +145,7 @@ int main() {
         wgen::tests::runTest("planet config defaults", testPlanetConfigDefaults);
         wgen::tests::runTest("planet config overrides", testPlanetConfigOverrides);
         wgen::tests::runTest("planet config rejects bad compute method", testPlanetConfigRejectsBadComputeMethod);
+        wgen::tests::runTest("planet height compatibility", testPlanetConfigHeightCompatibility);
         wgen::tests::runTest("planet config rejects bad values", testPlanetConfigRejectsBadValues);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

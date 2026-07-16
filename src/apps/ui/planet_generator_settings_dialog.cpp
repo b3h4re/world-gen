@@ -53,7 +53,14 @@ PlanetGeneratorSettingsDialog::PlanetGeneratorSettingsDialog(wgen::Generator3dSp
     scaleSpinBox_->setRange(-1000000.0, 1000000.0);
     scaleSpinBox_->setSingleStep(0.1);
     scaleSpinBox_->setValue(spec_.scale);
-    form->addRow(QStringLiteral("Scale"), scaleSpinBox_);
+    form->addRow(QStringLiteral("Height scale"), scaleSpinBox_);
+
+    biasSpinBox_ = new QDoubleSpinBox{this};
+    biasSpinBox_->setDecimals(4);
+    biasSpinBox_->setRange(-1000000.0, 1000000.0);
+    biasSpinBox_->setSingleStep(0.1);
+    biasSpinBox_->setValue(spec_.bias);
+    form->addRow(QStringLiteral("Height bias"), biasSpinBox_);
 
     firstFullyVisibleDetailSpinBox_ = new QSpinBox{this};
     firstFullyVisibleDetailSpinBox_->setRange(0, wgen::MAX_TERRAIN_DETAIL_LEVEL);
@@ -97,6 +104,7 @@ void PlanetGeneratorSettingsDialog::accept() {
 
     spec_.config = wgen::PerlinNoise3dGeneratorSpec{.cellSize = cellSize};
     spec_.scale = static_cast<float>(scaleSpinBox_->value());
+    spec_.bias = static_cast<float>(biasSpinBox_->value());
     spec_.computeMethod = computeMethodFromIndex(computeMethodComboBox_->currentIndex());
     const auto firstFullyVisibleDetail =
         static_cast<std::uint8_t>(firstFullyVisibleDetailSpinBox_->value());

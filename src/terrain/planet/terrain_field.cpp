@@ -19,22 +19,32 @@ bool isFinite(glm::vec3 value) {
 
 } // namespace
 
-float TerrainHeightCalibration::apply(float rawHeight) const {
-    if (!std::isfinite(rawHeight)) {
-        throw std::invalid_argument{"terrain field raw height must be finite"};
+float TerrainField::HeightTransform::apply(float authoredHeight) const {
+    if (!std::isfinite(authoredHeight)) {
+        throw std::invalid_argument{"terrain field authored height must be finite"};
     }
 
-    const float result = rawHeight * scale + bias;
+    const float result = authoredHeight * scale + bias;
     if (!std::isfinite(result)) {
-        throw std::overflow_error{"terrain field calibrated height is not finite"};
+        throw std::overflow_error{"terrain field physical height is not finite"};
     }
     return result;
 }
 
-TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, float radius)
-    : radius_{radius}, detailPolicy_{radius} {
-    if (!std::isfinite(radius_) || radius_ <= 0.0F) {
+TerrainField::TerrainField(
+        Generator3dPipelineSpec pipeline,
+        SeedType seed,
+        float radiusMeters,
+        TerrainHeightSemantics heightSemantics)
+    : radiusMeters_{radiusMeters},
+      heightSemantics_{heightSemantics},
+      detailPolicy_{radiusMeters} {
+    if (!std::isfinite(radiusMeters_) || radiusMeters_ <= 0.0F) {
         throw std::invalid_argument{"terrain field radius must be finite and positive"};
+    }
+    if (heightSemantics_ != TerrainHeightSemantics::PhysicalMeters &&
+            heightSemantics_ != TerrainHeightSemantics::LegacyNormalized) {
+        throw std::invalid_argument{"terrain field height semantics are invalid"};
     }
 
     contributors_.reserve(pipeline.size());
@@ -47,27 +57,32 @@ TerrainField::TerrainField(Generator3dPipelineSpec pipeline, SeedType seed, floa
         }
 
         const float amplitude = spec.scale * generator3dOctaveAmplitude(spec);
-        if (!std::isfinite(amplitude)) {
-            throw std::invalid_argument{"terrain field generator amplitude must be finite"};
+        if (!std::isfinite(amplitude) || !std::isfinite(spec.bias)) {
+            throw std::invalid_argument{"terrain field generator scale and bias must be finite"};
+        }
+        const float maximumAbsoluteNoiseHeight =
+            std::abs(amplitude) * generator3dMaximumAbsoluteNoise(spec.kind);
+        const float maximumAbsoluteAuthoredHeight =
+            maximumAbsoluteNoiseHeight + std::abs(spec.bias);
+        if (!std::isfinite(maximumAbsoluteAuthoredHeight)) {
+            throw std::overflow_error{"terrain field contributor height bound is not finite"};
         }
 
         contributors_.push_back({
             makePipelineGenerator3d(spec, generatorSeed),
             amplitude,
+            spec.bias,
+            maximumAbsoluteNoiseHeight,
+            maximumAbsoluteAuthoredHeight,
             terrainDetailBandForFirstFullyVisibleLevel(firstFullyVisibleDetail),
         });
-        maximumAbsoluteRawHeight_ +=
-            std::abs(amplitude) * generator3dMaximumAbsoluteNoise(spec.kind);
-        if (!std::isfinite(maximumAbsoluteRawHeight_)) {
-            throw std::overflow_error{"terrain field height bound is not finite"};
-        }
         generatorSeed = hashSeed(generatorSeed);
     }
 
-    calibrate();
-    maximumAbsoluteHeight_ = std::max(
-        std::abs(calibration_.apply(-maximumAbsoluteRawHeight_)),
-        std::abs(calibration_.apply(maximumAbsoluteRawHeight_)));
+    if (heightSemantics_ == TerrainHeightSemantics::LegacyNormalized) {
+        calibrateLegacyHeightTransform();
+    }
+    buildHeightMetadata();
 }
 
 float TerrainField::sample(
@@ -80,7 +95,7 @@ float TerrainField::sample(
         throw std::invalid_argument{"terrain field sample direction must be finite"};
     }
 
-    return calibration_.apply(sampleRaw(direction, detail));
+    return geometryHeightTransform_.apply(sampleAuthored(direction, detail));
 }
 
 float TerrainField::sample(
@@ -96,7 +111,7 @@ CubeSphere<float> TerrainField::generateCubeSphere(
         throw std::invalid_argument{"terrain field cube sphere resolution must be at least two"};
     }
 
-    CubeSphere<float> result{radius_, resolution, 0.0F};
+    CubeSphere<float> result{radiusMeters_, resolution, 0.0F};
     for (const CubeSphereFace face : FACES) {
         for (std::size_t y = 0; y < resolution; ++y) {
             for (std::size_t x = 0; x < resolution; ++x) {
@@ -121,7 +136,7 @@ CubeSphere<float> TerrainField::generateCubeSphere(
         TerrainDetailLevel::fromDiscrete(maxDetailLevel));
 }
 
-float TerrainField::sampleRaw(glm::vec3 direction, TerrainDetailLevel detail) const {
+float TerrainField::sampleAuthored(glm::vec3 direction, TerrainDetailLevel detail) const {
     float result = 0.0F;
     for (const Contributor& contributor : contributors_) {
         const float detailWeight = terrainDetailBandWeight(detail, contributor.detailBand);
@@ -129,7 +144,8 @@ float TerrainField::sampleRaw(glm::vec3 direction, TerrainDetailLevel detail) co
             continue;
         }
 
-        result += contributor.generator->noise(direction) * contributor.amplitude * detailWeight;
+        result += (contributor.generator->noise(direction) * contributor.amplitude +
+            contributor.bias) * detailWeight;
         if (!std::isfinite(result)) {
             throw std::invalid_argument{"terrain field generator produced a non-finite height"};
         }
@@ -137,48 +153,99 @@ float TerrainField::sampleRaw(glm::vec3 direction, TerrainDetailLevel detail) co
     return result;
 }
 
-void TerrainField::calibrate() {
+void TerrainField::calibrateLegacyHeightTransform() {
     if (contributors_.empty()) {
-        calibration_ = {};
+        geometryHeightTransform_ = {.scale = 0.0F, .bias = 0.0F};
         return;
     }
 
     float rawMinimum = std::numeric_limits<float>::infinity();
     float rawMaximum = -std::numeric_limits<float>::infinity();
-    const float denominator = static_cast<float>(TERRAIN_CALIBRATION_RESOLUTION - 1);
+    const float denominator = static_cast<float>(LEGACY_TERRAIN_CALIBRATION_RESOLUTION - 1);
     const TerrainDetailLevel maximumDetail =
         TerrainDetailLevel::fromDiscrete(MAX_TERRAIN_DETAIL_LEVEL);
     for (const CubeSphereFace face : FACES) {
-        for (std::size_t y = 0; y < TERRAIN_CALIBRATION_RESOLUTION; ++y) {
-            for (std::size_t x = 0; x < TERRAIN_CALIBRATION_RESOLUTION; ++x) {
+        for (std::size_t y = 0; y < LEGACY_TERRAIN_CALIBRATION_RESOLUTION; ++y) {
+            for (std::size_t x = 0; x < LEGACY_TERRAIN_CALIBRATION_RESOLUTION; ++x) {
                 const float u = -1.0F + 2.0F * static_cast<float>(x) / denominator;
                 const float v = -1.0F + 2.0F * static_cast<float>(y) / denominator;
-                const float rawHeight = sampleRaw(
+                const float authoredHeight = sampleAuthored(
                     cubeSphereDirection(face, u, v),
                     maximumDetail);
-                rawMinimum = std::min(rawMinimum, rawHeight);
-                rawMaximum = std::max(rawMaximum, rawHeight);
+                rawMinimum = std::min(rawMinimum, authoredHeight);
+                rawMaximum = std::max(rawMaximum, authoredHeight);
             }
         }
     }
 
-    calibration_.rawMinimum = rawMinimum;
-    calibration_.rawMaximum = rawMaximum;
     if (std::abs(rawMaximum - rawMinimum) < 0.000001F) {
-        calibration_.scale = 0.0F;
-        calibration_.bias = 0.0F;
+        geometryHeightTransform_ = {.scale = 0.0F, .bias = 0.0F};
         return;
     }
 
-    calibration_.scale = 2.0F / (rawMaximum - rawMinimum);
-    calibration_.bias = -1.0F - rawMinimum * calibration_.scale;
+    geometryHeightTransform_.scale = 2.0F / (rawMaximum - rawMinimum);
+    geometryHeightTransform_.bias = -1.0F - rawMinimum * geometryHeightTransform_.scale;
+}
+
+void TerrainField::buildHeightMetadata() {
+    float minimumAuthoredHeight = 0.0F;
+    float maximumAuthoredHeight = 0.0F;
+    for (const Contributor& contributor : contributors_) {
+        minimumAuthoredHeight += std::min(
+            0.0F,
+            contributor.bias - contributor.maximumAbsoluteNoiseHeight);
+        maximumAuthoredHeight += std::max(
+            0.0F,
+            contributor.bias + contributor.maximumAbsoluteNoiseHeight);
+    }
+
+    const float transformedMinimum = geometryHeightTransform_.apply(minimumAuthoredHeight);
+    const float transformedMaximum = geometryHeightTransform_.apply(maximumAuthoredHeight);
+    heightBounds_.minimumDisplacementMeters =
+        std::min(transformedMinimum, transformedMaximum);
+    heightBounds_.maximumDisplacementMeters =
+        std::max(transformedMinimum, transformedMaximum);
+    heightBounds_.maximumAbsoluteDisplacementMeters = std::max(
+        std::abs(heightBounds_.minimumDisplacementMeters),
+        std::abs(heightBounds_.maximumDisplacementMeters));
+
+    for (std::uint8_t level = 0; level <= MAX_TERRAIN_DETAIL_LEVEL; ++level) {
+        const TerrainDetailLevel detail = TerrainDetailLevel::fromDiscrete(level);
+        float authoredError = 0.0F;
+        for (const Contributor& contributor : contributors_) {
+            const float visibleWeight = terrainDetailBandWeight(detail, contributor.detailBand);
+            authoredError += contributor.maximumAbsoluteAuthoredHeight * (1.0F - visibleWeight);
+        }
+        const float physicalError = std::abs(geometryHeightTransform_.scale) * authoredError;
+        if (!std::isfinite(physicalError)) {
+            throw std::overflow_error{"terrain field omitted-detail bound is not finite"};
+        }
+        heightBounds_.maximumOmittedDetailErrorMeters[level] = physicalError;
+    }
+
+    if (heightSemantics_ == TerrainHeightSemantics::LegacyNormalized) {
+        displayHeightRange_ = {.minimumMeters = -1.0F, .maximumMeters = 1.0F};
+    } else if (heightBounds_.maximumDisplacementMeters -
+            heightBounds_.minimumDisplacementMeters < 0.000001F) {
+        displayHeightRange_ = {.minimumMeters = -1.0F, .maximumMeters = 1.0F};
+    } else {
+        displayHeightRange_ = {
+            .minimumMeters = heightBounds_.minimumDisplacementMeters,
+            .maximumMeters = heightBounds_.maximumDisplacementMeters,
+        };
+    }
 }
 
 TerrainFieldSnapshot buildTerrainFieldSnapshot(
         const Generator3dPipelineSpec& pipeline,
         SeedType seed,
-        float radius) {
-    return std::make_shared<const TerrainField>(pipeline, seed, radius);
+        float radiusMeters,
+        TerrainHeightSemantics heightSemantics) {
+    return std::make_shared<const TerrainField>(
+        pipeline,
+        seed,
+        radiusMeters,
+        heightSemantics);
 }
 
 } // namespace wgen

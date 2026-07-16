@@ -256,6 +256,27 @@ namespace wgen {
     PlanetConfig parse_planet_config(const toml::table& root) {
         PlanetConfig config;
 
+        const auto heightModeNode = root["planet"]["height_mode"];
+        if (!heightModeNode) {
+            // Configuration files created before physical height semantics did
+            // not contain this key and retain their normalized behavior.
+            config.heightSemantics = TerrainHeightSemantics::LegacyNormalized;
+        } else {
+            const std::string heightMode = checked_string(
+                heightModeNode,
+                "physical_meters",
+                "planet.height_mode"
+            );
+            if (heightMode == "physical_meters") {
+                config.heightSemantics = TerrainHeightSemantics::PhysicalMeters;
+            } else if (heightMode == "legacy_normalized") {
+                config.heightSemantics = TerrainHeightSemantics::LegacyNormalized;
+            } else {
+                throw std::runtime_error(
+                    "planet.height_mode must be 'physical_meters' or 'legacy_normalized'");
+            }
+        }
+
         config.resolution = checked_uinteger<std::size_t>(
             root["planet"]["resolution"],
             config.resolution,

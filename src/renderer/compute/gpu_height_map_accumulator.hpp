@@ -11,13 +11,18 @@ namespace lve {
 struct AccumulateHeightMapSpec {
     std::uint32_t sampleCount{};
     float scale{1.0F};
+    float bias{};
 };
 
 class GpuHeightMapAccumulator {
 public:
     explicit GpuHeightMapAccumulator(LveComputeDevice& device);
 
-    void accumulate(const GpuHeightMap& input, GpuHeightMap& output, float scale) const;
+    void accumulate(
+        const GpuHeightMap& input,
+        GpuHeightMap& output,
+        float scale,
+        float bias = 0.0F) const;
 
 private:
     Computer computer_;

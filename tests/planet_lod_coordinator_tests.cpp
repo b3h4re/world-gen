@@ -126,7 +126,11 @@ void testCoveragePreservingStreaming() {
         lodConfig,
         {.residentPatchBudget = 64, .patchUploadBudget = 8},
     };
-    coordinator.setSurface({.radius = 1.0, .maximumDisplacement = 0.01});
+    coordinator.setSurface({
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    });
     const std::vector<wgen::PlanetPatchId> rootIds = roots();
     coordinator.publishPatchChanges(rootIds, {});
     coordinator.updateSelection(makeView(1.3));
@@ -173,7 +177,11 @@ void testPendingRequestsAndVisibility() {
         lodConfig,
         {.residentPatchBudget = 32, .patchUploadBudget = 8},
     };
-    coordinator.setSurface({.radius = 1.0, .maximumDisplacement = 0.01});
+    coordinator.setSurface({
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    });
     const std::vector<wgen::PlanetPatchId> rootIds = roots();
     coordinator.publishPatchChanges(rootIds, {});
     coordinator.updateSelection(makeView(1.5));
@@ -204,7 +212,11 @@ void testCacheTurnoverWhileOrbiting() {
         lodConfig,
         {.residentPatchBudget = 32, .patchUploadBudget = 8},
     };
-    coordinator.setSurface({.radius = 1.0, .maximumDisplacement = 0.01});
+    coordinator.setSurface({
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    });
     coordinator.publishPatchChanges(roots(), {});
 
     const auto converge = [&coordinator](const wgen::PlanetLodView& view) {

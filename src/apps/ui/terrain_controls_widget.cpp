@@ -76,6 +76,7 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
         : initialPlanetConfig.resolution;
     ui_->planetResolutionSpinBox->setMaximum(std::numeric_limits<int>::max());
     ui_->planetRadiusSpinBox->setMaximum(std::numeric_limits<float>::max());
+    ui_->planetRadiusSpinBox->setSuffix(QStringLiteral(" m"));
     ui_->automaticPlanetResolutionCheckBox->setChecked(automaticResolution);
     ui_->planetResolutionSpinBox->setEnabled(!automaticResolution);
     ui_->planetResolutionSpinBox->setValue(static_cast<int>(std::min<std::size_t>(

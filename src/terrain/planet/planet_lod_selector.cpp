@@ -57,12 +57,15 @@ PatchGeometry patchGeometry(const PlanetPatchId& id, const PlanetLodSurface& sur
     }
 
     const double outerRadius = surface.radius + surface.maximumDisplacement;
+    const double maximumAbsoluteDisplacement = std::max(
+        std::abs(surface.minimumDisplacement),
+        std::abs(surface.maximumDisplacement));
     return {
         .direction = direction,
         .angularRadius = angularRadius,
         .center = direction * surface.radius,
         .boundingRadius = 2.0 * outerRadius * std::sin(angularRadius / 2.0) +
-            surface.maximumDisplacement,
+            maximumAbsoluteDisplacement,
     };
 }
 
@@ -208,9 +211,18 @@ void validatePlanetLodView(const PlanetLodView& view) {
 
 void validatePlanetLodSurface(const PlanetLodSurface& surface) {
     if (!std::isfinite(surface.radius) || surface.radius <= 0.0 ||
+            !std::isfinite(surface.minimumDisplacement) ||
             !std::isfinite(surface.maximumDisplacement) ||
-            surface.maximumDisplacement < 0.0) {
+            surface.minimumDisplacement > 0.0 ||
+            surface.maximumDisplacement < 0.0 ||
+            surface.minimumDisplacement > surface.maximumDisplacement ||
+            surface.radius + surface.maximumDisplacement <= 0.0) {
         throw std::invalid_argument{"planet LOD surface bounds are invalid"};
+    }
+    for (const double error : surface.maximumOmittedDetailError) {
+        if (!std::isfinite(error) || error < 0.0) {
+            throw std::invalid_argument{"planet LOD omitted-detail bounds are invalid"};
+        }
     }
 }
 
@@ -228,10 +240,12 @@ double planetPatchScreenErrorPixels(
 
     const PatchGeometry geometry = patchGeometry(id, surface);
     const double angularDiameter = 2.0 * geometry.angularRadius;
-    const double worldError =
+    const double sampleSpacingError =
         (surface.radius + surface.maximumDisplacement) * angularDiameter /
-            static_cast<double>(patchQuadCount) +
-        surface.maximumDisplacement * angularDiameter;
+        static_cast<double>(patchQuadCount);
+    const double worldError = std::max(
+        sampleSpacingError,
+        surface.maximumOmittedDetailError[id.level]);
     const double distance = std::max(
         glm::length(view.position - geometry.center) - geometry.boundingRadius,
         0.000001);
@@ -273,7 +287,9 @@ bool isPlanetPatchVisible(
         return true;
     }
 
-    const double innerRadius = std::max(surface.radius - surface.maximumDisplacement, 0.0);
+    const double innerRadius = std::max(
+        surface.radius + surface.minimumDisplacement,
+        0.0);
     if (innerRadius == 0.0) {
         return true;
     }

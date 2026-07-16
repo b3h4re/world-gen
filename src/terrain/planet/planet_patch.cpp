@@ -181,11 +181,8 @@ PlanetSurfaceSample patchSurfaceSample(
 
     const double u = -1.0 + 2.0 * static_cast<double>(globalX) / static_cast<double>(segments);
     const double v = -1.0 + 2.0 * static_cast<double>(globalY) / static_cast<double>(segments);
-    const glm::vec3 direction = cubeSphereDirection(
-        id.face,
-        static_cast<float>(u),
-        static_cast<float>(v));
-    return {id.face, u, v, glm::dvec3{direction}};
+    const glm::dvec3 direction = cubeSphereDirection(id.face, u, v);
+    return {id.face, u, v, direction};
 }
 
 std::optional<PlanetPatchId> parent(const PlanetPatchId& id) {

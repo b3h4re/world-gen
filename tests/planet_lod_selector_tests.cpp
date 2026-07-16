@@ -344,6 +344,20 @@ void testCameraLodState() {
     wgen::tests::expectNear(camera.nearPlane(), nearPlane, 0.0F, "camera should retain its near plane");
     wgen::tests::expectNear(camera.farPlane(), farPlane, 0.0F, "camera should retain its far plane");
 
+    const glm::dvec3 precisePosition{1.0 + 0.0000000001, 2.0, 3.0};
+    const glm::dvec3 preciseTarget{-0.25, 0.5, -0.75};
+    camera.setGlobalViewTarget(
+        precisePosition,
+        preciseTarget,
+        {0.0, 1.0, 0.0});
+    wgen::tests::require(
+        camera.globalPosition() == precisePosition,
+        "camera should retain sub-float global positions for LOD selection");
+    wgen::tests::require(
+        std::abs(glm::length(camera.globalForward()) - 1.0) <=
+            0.000000000000001,
+        "camera global basis should be derived in double precision");
+
     wgen::tests::requireThrows<std::invalid_argument>(
         [&camera] { camera.setPerspectiveProjection(0.9F, 0.0F, 0.1F, 50.0F); },
         "camera should reject a non-positive aspect ratio");

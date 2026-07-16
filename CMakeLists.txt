@@ -286,6 +286,23 @@ if(BUILD_TESTING)
     target_compile_features(planet_patch_tests PRIVATE cxx_std_20)
     add_test(NAME planet_patch_tests COMMAND planet_patch_tests)
 
+    # Double-precision planet location and cube-sphere conversion tests
+    add_executable(planet_location_tests
+        tests/planet_location_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_location.cpp
+        src/terrain/planet/planet_location.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+    )
+    target_include_directories(planet_location_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_location_tests PRIVATE cxx_std_20)
+    target_link_libraries(planet_location_tests PRIVATE glm::glm)
+    add_test(NAME planet_location_tests COMMAND planet_location_tests)
+
     # Planet patch mesh tests
     add_executable(planet_patch_mesh_tests
         tests/planet_patch_mesh_tests.cpp

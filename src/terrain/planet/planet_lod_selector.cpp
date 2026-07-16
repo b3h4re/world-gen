@@ -32,10 +32,7 @@ struct PatchGeometry {
 };
 
 glm::dvec3 patchDirection(CubeSphereFace face, double u, double v) {
-    return glm::dvec3{cubeSphereDirection(
-        face,
-        static_cast<float>(u),
-        static_cast<float>(v))};
+    return cubeSphereDirection(face, u, v);
 }
 
 PatchGeometry patchGeometry(const PlanetPatchId& id, const PlanetLodSurface& surface) {

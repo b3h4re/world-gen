@@ -33,7 +33,12 @@ public:
         const AppInputState &input,
         float frameTime,
         float aspectRatio,
+        double planetRadiusMeters,
         std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>> &targets);
+
+    const wgen::PlanetLocation& planetLocation() const {
+        return planetCameraController3d_.location();
+    }
 
 private:
     CameraController2d cameraController2d_{};

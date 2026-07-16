@@ -14,7 +14,8 @@ public:
 
     void setSeed(SeedType newSeed) override;
     GeneratorCapabilities capabilities() const override;
-    float noise(glm::vec3 point) const override;
+    using Generator3d::noise;
+    float noise(glm::dvec3 point) const override;
 
 private:
     std::unique_ptr<Generator3d> generator_;

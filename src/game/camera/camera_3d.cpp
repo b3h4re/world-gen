@@ -30,42 +30,56 @@ void Camera3d::setPerspectiveProjection(float fovy, float aspectRatio, float nea
 }
 
 void Camera3d::setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up) {
-    const auto isFinite = [](glm::vec3 value) {
+    setGlobalViewTarget(
+        glm::dvec3{position},
+        glm::dvec3{target},
+        glm::dvec3{up});
+}
+
+void Camera3d::setGlobalViewTarget(
+        glm::dvec3 position,
+        glm::dvec3 target,
+        glm::dvec3 up) {
+    const auto isFinite = [](glm::dvec3 value) {
         return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
     };
-    const glm::vec3 targetOffset = target - position;
+    const glm::dvec3 targetOffset = target - position;
     if (!isFinite(position) || !isFinite(target) || !isFinite(up) ||
-            glm::length(targetOffset) <= std::numeric_limits<float>::epsilon() ||
-            glm::length(up) <= std::numeric_limits<float>::epsilon()) {
+            glm::length(targetOffset) <= std::numeric_limits<double>::epsilon() ||
+            glm::length(up) <= std::numeric_limits<double>::epsilon()) {
         throw std::invalid_argument{"3D camera view vectors are invalid"};
     }
 
-    const glm::vec3 forward = glm::normalize(targetOffset);
-    const glm::vec3 right = glm::cross(forward, glm::normalize(up));
-    if (glm::length(right) <= std::numeric_limits<float>::epsilon()) {
+    const glm::dvec3 forward = glm::normalize(targetOffset);
+    const glm::dvec3 right = glm::cross(forward, glm::normalize(up));
+    if (glm::length(right) <= std::numeric_limits<double>::epsilon()) {
         throw std::invalid_argument{"3D camera up vector is parallel to its view direction"};
     }
-    const glm::vec3 normalizedRight = glm::normalize(right);
-    const glm::vec3 cameraUp = glm::cross(normalizedRight, forward);
+    const glm::dvec3 normalizedRight = glm::normalize(right);
+    const glm::dvec3 cameraUp = glm::cross(normalizedRight, forward);
 
-    position_ = position;
-    forward_ = forward;
-    right_ = normalizedRight;
-    up_ = cameraUp;
+    globalPosition_ = position;
+    globalForward_ = forward;
+    globalRight_ = normalizedRight;
+    globalUp_ = cameraUp;
+    position_ = glm::vec3{position};
+    forward_ = glm::vec3{forward};
+    right_ = glm::vec3{normalizedRight};
+    up_ = glm::vec3{cameraUp};
 
     view_ = glm::mat4{1.0F};
-    view_[0][0] = normalizedRight.x;
-    view_[1][0] = normalizedRight.y;
-    view_[2][0] = normalizedRight.z;
-    view_[0][1] = cameraUp.x;
-    view_[1][1] = cameraUp.y;
-    view_[2][1] = cameraUp.z;
-    view_[0][2] = forward.x;
-    view_[1][2] = forward.y;
-    view_[2][2] = forward.z;
-    view_[3][0] = -glm::dot(normalizedRight, position);
-    view_[3][1] = -glm::dot(cameraUp, position);
-    view_[3][2] = -glm::dot(forward, position);
+    view_[0][0] = static_cast<float>(normalizedRight.x);
+    view_[1][0] = static_cast<float>(normalizedRight.y);
+    view_[2][0] = static_cast<float>(normalizedRight.z);
+    view_[0][1] = static_cast<float>(cameraUp.x);
+    view_[1][1] = static_cast<float>(cameraUp.y);
+    view_[2][1] = static_cast<float>(cameraUp.z);
+    view_[0][2] = static_cast<float>(forward.x);
+    view_[1][2] = static_cast<float>(forward.y);
+    view_[2][2] = static_cast<float>(forward.z);
+    view_[3][0] = static_cast<float>(-glm::dot(normalizedRight, position));
+    view_[3][1] = static_cast<float>(-glm::dot(cameraUp, position));
+    view_[3][2] = static_cast<float>(-glm::dot(forward, position));
 }
 
 } // namespace lve

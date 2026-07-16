@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -33,6 +34,21 @@ inline constexpr std::array<CubeSphereFace, 6> FACES = {
 
 std::size_t faceID(CubeSphereFace face);
 
+struct CubeSphereFaceUv {
+    CubeSphereFace face{};
+    double u{};
+    double v{};
+
+    bool operator==(const CubeSphereFaceUv&) const = default;
+};
+
+glm::dvec3 spherifyCube(glm::dvec3 p);
+glm::dvec3 cubeSphereDirection(CubeSphereFace face, double u, double v);
+CubeSphereFaceUv directionToCubeSphereFaceUv(
+    glm::dvec3 direction,
+    std::optional<CubeSphereFace> preferredFace = std::nullopt);
+
+// Compatibility wrappers. Global projection and inverse mapping use double.
 glm::vec3 spherifyCube(glm::vec3 p);
 glm::vec3 cubeSphereDirection(CubeSphereFace face, float u, float v);
 
@@ -80,11 +96,17 @@ public:
     typename std::vector<T>::reference at(CubeSphereFace face, std::size_t x, std::size_t y) {
         return HeightMap<T>::at(x, y + resolution_ * faceID(face));
     }
-    glm::vec3 pointUnitDir(CubeSphereFace face, std::size_t x, std::size_t y) const {
-        const float denominator = static_cast<float>(resolution_ - 1);
-        const float u = -1.0F + 2.0F * static_cast<float>(x) / denominator;
-        const float v = -1.0F + 2.0F * static_cast<float>(y) / denominator;
+    glm::dvec3 pointUnitDirection(
+            CubeSphereFace face,
+            std::size_t x,
+            std::size_t y) const {
+        const double denominator = static_cast<double>(resolution_ - 1);
+        const double u = -1.0 + 2.0 * static_cast<double>(x) / denominator;
+        const double v = -1.0 + 2.0 * static_cast<double>(y) / denominator;
         return cubeSphereDirection(face, u, v);
+    }
+    glm::vec3 pointUnitDir(CubeSphereFace face, std::size_t x, std::size_t y) const {
+        return glm::vec3{pointUnitDirection(face, x, y)};
     }
 
     void setRadius(float radius) {

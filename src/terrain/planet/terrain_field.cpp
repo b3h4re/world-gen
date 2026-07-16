@@ -13,7 +13,7 @@ namespace wgen {
 
 namespace {
 
-bool isFinite(glm::vec3 value) {
+bool isFinite(glm::dvec3 value) {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
@@ -90,12 +90,13 @@ float TerrainField::sample(
         TerrainDetailLevel detail) const {
     static_cast<void>(faceID(surface.face));
 
-    const glm::vec3 direction{surface.direction};
-    if (!isFinite(direction)) {
+    if (!isFinite(surface.direction)) {
         throw std::invalid_argument{"terrain field sample direction must be finite"};
     }
 
-    return geometryHeightTransform_.apply(sampleAuthored(direction, detail));
+    return geometryHeightTransform_.apply(sampleAuthored(
+        surface.direction,
+        detail));
 }
 
 float TerrainField::sample(
@@ -115,12 +116,12 @@ CubeSphere<float> TerrainField::generateCubeSphere(
     for (const CubeSphereFace face : FACES) {
         for (std::size_t y = 0; y < resolution; ++y) {
             for (std::size_t x = 0; x < resolution; ++x) {
-                const float denominator = static_cast<float>(resolution - 1);
-                const float u = -1.0F + 2.0F * static_cast<float>(x) / denominator;
-                const float v = -1.0F + 2.0F * static_cast<float>(y) / denominator;
-                const glm::vec3 direction = result.pointUnitDir(face, x, y);
+                const double denominator = static_cast<double>(resolution - 1);
+                const double u = -1.0 + 2.0 * static_cast<double>(x) / denominator;
+                const double v = -1.0 + 2.0 * static_cast<double>(y) / denominator;
+                const glm::dvec3 direction = result.pointUnitDirection(face, x, y);
                 result.at(face, x, y) = sample(
-                    {face, static_cast<double>(u), static_cast<double>(v), glm::dvec3{direction}},
+                    {face, u, v, direction},
                     detail);
             }
         }
@@ -136,7 +137,9 @@ CubeSphere<float> TerrainField::generateCubeSphere(
         TerrainDetailLevel::fromDiscrete(maxDetailLevel));
 }
 
-float TerrainField::sampleAuthored(glm::vec3 direction, TerrainDetailLevel detail) const {
+float TerrainField::sampleAuthored(
+        glm::dvec3 direction,
+        TerrainDetailLevel detail) const {
     float result = 0.0F;
     for (const Contributor& contributor : contributors_) {
         const float detailWeight = terrainDetailBandWeight(detail, contributor.detailBand);
@@ -161,14 +164,15 @@ void TerrainField::calibrateLegacyHeightTransform() {
 
     float rawMinimum = std::numeric_limits<float>::infinity();
     float rawMaximum = -std::numeric_limits<float>::infinity();
-    const float denominator = static_cast<float>(LEGACY_TERRAIN_CALIBRATION_RESOLUTION - 1);
+    const double denominator = static_cast<double>(
+        LEGACY_TERRAIN_CALIBRATION_RESOLUTION - 1);
     const TerrainDetailLevel maximumDetail =
         TerrainDetailLevel::fromDiscrete(MAX_TERRAIN_DETAIL_LEVEL);
     for (const CubeSphereFace face : FACES) {
         for (std::size_t y = 0; y < LEGACY_TERRAIN_CALIBRATION_RESOLUTION; ++y) {
             for (std::size_t x = 0; x < LEGACY_TERRAIN_CALIBRATION_RESOLUTION; ++x) {
-                const float u = -1.0F + 2.0F * static_cast<float>(x) / denominator;
-                const float v = -1.0F + 2.0F * static_cast<float>(y) / denominator;
+                const double u = -1.0 + 2.0 * static_cast<double>(x) / denominator;
+                const double v = -1.0 + 2.0 * static_cast<double>(y) / denominator;
                 const float authoredHeight = sampleAuthored(
                     cubeSphereDirection(face, u, v),
                     maximumDetail);

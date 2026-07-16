@@ -3,6 +3,8 @@
 #include "terrain/utils/hash_random.hpp"
 
 #include <cmath>
+#include <array>
+#include <limits>
 #include <stdexcept>
 
 namespace wgen {
@@ -19,24 +21,41 @@ PerlinNoise3d::PerlinNoise3d(SeedType seed, float cellSize, FloatFunction funcIn
     setSeed(seed);
 }
 
-float PerlinNoise3d::noise(glm::vec3 point) const {
-    const glm::vec3 scaledPoint = point / cellSize_;
+float PerlinNoise3d::noise(glm::dvec3 point) const {
+    const glm::dvec3 scaledPoint = point / cellSize_;
+    if (!std::isfinite(scaledPoint.x) || !std::isfinite(scaledPoint.y) ||
+            !std::isfinite(scaledPoint.z) ||
+            scaledPoint.x < static_cast<double>(std::numeric_limits<int>::min()) ||
+            scaledPoint.x > static_cast<double>(std::numeric_limits<int>::max() - 1) ||
+            scaledPoint.y < static_cast<double>(std::numeric_limits<int>::min()) ||
+            scaledPoint.y > static_cast<double>(std::numeric_limits<int>::max() - 1) ||
+            scaledPoint.z < static_cast<double>(std::numeric_limits<int>::min()) ||
+            scaledPoint.z > static_cast<double>(std::numeric_limits<int>::max() - 1)) {
+        throw std::invalid_argument{"3D Perlin sample coordinate is invalid"};
+    }
     const int gridX = static_cast<int>(std::floor(scaledPoint.x));
     const int gridY = static_cast<int>(std::floor(scaledPoint.y));
     const int gridZ = static_cast<int>(std::floor(scaledPoint.z));
 
-    const glm::vec3 localPoint{
-        scaledPoint.x - static_cast<float>(gridX),
-        scaledPoint.y - static_cast<float>(gridY),
-        scaledPoint.z - static_cast<float>(gridZ)
+    const glm::dvec3 localPoint{
+        scaledPoint.x - static_cast<double>(gridX),
+        scaledPoint.y - static_cast<double>(gridY),
+        scaledPoint.z - static_cast<double>(gridZ)
     };
 
-    const float fadeX = funcInterpolate_(localPoint.x);
-    const float fadeY = funcInterpolate_(localPoint.y);
-    const float fadeZ = funcInterpolate_(localPoint.z);
+    const auto interpolate = [this](double value) {
+        if (funcInterpolate_ == defaultPerlinInterp) {
+            return value * value * value *
+                (value * (value * 6.0 - 15.0) + 10.0);
+        }
+        return static_cast<double>(funcInterpolate_(static_cast<float>(value)));
+    };
+    const double fadeX = interpolate(localPoint.x);
+    const double fadeY = interpolate(localPoint.y);
+    const double fadeZ = interpolate(localPoint.z);
 
-    std::vector<float> cornerWeights{};
-    cornerWeights.reserve(8);
+    std::array<double, 8> cornerWeights{};
+    std::size_t cornerIndex = 0;
 
     // {0, 0, 0} -> 0
     // {0, 0, 1} -> 1
@@ -49,32 +68,33 @@ float PerlinNoise3d::noise(glm::vec3 point) const {
     for (int i = 0; i <= 1; ++i) {
         for (int j = 0; j <= 1; ++j) {
             for (int u = 0; u <= 1; ++u) {
-                glm::vec3 randomDir = randomHashDir3D(gridX + i, gridY + j, gridZ + u, getSeed());
-                glm::vec3 cornerOffset{
-                    static_cast<float>(i),
-                    static_cast<float>(j),
-                    static_cast<float>(u)
+                const glm::dvec3 randomDirection{
+                    randomHashDir3D(gridX + i, gridY + j, gridZ + u, getSeed())};
+                const glm::dvec3 cornerOffset{
+                    static_cast<double>(i),
+                    static_cast<double>(j),
+                    static_cast<double>(u)
                 };
-                cornerWeights.push_back(
-                    glm::dot(localPoint - cornerOffset, randomDir)
-                );
+                cornerWeights[cornerIndex++] = glm::dot(
+                    localPoint - cornerOffset,
+                    randomDirection);
             }
         }
     }
 
     // (0, 0, 0) - (1, 0, 0)
-    const float x00 = lerp(cornerWeights[0], cornerWeights[4], fadeX);
+    const double x00 = std::lerp(cornerWeights[0], cornerWeights[4], fadeX);
     // (0, 1, 0) - (1, 1, 0)
-    const float x10 = lerp(cornerWeights[2], cornerWeights[6], fadeX);
+    const double x10 = std::lerp(cornerWeights[2], cornerWeights[6], fadeX);
     // (0, 0, 1) - (1, 0, 1)
-    const float x01 = lerp(cornerWeights[1], cornerWeights[5], fadeX);
+    const double x01 = std::lerp(cornerWeights[1], cornerWeights[5], fadeX);
     // (0, 1, 1) - (1, 1, 1)
-    const float x11 = lerp(cornerWeights[3], cornerWeights[7], fadeX);
+    const double x11 = std::lerp(cornerWeights[3], cornerWeights[7], fadeX);
 
-    const float y0 = lerp(x00, x10, fadeY);
-    const float y1 = lerp(x01, x11, fadeY);
+    const double y0 = std::lerp(x00, x10, fadeY);
+    const double y1 = std::lerp(x01, x11, fadeY);
 
-    return lerp(y0, y1, fadeZ);
+    return static_cast<float>(std::lerp(y0, y1, fadeZ));
 }
 
 GeneratorCapabilities PerlinNoise3d::capabilities() const {

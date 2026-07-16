@@ -26,8 +26,8 @@ GeneratorCapabilities CoordinateScaledGenerator3d::capabilities() const {
     return generator_->capabilities();
 }
 
-float CoordinateScaledGenerator3d::noise(glm::vec3 point) const {
-    return generator_->noise(point * coordinateScale_);
+float CoordinateScaledGenerator3d::noise(glm::dvec3 point) const {
+    return generator_->noise(point * static_cast<double>(coordinateScale_));
 }
 
 } // namespace wgen

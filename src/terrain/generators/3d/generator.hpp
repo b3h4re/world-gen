@@ -35,7 +35,8 @@ public:
         for (const CubeSphereFace face : FACES) {
             for (std::size_t y = 0; y < resolution; ++y) {
                 for (std::size_t x = 0; x < resolution; ++x) {
-                    cubeSphere.at(face, x, y) = noise(cubeSphere.pointUnitDir(face, x, y));
+                    cubeSphere.at(face, x, y) = noise(
+                        cubeSphere.pointUnitDirection(face, x, y));
                 }
             }
         }
@@ -53,7 +54,10 @@ public:
 
     virtual void setSeed(SeedType newSeed) { seed_ = newSeed; }
     SeedType getSeed() const { return seed_; }
-    virtual float noise(glm::vec3 point) const = 0;
+    virtual float noise(glm::dvec3 point) const = 0;
+    float noise(glm::vec3 point) const {
+        return noise(glm::dvec3{point});
+    }
 
 private:
     SeedType seed_{};

@@ -185,13 +185,18 @@ void TerrainApp::run() {
         previousTime = currentTime;
 
         updateCamerasStatus(cameraTargets);
-        appInputSystem.updateCameras(input, frameTime, lveRenderer.getAspectRatio(), cameraTargets);
+        appInputSystem.updateCameras(
+            input,
+            frameTime,
+            lveRenderer.getAspectRatio(),
+            static_cast<double>(config_.planetConfig.radius),
+            cameraTargets);
         if (renderMode_ == TerrainRenderModes::PlanetView) {
             core_.updatePlanetLod({
-                .position = glm::dvec3{cameraPlanet.position()},
-                .forward = glm::dvec3{cameraPlanet.forward()},
-                .right = glm::dvec3{cameraPlanet.right()},
-                .up = glm::dvec3{cameraPlanet.up()},
+                .position = cameraPlanet.globalPosition(),
+                .forward = cameraPlanet.globalForward(),
+                .right = cameraPlanet.globalRight(),
+                .up = cameraPlanet.globalUp(),
                 .verticalFov = cameraPlanet.verticalFov(),
                 .aspectRatio = cameraPlanet.aspectRatio(),
                 .nearPlane = cameraPlanet.nearPlane(),

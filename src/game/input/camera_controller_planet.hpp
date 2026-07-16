@@ -2,6 +2,7 @@
 
 #include "game/camera/camera_3d.hpp"
 #include "game/input/input_state.hpp"
+#include "terrain/planet/planet_location.hpp"
 
 #include <glm/gtc/constants.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -11,14 +12,21 @@ namespace lve {
 
 class CameraControllerPlanet {
 public:
-    void update(const AppInputState &input, float frameTime, Camera3d &camera);
+    void update(
+        const AppInputState& input,
+        float frameTime,
+        double planetRadiusMeters,
+        Camera3d& camera);
+
+    const wgen::PlanetLocation& location() const { return location_; }
 
 private:
-    inline const static glm::vec3 startingUp = glm::vec3{1.0f, 0.0f, 0.0f};
-    inline const static glm::vec3 startingPos = glm::vec3{0.0f, 0.0f, 1.0f};
+    inline const static glm::dvec3 startingUp{1.0, 0.0, 0.0};
+    inline const static glm::dvec3 startingPosition{0.0, 0.0, 1.0};
 
-    glm::quat orbitRotation_{1.0f, 0.0f, 0.0f, 0.0f};
-    float distance_{2.0F};
+    glm::dquat orbitRotation_{1.0, 0.0, 0.0, 0.0};
+    wgen::PlanetLocation location_{};
+    bool locationInitialized_{false};
 };
 
 } // namespace lve

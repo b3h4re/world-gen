@@ -60,7 +60,7 @@ private:
         TerrainDetailBand detailBand{};
     };
 
-    float sampleAuthored(glm::vec3 direction, TerrainDetailLevel detail) const;
+    float sampleAuthored(glm::dvec3 direction, TerrainDetailLevel detail) const;
     void calibrateLegacyHeightTransform();
     void buildHeightMetadata();
 

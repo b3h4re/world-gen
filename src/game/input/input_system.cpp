@@ -27,6 +27,7 @@ void AppInputSystem::updateCameras(
     const AppInputState &input,
     float frameTime,
     float aspectRatio,
+    double planetRadiusMeters,
     std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>> &targets) {
     for (auto &target : targets) {
         switch (target.second) {
@@ -45,7 +46,11 @@ void AppInputSystem::updateCameras(
             case TerrainRenderModes::PlanetView:
                 target.first.camera3d->setPerspectiveProjection(glm::radians(50.0F), aspectRatio, 0.1F, 20.0F);
                 if (target.first.active) {
-                    planetCameraController3d_.update(input, frameTime, *target.first.camera3d);
+                    planetCameraController3d_.update(
+                        input,
+                        frameTime,
+                        planetRadiusMeters,
+                        *target.first.camera3d);
                 }
                 break;
         }

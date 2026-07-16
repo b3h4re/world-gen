@@ -10,6 +10,10 @@ class Camera3d {
 public:
     void setPerspectiveProjection(float fovy, float aspectRatio, float near, float far);
     void setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up = {0.0F, 1.0F, 0.0F});
+    void setGlobalViewTarget(
+        glm::dvec3 position,
+        glm::dvec3 target,
+        glm::dvec3 up = {0.0, 1.0, 0.0});
 
     const glm::mat4 &projection() const { return projection_; }
     const glm::mat4 &view() const { return view_; }
@@ -18,6 +22,10 @@ public:
     const glm::vec3& forward() const { return forward_; }
     const glm::vec3& right() const { return right_; }
     const glm::vec3& up() const { return up_; }
+    const glm::dvec3& globalPosition() const { return globalPosition_; }
+    const glm::dvec3& globalForward() const { return globalForward_; }
+    const glm::dvec3& globalRight() const { return globalRight_; }
+    const glm::dvec3& globalUp() const { return globalUp_; }
     float verticalFov() const { return verticalFov_; }
     float aspectRatio() const { return aspectRatio_; }
     float nearPlane() const { return nearPlane_; }
@@ -30,6 +38,10 @@ private:
     glm::vec3 forward_{0.0F, 0.0F, -1.0F};
     glm::vec3 right_{1.0F, 0.0F, 0.0F};
     glm::vec3 up_{0.0F, 1.0F, 0.0F};
+    glm::dvec3 globalPosition_{};
+    glm::dvec3 globalForward_{0.0, 0.0, -1.0};
+    glm::dvec3 globalRight_{1.0, 0.0, 0.0};
+    glm::dvec3 globalUp_{0.0, 1.0, 0.0};
     float verticalFov_{};
     float aspectRatio_{};
     float nearPlane_{};

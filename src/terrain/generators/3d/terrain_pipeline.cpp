@@ -31,7 +31,7 @@ void TerrainPipeline3d::setSeed(SeedType newSeed) {
     }
 }
 
-float TerrainPipeline3d::noise(glm::vec3 point) const {
+float TerrainPipeline3d::noise(glm::dvec3 point) const {
     float noiseVal = 0.0F;
     for (std::size_t i = 0; i < generators_.size(); ++i) {
         noiseVal += generatorsImpact_[i](generators_[i]->noise(point));

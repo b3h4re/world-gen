@@ -6,48 +6,101 @@
 #include <algorithm>
 #include <cmath>
 #include <glm/gtc/constants.hpp>
+#include <limits>
+#include <numbers>
+#include <stdexcept>
 
 namespace lve {
 
-void CameraControllerPlanet::update(const AppInputState &input, float frameTime, Camera3d &camera) {
-    constexpr float rotateSpeed = 1.5F;
-    constexpr float zoomSpeed = 2.0F;
+void CameraControllerPlanet::update(
+        const AppInputState& input,
+        float frameTime,
+        double planetRadiusMeters,
+        Camera3d& camera) {
+    if (!std::isfinite(frameTime) || frameTime < 0.0F ||
+            !std::isfinite(planetRadiusMeters) || planetRadiusMeters <= 0.0) {
+        throw std::invalid_argument{"planet camera update parameters are invalid"};
+    }
+    constexpr double ROTATE_SPEED = 1.5;
+    constexpr double ZOOM_SPEED_RADII = 2.0;
 
-	float deltaYaw{0.0f};
-	float deltaPitch{0.0f};
-    deltaYaw += input.cameraMoveRight ? rotateSpeed * frameTime : 0.0F;
-    deltaYaw -= input.cameraMoveLeft ? rotateSpeed * frameTime : 0.0F;
-    deltaPitch += input.cameraMoveUp ? rotateSpeed * frameTime : 0.0F;
-    deltaPitch -= input.cameraMoveDown ? rotateSpeed * frameTime : 0.0F;
-    distance_ += input.cameraZoomOut ? zoomSpeed * frameTime : 0.0F;
-    distance_ -= input.cameraZoomIn ? zoomSpeed * frameTime : 0.0F;
+    if (!locationInitialized_) {
+        location_ = wgen::makePlanetLocation(
+            {0.0, 1.0, 0.0},
+            planetRadiusMeters,
+            {.pitchRadians = -std::numbers::pi / 2.0});
+        locationInitialized_ = true;
+    }
 
-    distance_ = std::clamp(distance_, 1.2F, 8.0F);
+    double deltaYaw{};
+    double deltaPitch{};
+    deltaYaw += input.cameraMoveRight ? ROTATE_SPEED * frameTime : 0.0;
+    deltaYaw -= input.cameraMoveLeft ? ROTATE_SPEED * frameTime : 0.0;
+    deltaPitch += input.cameraMoveUp ? ROTATE_SPEED * frameTime : 0.0;
+    deltaPitch -= input.cameraMoveDown ? ROTATE_SPEED * frameTime : 0.0;
+    location_.altitudeMeters += input.cameraZoomOut
+        ? ZOOM_SPEED_RADII * planetRadiusMeters * frameTime
+        : 0.0;
+    location_.altitudeMeters -= input.cameraZoomIn
+        ? ZOOM_SPEED_RADII * planetRadiusMeters * frameTime
+        : 0.0;
+    location_.altitudeMeters = std::clamp(
+        location_.altitudeMeters,
+        0.2 * planetRadiusMeters,
+        7.0 * planetRadiusMeters);
 
-	glm::quat rotUp{
-		glm::cos(deltaPitch / 2.0f),
-		0.0f,
-		glm::sin(deltaPitch / 2.0f),
-		0.0f
-	};
-	glm::quat rotSide{
-		glm::cos(deltaYaw / 2.0f),
-		glm::sin(deltaYaw / 2.0f),
-		0.0f,
-		0.0f
-	};
+    const glm::dquat rotateUp{
+        glm::cos(deltaPitch / 2.0),
+        0.0,
+        glm::sin(deltaPitch / 2.0),
+        0.0,
+    };
+    const glm::dquat rotateSide{
+        glm::cos(deltaYaw / 2.0),
+        glm::sin(deltaYaw / 2.0),
+        0.0,
+        0.0,
+    };
 
-	orbitRotation_ = glm::normalize(orbitRotation_ * rotSide * rotUp);
+    orbitRotation_ = glm::normalize(
+        orbitRotation_ * rotateSide * rotateUp);
 
-	glm::quat positionQ = orbitRotation_ * glm::quat{0.0f, startingPos} * glm::inverse(orbitRotation_);
-	glm::quat upQ = orbitRotation_ * glm::quat{0.0f, startingUp} * glm::inverse(orbitRotation_);
+    const glm::dquat positionQuaternion = orbitRotation_ *
+        glm::dquat{0.0, startingPosition} * glm::inverse(orbitRotation_);
+    const glm::dquat upQuaternion = orbitRotation_ *
+        glm::dquat{0.0, startingUp} * glm::inverse(orbitRotation_);
 
-	glm::vec3 position = distance_* glm::vec3{positionQ.y, positionQ.z, positionQ.x};
-	glm::vec3 up{upQ.y, upQ.z, upQ.x};
+    const glm::dvec3 surfaceDirection = glm::normalize(glm::dvec3{
+        positionQuaternion.y,
+        positionQuaternion.z,
+        positionQuaternion.x,
+    });
+    const glm::dvec3 cameraUp = glm::normalize(glm::dvec3{
+        upQuaternion.y,
+        upQuaternion.z,
+        upQuaternion.x,
+    });
+    const wgen::PlanetTangentFrame tangentFrame =
+        wgen::planetTangentFrame(surfaceDirection);
+    location_.unitSurfaceDirection = surfaceDirection;
+    location_.faceUv = wgen::directionToCubeSphereFaceUv(
+        surfaceDirection,
+        location_.faceUv
+            ? std::optional{location_.faceUv->face}
+            : std::nullopt);
+    location_.orientation.headingRadians = std::atan2(
+        glm::dot(cameraUp, tangentFrame.east),
+        glm::dot(cameraUp, tangentFrame.north));
+    location_.orientation.pitchRadians = -std::numbers::pi / 2.0;
+    location_.orientation.rollRadians = 0.0;
+    wgen::validatePlanetLocation(location_);
 
-    const glm::vec3 target{0.0F, 0.0F, 0.0F};
-
-	camera.setViewTarget(position, target, up);
+    camera.setGlobalViewTarget(
+        wgen::planetLocationPositionInPlanetRadii(
+            location_,
+            planetRadiusMeters),
+        {},
+        cameraUp);
 }
 
 } // namespace lve

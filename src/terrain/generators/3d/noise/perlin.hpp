@@ -12,13 +12,14 @@ public:
 
     PerlinNoise3d(SeedType seed, float cellSize, FloatFunction funcInterpolate = defaultPerlinInterp);
 
-    float noise(glm::vec3 point) const override;
+    using Generator3d::noise;
+    float noise(glm::dvec3 point) const override;
     GeneratorCapabilities capabilities() const override;
     std::string compShader() const override;
     std::size_t specSize() const override;
 
 private:
-    float cellSize_;
+    double cellSize_;
     FloatFunction funcInterpolate_;
 };
 

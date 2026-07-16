@@ -86,17 +86,22 @@ TerrainField::TerrainField(
 }
 
 float TerrainField::sample(
-        const PlanetSurfaceSample& surface,
+        glm::dvec3 direction,
         TerrainDetailLevel detail) const {
-    static_cast<void>(faceID(surface.face));
-
-    if (!isFinite(surface.direction)) {
+    if (!isFinite(direction)) {
         throw std::invalid_argument{"terrain field sample direction must be finite"};
     }
 
     return geometryHeightTransform_.apply(sampleAuthored(
-        surface.direction,
+        direction,
         detail));
+}
+
+float TerrainField::sample(
+        const PlanetSurfaceSample& surface,
+        TerrainDetailLevel detail) const {
+    static_cast<void>(faceID(surface.face));
+    return sample(surface.direction, detail);
 }
 
 float TerrainField::sample(

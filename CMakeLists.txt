@@ -412,6 +412,44 @@ if(BUILD_TESTING)
     target_link_libraries(local_clipmap_topology_tests PRIVATE glm::glm)
     add_test(NAME local_clipmap_topology_tests COMMAND local_clipmap_topology_tests)
 
+    # Renderer-independent local clipmap surface sampling tests
+    add_executable(local_clipmap_sampling_tests
+        tests/local_clipmap_sampling_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/utils/hash_random.cpp
+        src/terrain/utils/hash_random.hpp
+        src/terrain/utils/generator_utils.cpp
+        src/terrain/terrain_detail.cpp
+        src/terrain/terrain_detail.hpp
+        src/terrain/generators/3d/generator_factory.cpp
+        src/terrain/generators/3d/generator_factory.hpp
+        src/terrain/generators/3d/coordinate_scaled_generator.cpp
+        src/terrain/generators/3d/coordinate_scaled_generator.hpp
+        src/terrain/generators/3d/noise/perlin.cpp
+        src/terrain/generators/3d/noise/perlin.hpp
+        src/terrain/generators/3d/terrain_pipeline.cpp
+        src/terrain/generators/3d/terrain_pipeline.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+        src/terrain/planet/planet_location.cpp
+        src/terrain/planet/planet_location.hpp
+        src/terrain/planet/terrain_field.cpp
+        src/terrain/planet/terrain_field.hpp
+        src/terrain/planet/local_clipmap_topology.cpp
+        src/terrain/planet/local_clipmap_topology.hpp
+        src/terrain/planet/local_planet_frame.cpp
+        src/terrain/planet/local_planet_frame.hpp
+        src/terrain/planet/local_clipmap_sampling.cpp
+        src/terrain/planet/local_clipmap_sampling.hpp
+    )
+    target_include_directories(local_clipmap_sampling_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(local_clipmap_sampling_tests PRIVATE cxx_std_20)
+    target_link_libraries(local_clipmap_sampling_tests PRIVATE glm::glm)
+    add_test(NAME local_clipmap_sampling_tests COMMAND local_clipmap_sampling_tests)
+
     # Renderer-independent terrain detail policy tests
     add_executable(terrain_detail_tests
         tests/terrain_detail_tests.cpp

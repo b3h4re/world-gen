@@ -28,6 +28,7 @@ public:
     TerrainField(TerrainField&&) noexcept = default;
     TerrainField& operator=(TerrainField&&) noexcept = default;
 
+    float sample(glm::dvec3 direction, TerrainDetailLevel detail) const;
     float sample(const PlanetSurfaceSample& surface, TerrainDetailLevel detail) const;
     float sample(const PlanetSurfaceSample& surface, std::uint8_t maxDetailLevel) const;
     CubeSphere<float> generateCubeSphere(

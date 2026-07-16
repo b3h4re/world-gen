@@ -39,6 +39,9 @@ public:
     const wgen::PlanetLocation& planetLocation() const {
         return planetCameraController3d_.location();
     }
+    const PlanetNavigationState& planetNavigationState() const {
+        return planetCameraController3d_.navigationState();
+    }
 
 private:
     CameraController2d cameraController2d_{};

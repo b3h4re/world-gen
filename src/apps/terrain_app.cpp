@@ -91,6 +91,8 @@ wgen::AppConfig TerrainApp::getConfig() const {
 }
 
 void TerrainApp::rotateCameraViews() {
+    // These modes remain developer rendering overrides. Planet navigation is
+    // persistent and does not switch to a separate local camera state.
     switch (renderMode_) {
         case TerrainRenderModes::FlatPicture:
             renderMode_ = TerrainRenderModes::PlaneMesh3D;

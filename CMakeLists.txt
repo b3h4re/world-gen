@@ -303,6 +303,28 @@ if(BUILD_TESTING)
     target_link_libraries(planet_location_tests PRIVATE glm::glm)
     add_test(NAME planet_location_tests COMMAND planet_location_tests)
 
+    # Persistent orbital/local planet navigation tests
+    add_executable(planet_navigation_tests
+        tests/planet_navigation_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/game/camera/camera_3d.cpp
+        src/game/camera/camera_3d.hpp
+        src/game/input/camera_controller_planet.cpp
+        src/game/input/camera_controller_planet.hpp
+        src/game/input/input_state.hpp
+        src/game/input/planet_navigation.cpp
+        src/game/input/planet_navigation.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_location.cpp
+        src/terrain/planet/planet_location.hpp
+    )
+    target_include_directories(planet_navigation_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(planet_navigation_tests PRIVATE cxx_std_20)
+    target_link_libraries(planet_navigation_tests PRIVATE glm::glm)
+    add_test(NAME planet_navigation_tests COMMAND planet_navigation_tests)
+
     # Planet patch mesh tests
     add_executable(planet_patch_mesh_tests
         tests/planet_patch_mesh_tests.cpp

@@ -102,6 +102,27 @@ glm::vec3 Camera3d::positionRelativeToRenderOrigin(
     return glm::vec3{globalPosition - renderOrigin_};
 }
 
+CameraRay3d Camera3d::globalScreenRay(
+        double normalizedX,
+        double normalizedY) const {
+    if (!std::isfinite(normalizedX) || !std::isfinite(normalizedY) ||
+            !std::isfinite(verticalFov_) || verticalFov_ <= 0.0F ||
+            !std::isfinite(aspectRatio_) || aspectRatio_ <= 0.0F) {
+        throw std::invalid_argument{"3D camera screen ray parameters are invalid"};
+    }
+    const double verticalScale = std::tan(
+        static_cast<double>(verticalFov_) / 2.0);
+    const glm::dvec3 direction = glm::normalize(
+        globalForward_ +
+        globalRight_ * normalizedX * verticalScale *
+            static_cast<double>(aspectRatio_) -
+        globalUp_ * normalizedY * verticalScale);
+    return {
+        .origin = globalPosition_,
+        .direction = direction,
+    };
+}
+
 void Camera3d::updateRenderView() {
     renderView_ = glm::mat4{1.0F};
     renderView_[0][0] = static_cast<float>(globalRight_.x);

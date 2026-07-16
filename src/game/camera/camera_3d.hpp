@@ -6,6 +6,11 @@
 
 namespace lve {
 
+struct CameraRay3d {
+    glm::dvec3 origin{};
+    glm::dvec3 direction{};
+};
+
 class Camera3d {
 public:
     void setPerspectiveProjection(float fovy, float aspectRatio, float near, float far);
@@ -23,6 +28,11 @@ public:
     glm::mat4 renderProjectionView() const { return projection_ * renderView_; }
     glm::vec3 positionRelativeToRenderOrigin(
         glm::dvec3 globalPosition) const noexcept;
+    // Coordinates use the input/render convention: (-1, -1) is the top-left
+    // of the viewport and (1, 1) is the bottom-right.
+    CameraRay3d globalScreenRay(
+        double normalizedX,
+        double normalizedY) const;
     const glm::vec3& position() const { return position_; }
     const glm::vec3& forward() const { return forward_; }
     const glm::vec3& right() const { return right_; }

@@ -47,6 +47,16 @@ void testPlanetConfigDefaults() {
         1.0F,
         0.00001F,
         "default LOD transition speed is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodSelectionIntervalSeconds),
+        1.0F / 30.0F,
+        0.00001F,
+        "default LOD selection interval is wrong");
+    wgen::tests::require(
+        config.lodPatchGenerationBudget == 8 &&
+            config.lodPatchUploadBudget == 4 &&
+            config.lodMaximumConcurrentPatchJobs == 2,
+        "default LOD work budgets are wrong");
 }
 
 void testPlanetConfigOverrides() {
@@ -63,6 +73,10 @@ void testPlanetConfigOverrides() {
         skirt_depth_multiplier = 2.5
         lod_transition_seconds = 0.75
         lod_transition_time_scale = 0.2
+        lod_selection_interval_seconds = 0.05
+        lod_patch_generation_budget = 12
+        lod_patch_upload_budget = 3
+        lod_maximum_concurrent_patch_jobs = 2
     )");
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
@@ -87,6 +101,16 @@ void testPlanetConfigOverrides() {
         0.2F,
         0.00001F,
         "LOD transition speed override is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodSelectionIntervalSeconds),
+        0.05F,
+        0.00001F,
+        "LOD selection interval override is wrong");
+    wgen::tests::require(
+        config.lodPatchGenerationBudget == 12 &&
+            config.lodPatchUploadBudget == 3 &&
+            config.lodMaximumConcurrentPatchJobs == 2,
+        "LOD work budget overrides are wrong");
 }
 
 void testPlanetConfigRejectsBadComputeMethod() {
@@ -189,6 +213,47 @@ void testPlanetConfigRejectsBadValues() {
     wgen::tests::requireThrows<std::runtime_error>(
         [&] { wgen::parse_planet_config(badTransitionTimeScale); },
         "planet config should reject a negative transition speed");
+
+    const toml::table badSelectionInterval = parseToml(R"(
+        [planet]
+        lod_selection_interval_seconds = -0.1
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badSelectionInterval); },
+        "planet config should reject a negative selection interval");
+
+    const toml::table badGenerationBudget = parseToml(R"(
+        [planet]
+        lod_patch_generation_budget = 3
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badGenerationBudget); },
+        "planet config should reserve enough CPU work for four siblings");
+
+    const toml::table badUploadBudget = parseToml(R"(
+        [planet]
+        lod_patch_upload_budget = 0
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badUploadBudget); },
+        "planet config should reject an empty GPU upload budget");
+
+    const toml::table excessiveUploadBudget = parseToml(R"(
+        [planet]
+        lod_patch_upload_budget = 2048
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(excessiveUploadBudget); },
+        "planet config should reject an upload budget larger than residency");
+
+    const toml::table excessiveQueue = parseToml(R"(
+        [planet]
+        lod_patch_generation_budget = 512
+        lod_maximum_concurrent_patch_jobs = 2
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(excessiveQueue); },
+        "planet config should preserve resident fallback headroom");
 }
 
 } // namespace

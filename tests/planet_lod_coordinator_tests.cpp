@@ -136,7 +136,12 @@ void testCoveragePreservingStreaming() {
     lodConfig.selectedLeafBudget = 56;
     wgen::PlanetLodCoordinator coordinator{
         lodConfig,
-        {.residentPatchBudget = 64, .patchUploadBudget = 8},
+        {
+            .residentPatchBudget = 64,
+            .patchGenerationBudget = 8,
+            .patchUploadBudget = 4,
+            .maximumConcurrentPatchJobs = 1,
+        },
     };
     coordinator.setSurface({
         .radius = 1.0,
@@ -153,7 +158,7 @@ void testCoveragePreservingStreaming() {
             ++iteration) {
         const wgen::PlanetLodPatchPlan plan = coordinator.makePatchPlan();
         wgen::tests::require(!plan.upserts.empty(), "streaming stalled before reaching desired leaves");
-        wgen::tests::require(plan.upserts.size() <= 8, "streaming exceeded the upload budget");
+        wgen::tests::require(plan.upserts.size() <= 8, "streaming exceeded the generation budget");
         publishPlan(coordinator, plan);
         advanceCurrentTransitions(coordinator);
         requireValidActivePartition(coordinator.activeLeaves());
@@ -191,7 +196,12 @@ void testPendingRequestsAndVisibility() {
     lodConfig.selectedLeafBudget = 24;
     wgen::PlanetLodCoordinator coordinator{
         lodConfig,
-        {.residentPatchBudget = 32, .patchUploadBudget = 8},
+        {
+            .residentPatchBudget = 32,
+            .patchGenerationBudget = 8,
+            .patchUploadBudget = 4,
+            .maximumConcurrentPatchJobs = 1,
+        },
     };
     coordinator.setSurface({
         .radius = 1.0,
@@ -226,7 +236,12 @@ void testCacheTurnoverWhileOrbiting() {
     lodConfig.selectedLeafBudget = 24;
     wgen::PlanetLodCoordinator coordinator{
         lodConfig,
-        {.residentPatchBudget = 32, .patchUploadBudget = 8},
+        {
+            .residentPatchBudget = 32,
+            .patchGenerationBudget = 8,
+            .patchUploadBudget = 4,
+            .maximumConcurrentPatchJobs = 1,
+        },
     };
     coordinator.setSurface({
         .radius = 1.0,
@@ -302,7 +317,12 @@ wgen::PlanetLodCoordinator makeTransitionCoordinator() {
     lodConfig.selectedLeafBudget = 9;
     wgen::PlanetLodCoordinator coordinator{
         lodConfig,
-        {.residentPatchBudget = 16, .patchUploadBudget = 4},
+        {
+            .residentPatchBudget = 16,
+            .patchGenerationBudget = 4,
+            .patchUploadBudget = 2,
+            .maximumConcurrentPatchJobs = 1,
+        },
         {.durationSeconds = 2.0, .debugTimeScale = 1.0},
     };
     coordinator.setSurface({
@@ -427,6 +447,155 @@ void testTransitionReversalAndSlowMotion() {
         "a reversed transition should complete without a second discontinuity");
 }
 
+void testPrioritizedIndependentBudgets() {
+    wgen::PlanetLodConfig lodConfig;
+    lodConfig.maximumLevel = 3;
+    lodConfig.targetErrorPixels = 0.0001;
+    lodConfig.selectedLeafBudget = 24;
+    wgen::PlanetLodCoordinator coordinator{
+        lodConfig,
+        {
+            .residentPatchBudget = 40,
+            .patchGenerationBudget = 8,
+            .patchUploadBudget = 2,
+            .maximumConcurrentPatchJobs = 2,
+        },
+    };
+    const wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    };
+    const wgen::PlanetLodView view = makeView(1.3);
+    coordinator.setSurface(surface);
+    coordinator.publishPatchChanges(roots(), {});
+    coordinator.updateVisibility(makeView(1.5));
+    coordinator.updateVisibility(view);
+    coordinator.updateSelection(view);
+
+    const wgen::PlanetLodPatchPlan plan = coordinator.makePatchPlan();
+    wgen::tests::require(
+        plan.upserts.size() == 8,
+        "CPU generation should fill its own budget independently of GPU uploads");
+    wgen::tests::require(
+        plan.upserts.size() > coordinator.streamingConfig().patchUploadBudget,
+        "the generation plan should not be capped by the per-frame upload budget");
+    const wgen::PlanetPatchId firstAnchor = *wgen::parent(plan.upserts.front());
+    const wgen::PlanetPatchId secondAnchor = *wgen::parent(plan.upserts[4]);
+    for (std::size_t index = 0; index < 4; ++index) {
+        wgen::tests::require(
+            wgen::parent(plan.upserts[index]) == firstAnchor,
+            "the highest-priority sibling group should remain contiguous");
+        wgen::tests::require(
+            wgen::parent(plan.upserts[index + 4]) == secondAnchor,
+            "the second-priority sibling group should remain contiguous");
+    }
+    wgen::tests::require(
+        wgen::planetPatchScreenErrorPixels(firstAnchor, view, surface) >=
+            wgen::planetPatchScreenErrorPixels(secondAnchor, view, surface),
+        "visible generation groups should be ordered by descending screen error");
+}
+
+void testRevisionCancellationStress() {
+    wgen::PlanetLodConfig lodConfig;
+    lodConfig.maximumLevel = 4;
+    lodConfig.targetErrorPixels = 0.0001;
+    lodConfig.selectedLeafBudget = 24;
+    wgen::PlanetLodCoordinator coordinator{
+        lodConfig,
+        {
+            .residentPatchBudget = 40,
+            .patchGenerationBudget = 4,
+            .patchUploadBudget = 2,
+            .maximumConcurrentPatchJobs = 2,
+        },
+    };
+    coordinator.setSurface({
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    });
+    const std::vector<wgen::PlanetPatchId> rootIds = roots();
+    coordinator.publishPatchChanges(rootIds, {});
+    coordinator.updateSelection(makeView(1.3));
+
+    const wgen::PlanetLodPatchPlan first = coordinator.makePatchPlan();
+    coordinator.beginPatchPlan(first, 10);
+    const wgen::PlanetLodPatchPlan second = coordinator.makePatchPlan();
+    coordinator.beginPatchPlan(second, 10);
+    wgen::tests::require(
+        coordinator.pendingPatchCount() == 8,
+        "two generation jobs should reserve exactly the bounded pending capacity");
+    wgen::tests::require(
+        coordinator.makePatchPlan().upserts.empty(),
+        "the coordinator should not create unbounded work after filling the queue");
+
+    coordinator.cancelPendingRequestsBefore(11);
+    wgen::tests::require(
+        coordinator.pendingPatchCount() == 0,
+        "a newer revision should release stale work reservations immediately");
+    wgen::tests::require(
+        !coordinator.publishPatchChanges(first.upserts, rootIds, 10),
+        "a stale completion should be rejected by revision");
+    wgen::tests::require(
+        coordinator.activeLeaves() == rootIds,
+        "a stale completion must not remove current fallback coverage");
+    for (const wgen::PlanetPatchId& root : rootIds) {
+        wgen::tests::require(
+            coordinator.residentIds().contains(root),
+            "a stale removal must preserve every resident fallback root");
+    }
+
+    std::uint64_t revision = 12;
+    for (std::size_t iteration = 0; iteration < 64; ++iteration, ++revision) {
+        const double side = iteration % 2 == 0 ? 1.0 : -1.0;
+        const double distance = iteration % 4 < 2 ? 1.3 : 8.0;
+        coordinator.updateSelection(makeOrbitView({0.0, 0.0, side * distance}));
+        coordinator.cancelPendingRequestsBefore(revision);
+        const wgen::PlanetLodPatchPlan plan = coordinator.makePatchPlan();
+        if (!plan.upserts.empty() || !plan.removals.empty()) {
+            coordinator.beginPatchPlan(plan, revision);
+        }
+        wgen::tests::require(
+            coordinator.pendingPatchCount() <= 8,
+            "rapid zoom and direction reversal exceeded the bounded pending-work budget");
+        requireValidActivePartition(coordinator.activeLeaves());
+    }
+    coordinator.updateSelection(makeView(1.3));
+    coordinator.cancelPendingRequestsBefore(revision);
+    const wgen::PlanetLodPatchPlan regenerationPending =
+        coordinator.makePatchPlan();
+    wgen::tests::require(
+        !regenerationPending.upserts.empty(),
+        "regeneration stress should begin with patch work pending");
+    coordinator.beginPatchPlan(regenerationPending, revision);
+    coordinator.cancelPendingRequestsBefore(++revision);
+    wgen::tests::require(
+        coordinator.pendingPatchCount() == 0,
+        "simulated regeneration should invalidate patch work without interruption");
+    wgen::tests::require(
+        !coordinator.publishPatchChanges(
+            regenerationPending.upserts,
+            {},
+            revision - 1),
+        "patch work completing after regeneration should remain stale");
+    wgen::tests::require(
+        coordinator.activeLeaves() == rootIds,
+        "regeneration cancellation should retain the visible root fallback");
+}
+
+void testKnownPatchErrorPublication() {
+    wgen::PlanetLodCoordinator coordinator;
+    const wgen::PlanetPatchId root{wgen::CubeSphereFace::Top, 0, 0, 0};
+    const std::array samples{
+        wgen::PlanetPatchErrorSample{root, 0.125},
+    };
+    coordinator.publishPatchChanges({}, {}, 0, samples);
+    wgen::tests::require(
+        coordinator.knownPatchErrors().at(root) == 0.125,
+        "published cached geometry errors should feed future selection");
+}
+
 void testStreamingValidation() {
     wgen::PlanetLodConfig lodConfig;
     lodConfig.selectedLeafBudget = 16;
@@ -434,10 +603,28 @@ void testStreamingValidation() {
         [&lodConfig] {
             wgen::PlanetLodCoordinator coordinator{
                 lodConfig,
-                {.residentPatchBudget = 20, .patchUploadBudget = 3},
+                {
+                    .residentPatchBudget = 20,
+                    .patchGenerationBudget = 3,
+                    .patchUploadBudget = 2,
+                    .maximumConcurrentPatchJobs = 1,
+                },
             };
         },
         "streaming should reject a budget that cannot request four siblings");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&lodConfig] {
+            wgen::PlanetLodCoordinator coordinator{
+                lodConfig,
+                {
+                    .residentPatchBudget = 20,
+                    .patchGenerationBudget = 4,
+                    .patchUploadBudget = 1,
+                    .maximumConcurrentPatchJobs = 0,
+                },
+            };
+        },
+        "streaming should reject an empty bounded job queue");
     wgen::tests::requireThrows<std::invalid_argument>(
         [] { wgen::validatePlanetLodTransitionConfig({.durationSeconds = 0.0}); },
         "transitions should reject a non-positive duration");
@@ -461,6 +648,9 @@ int main() {
         wgen::tests::runTest("cross-face stitch masks", testCrossFaceStitchMasks);
         wgen::tests::runTest("split and merge transitions", testSplitAndMergeTransitions);
         wgen::tests::runTest("transition reversal and slow motion", testTransitionReversalAndSlowMotion);
+        wgen::tests::runTest("prioritized independent budgets", testPrioritizedIndependentBudgets);
+        wgen::tests::runTest("revision cancellation stress", testRevisionCancellationStress);
+        wgen::tests::runTest("known patch error publication", testKnownPatchErrorPublication);
         wgen::tests::runTest("streaming validation", testStreamingValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

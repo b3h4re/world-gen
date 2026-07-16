@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <unordered_set>
@@ -378,6 +379,9 @@ PlanetPatchMeshData buildPlanetPatchMesh(
                     parentGridX,
                     parentGridY);
             }
+            result.maximumParentErrorMeters = std::max(
+                result.maximumParentErrorMeters,
+                glm::length(position - parentRepresentation.position) * planetRadius);
             result.vertices.push_back({
                 position,
                 height,
@@ -568,7 +572,9 @@ void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch) {
         }
         if ((upsert.id.level > 0 && upsert.quadCount % 2 != 0) ||
                 !std::isfinite(upsert.skirtDepthMeters) ||
-                upsert.skirtDepthMeters < 0.0F) {
+                upsert.skirtDepthMeters < 0.0F ||
+                !std::isfinite(upsert.maximumParentErrorMeters) ||
+                upsert.maximumParentErrorMeters < 0.0F) {
             throw std::invalid_argument{"planet patch upsert mesh metadata is invalid"};
         }
         const PlanetPatchTopologyCounts counts =
@@ -609,6 +615,51 @@ void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch) {
             throw std::invalid_argument{"planet patch batch contains duplicate removals"};
         }
     }
+}
+
+bool isCompletePlanetRootPatchBatch(
+        const PlanetPatchMeshBatch& batch) noexcept {
+    if (!batch.removals.empty() || batch.upserts.size() != wgen::FACES.size()) {
+        return false;
+    }
+    return std::all_of(wgen::FACES.begin(), wgen::FACES.end(), [&batch](
+            wgen::CubeSphereFace face) {
+        const wgen::PlanetPatchId root{face, 0, 0, 0};
+        return std::any_of(
+            batch.upserts.begin(),
+            batch.upserts.end(),
+            [&root](const PlanetPatchMeshData& upsert) {
+                return upsert.id == root;
+            });
+    });
+}
+
+PlanetPatchMeshBatch takePlanetPatchMeshBatchPrefix(
+        PlanetPatchMeshBatch& source,
+        std::size_t maximumUpserts) {
+    if (maximumUpserts == 0) {
+        throw std::invalid_argument{"planet patch upload budget must be positive"};
+    }
+
+    PlanetPatchMeshBatch result{
+        .terrainEpoch = source.terrainEpoch,
+        .requestRevision = source.requestRevision,
+        .removals = std::move(source.removals),
+    };
+    source.removals.clear();
+    const std::size_t uploadCount = std::min(
+        source.upserts.size(),
+        maximumUpserts);
+    result.upserts.insert(
+        result.upserts.end(),
+        std::make_move_iterator(source.upserts.begin()),
+        std::make_move_iterator(source.upserts.begin() + uploadCount));
+    source.upserts.erase(
+        source.upserts.begin(),
+        source.upserts.begin() + uploadCount);
+
+    validatePlanetPatchMeshBatch(result);
+    return result;
 }
 
 bool isCurrentPlanetPatchMeshBatch(

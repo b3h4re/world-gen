@@ -8,6 +8,7 @@
 #include <cmath>
 #include <iostream>
 #include <numbers>
+#include <numeric>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
@@ -136,6 +137,11 @@ void testSelectionHysteresis() {
     wgen::PlanetLodConfig splitConfig;
     splitConfig.maximumLevel = 1;
     splitConfig.targetErrorPixels = rootError / 1.1;
+    const wgen::PlanetLodErrorThresholds thresholds =
+        wgen::planetLodErrorThresholds(splitConfig);
+    wgen::tests::require(
+        thresholds.mergePixels < thresholds.splitPixels,
+        "split and merge error thresholds should remain explicitly separated");
     const wgen::PlanetLodSelection split =
         wgen::PlanetLodSelector{}.select(view, surface, splitConfig);
     wgen::tests::require(
@@ -220,13 +226,48 @@ void testOmittedDetailErrorContributesToScreenError() {
         .minimumDisplacement = -0.01,
         .maximumDisplacement = 0.01,
     };
-    const double spacingOnly = wgen::planetPatchScreenErrorPixels(patch, view, surface);
+    const wgen::PlanetPatchWorldError curvatureOnly =
+        wgen::planetPatchWorldError(patch, surface);
+    const double curvatureScreenError =
+        wgen::planetPatchScreenErrorPixels(patch, view, surface);
+    wgen::tests::require(
+        curvatureOnly.sphereCurvature > 0.0 &&
+            curvatureOnly.omittedTerrainDetail == 0.0 &&
+            curvatureOnly.cachedData == 0.0,
+        "sphere curvature should be an explicit world-error component");
     surface.maximumOmittedDetailError[0] = 0.5;
     const double withOmittedDetail = wgen::planetPatchScreenErrorPixels(patch, view, surface);
 
     wgen::tests::require(
-        withOmittedDetail > spacingOnly,
+        withOmittedDetail > curvatureScreenError,
         "omitted terrain detail should increase patch screen-space error");
+
+    const wgen::PlanetPatchWorldError cachedError =
+        wgen::planetPatchWorldError(patch, surface, 32, 0.75);
+    wgen::tests::require(
+        cachedError.maximum() == cachedError.cachedData &&
+            cachedError.cachedData == 0.75,
+        "known cached data should participate in the maximum world error");
+    wgen::PlanetPatchErrorCache errorCache;
+    errorCache.emplace(patch, 0.75);
+    wgen::PlanetLodConfig config;
+    config.maximumLevel = 1;
+    config.selectedLeafBudget = 9;
+    config.targetErrorPixels = std::midpoint(
+        withOmittedDetail,
+        wgen::planetPatchScreenErrorPixels(patch, view, surface, 32, 0.75));
+    const wgen::PlanetLodSelection withoutCache =
+        wgen::PlanetLodSelector{}.select(view, surface, config);
+    const wgen::PlanetLodSelection withCache =
+        wgen::PlanetLodSelector{}.select(view, surface, config, {}, errorCache);
+    wgen::tests::require(
+        std::find(withoutCache.leaves.begin(), withoutCache.leaves.end(), patch) !=
+            withoutCache.leaves.end(),
+        "the patch should remain coarse without a cached error");
+    wgen::tests::require(
+        std::find(withCache.leaves.begin(), withCache.leaves.end(), patch) ==
+            withCache.leaves.end(),
+        "a known cached error above the split threshold should refine the patch");
 }
 
 void testValidation() {
@@ -262,6 +303,15 @@ void testValidation() {
     wgen::tests::requireThrows<std::invalid_argument>(
         [&invalidError] { wgen::validatePlanetLodSurface(invalidError); },
         "selector should reject negative omitted-detail error");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&invalidError] {
+            wgen::planetPatchWorldError(
+                {wgen::CubeSphereFace::Top, 0, 0, 0},
+                {},
+                32,
+                -0.1);
+        },
+        "selector should reject a negative cached data error");
 }
 
 void testCameraLodState() {

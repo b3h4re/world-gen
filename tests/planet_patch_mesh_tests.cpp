@@ -381,6 +381,14 @@ void testParentGridMorphData() {
     wgen::tests::require(
         glm::length(oddChild.parentPosition - oddChild.position) > 0.00001F,
         "a fine-only vertex should have distinct parent and fine representations");
+    wgen::tests::require(
+        childMesh.maximumParentErrorMeters > 0.0F,
+        "child meshes should record their measured parent-representation error");
+    wgen::tests::expectNear(
+        parentMesh.maximumParentErrorMeters,
+        0.0F,
+        0.00001F,
+        "root meshes should not report a parent-representation error");
     for (std::size_t i = 0; i < parentMesh.surfaceVertexCount; ++i) {
         expectVectorNear(
             parentMesh.vertices[i].parentPosition,

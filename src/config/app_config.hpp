@@ -146,6 +146,10 @@ namespace wgen {
         float skirtDepthMultiplier{1.0F};
         double lodTransitionDurationSeconds{0.25};
         double lodTransitionTimeScale{1.0};
+        double lodSelectionIntervalSeconds{1.0 / 30.0};
+        std::size_t lodPatchGenerationBudget{8};
+        std::size_t lodPatchUploadBudget{4};
+        std::size_t lodMaximumConcurrentPatchJobs{2};
         TerrainComputeMethod computeMethod{TerrainComputeMethod::VulkanCompute};
         float perlinCellSize{1.0F};
         std::size_t octaves{5};

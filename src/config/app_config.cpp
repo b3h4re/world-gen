@@ -1,4 +1,5 @@
 #include "app_config.hpp"
+#include "terrain/planet/planet_lod_selector.hpp"
 #include <toml++/toml.hpp>
 
 
@@ -323,6 +324,42 @@ namespace wgen {
         if (!std::isfinite(config.lodTransitionTimeScale) ||
                 config.lodTransitionTimeScale < 0.0) {
             throw std::runtime_error("planet.lod_transition_time_scale must be finite and non-negative");
+        }
+
+        config.lodSelectionIntervalSeconds = checked_float(
+            root["planet"]["lod_selection_interval_seconds"],
+            static_cast<float>(config.lodSelectionIntervalSeconds),
+            "planet.lod_selection_interval_seconds"
+        );
+        if (!std::isfinite(config.lodSelectionIntervalSeconds) ||
+                config.lodSelectionIntervalSeconds < 0.0) {
+            throw std::runtime_error("planet.lod_selection_interval_seconds must be finite and non-negative");
+        }
+
+        config.lodPatchGenerationBudget = checked_uinteger<std::size_t>(
+            root["planet"]["lod_patch_generation_budget"],
+            config.lodPatchGenerationBudget,
+            "planet.lod_patch_generation_budget"
+        );
+        config.lodPatchUploadBudget = checked_uinteger<std::size_t>(
+            root["planet"]["lod_patch_upload_budget"],
+            config.lodPatchUploadBudget,
+            "planet.lod_patch_upload_budget"
+        );
+        config.lodMaximumConcurrentPatchJobs = checked_uinteger<std::size_t>(
+            root["planet"]["lod_maximum_concurrent_patch_jobs"],
+            config.lodMaximumConcurrentPatchJobs,
+            "planet.lod_maximum_concurrent_patch_jobs"
+        );
+        if (config.lodPatchGenerationBudget < 4 ||
+                config.lodPatchUploadBudget == 0 ||
+                config.lodPatchUploadBudget >
+                    DEFAULT_PLANET_RESIDENT_PATCH_BUDGET ||
+                config.lodMaximumConcurrentPatchJobs == 0 ||
+                config.lodMaximumConcurrentPatchJobs >
+                    (DEFAULT_PLANET_RESIDENT_PATCH_BUDGET - FACES.size()) /
+                        config.lodPatchGenerationBudget) {
+            throw std::runtime_error("planet LOD streaming budgets are invalid or do not preserve fallback headroom");
         }
 
         const std::string computeMethod = checked_string(

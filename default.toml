@@ -38,6 +38,13 @@ radius=10.0
 skirt_depth_multiplier=1.0
 lod_transition_seconds=0.25
 lod_transition_time_scale=1.0
+# Selection is capped at 30 Hz; visibility and morphing still update every frame.
+lod_selection_interval_seconds=0.0333333
+# At most 16 patches are generated concurrently and four are uploaded per
+# steady-state frame. Epoch replacement uploads all six root fallbacks atomically.
+lod_patch_generation_budget=8
+lod_patch_upload_budget=4
+lod_maximum_concurrent_patch_jobs=2
 compute_method="vulkan_compute"
 perlin_cell_size=1.0
 octaves=5

@@ -51,6 +51,7 @@ struct PlanetPatchMeshData {
     std::size_t surfaceVertexCount{};
     std::size_t surfaceIndexCount{};
     float skirtDepthMeters{};
+    float maximumParentErrorMeters{};
 };
 
 struct PlanetPatchRemoval {
@@ -130,6 +131,13 @@ PlanetPatchMeshBatch makePlanetPatchMeshBatch(
     std::uint64_t requestRevision);
 
 void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch);
+
+bool isCompletePlanetRootPatchBatch(
+    const PlanetPatchMeshBatch& batch) noexcept;
+
+PlanetPatchMeshBatch takePlanetPatchMeshBatchPrefix(
+    PlanetPatchMeshBatch& source,
+    std::size_t maximumUpserts);
 
 bool isCurrentPlanetPatchMeshBatch(
     const PlanetPatchMeshBatch& batch,

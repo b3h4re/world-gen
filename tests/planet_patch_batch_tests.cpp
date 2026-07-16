@@ -164,6 +164,12 @@ void testBatchValidation() {
         [&badMeshMetadata] { lve::validatePlanetPatchMeshBatch(badMeshMetadata); },
         "out-of-range surface metadata should be rejected");
 
+    lve::PlanetPatchMeshBatch badCachedError = batch;
+    badCachedError.upserts.front().maximumParentErrorMeters = -1.0F;
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&badCachedError] { lve::validatePlanetPatchMeshBatch(badCachedError); },
+        "negative cached geometry errors should be rejected");
+
     lve::PlanetPatchMeshBatch badUpsertTag = batch;
     ++badUpsertTag.upserts.front().version.requestRevision;
     wgen::tests::requireThrows<std::invalid_argument>(
@@ -253,6 +259,57 @@ void testStaleAndVersionDecisions() {
         "the current request should remain publishable");
 }
 
+void testUploadChunkingAndRootBootstrap() {
+    constexpr lve::PlanetPatchVersion VERSION{
+        .terrainEpoch = 6,
+        .dependencyRevision = 0,
+        .requestRevision = 14,
+    };
+    const std::vector<wgen::PlanetPatchId> roots =
+        lve::fixedLevelPlanetPatchIds(0);
+    lve::PlanetPatchMeshBatch rootBatch = lve::makePlanetPatchMeshBatch(
+        makeUpserts(roots, VERSION),
+        {},
+        VERSION.terrainEpoch,
+        VERSION.requestRevision);
+    wgen::tests::require(
+        lve::isCompletePlanetRootPatchBatch(rootBatch),
+        "the six roots should be recognized as atomic fallback bootstrap work");
+
+    std::vector<wgen::PlanetPatchId> childIds =
+        lve::fixedLevelPlanetPatchIds(1);
+    childIds.resize(8);
+    lve::PlanetPatchMeshBatch source = lve::makePlanetPatchMeshBatch(
+        makeUpserts(childIds, VERSION),
+        roots,
+        VERSION.terrainEpoch,
+        VERSION.requestRevision);
+    wgen::tests::require(
+        !lve::isCompletePlanetRootPatchBatch(source),
+        "ordinary streaming work must retain the steady-state upload budget");
+
+    lve::PlanetPatchMeshBatch first =
+        lve::takePlanetPatchMeshBatchPrefix(source, 3);
+    wgen::tests::require(
+        first.upserts.size() == 3 && first.removals.size() == roots.size(),
+        "the first upload chunk should apply removals once and obey its upsert budget");
+    wgen::tests::require(
+        source.upserts.size() == 5 && source.removals.empty(),
+        "the upload source should retain only deferred upserts");
+
+    lve::PlanetPatchMeshBatch second =
+        lve::takePlanetPatchMeshBatchPrefix(source, 3);
+    lve::PlanetPatchMeshBatch third =
+        lve::takePlanetPatchMeshBatchPrefix(source, 3);
+    wgen::tests::require(
+        second.upserts.size() == 3 && third.upserts.size() == 2 &&
+            source.upserts.empty(),
+        "independent GPU chunks should drain generated work without losing patches");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&rootBatch] { lve::takePlanetPatchMeshBatchPrefix(rootBatch, 0); },
+        "upload chunking should reject an empty per-frame budget");
+}
+
 void testDeterministicDrawOrder() {
     std::vector<wgen::PlanetPatchId> ids{
         {wgen::CubeSphereFace::Front, 2, 3, 0},
@@ -275,6 +332,7 @@ int main() {
         wgen::tests::runTest("batch construction", testBatchConstruction);
         wgen::tests::runTest("batch validation", testBatchValidation);
         wgen::tests::runTest("stale and version decisions", testStaleAndVersionDecisions);
+        wgen::tests::runTest("upload chunking and root bootstrap", testUploadChunkingAndRootBootstrap);
         wgen::tests::runTest("deterministic draw order", testDeterministicDrawOrder);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

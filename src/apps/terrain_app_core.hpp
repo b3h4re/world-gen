@@ -15,6 +15,7 @@
 #include "utils/color_map.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -72,8 +73,10 @@ public:
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     wgen::TerrainDisplayHeightRange activePlanetDisplayHeightRange() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
-    bool isTerrainJobRunning() const { return terrainJobRunning_; }
+    bool isTerrainJobRunning() const;
     bool isBlockingTerrainJobRunning() const;
+    std::size_t pendingPlanetPatchJobCount() const { return planetPatchJobs_.size(); }
+    std::size_t queuedPlanetPatchUploadCount() const;
     const std::vector<wgen::PlanetPatchDrawState>& planetDrawPatchStates() const {
         return planetLodCoordinator_.visibleDrawStates();
     }
@@ -114,12 +117,16 @@ private:
         std::uint32_t patchQuadCount);
     void publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch);
     void startPlanetLodJob(wgen::PlanetLodPatchPlan plan);
+    void pollFinishedPlanetPatchJobs();
+    std::optional<PlanetPatchMeshBatch> takeNextPlanetUploadBatch();
+    void discardStalePlanetUploads();
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
-    enum class TerrainJobKind {
-        None,
-        Regeneration,
-        PlanetLodStreaming,
+    struct PlanetPatchJob {
+        wgen::PlanetLodPatchPlan plan{};
+        std::uint64_t terrainEpoch{};
+        std::uint64_t requestRevision{};
+        std::future<PlanetPatchMeshBatch> future{};
     };
 
     wgen::AppConfig config_{};
@@ -135,9 +142,12 @@ private:
     wgen::TerrainFieldSnapshot activeTerrainField_{};
 
     std::future<TerrainJobResult> terrainGenerationJob_{};
-    bool terrainJobRunning_{false};
-    TerrainJobKind terrainJobKind_{TerrainJobKind::None};
+    bool terrainRegenerationRunning_{false};
+    bool planetRegenerationPending_{false};
+    std::vector<PlanetPatchJob> planetPatchJobs_{};
+    std::deque<PlanetPatchMeshBatch> readyPlanetUploads_{};
     bool planetLodSelectionDirty_{true};
+    double planetLodSelectionElapsedSeconds_{};
     std::uint64_t nextTerrainEpoch_{0};
     std::uint64_t activeTerrainEpoch_{0};
     std::uint64_t desiredPlanetRequestRevision_{0};

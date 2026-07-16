@@ -17,9 +17,42 @@
 #include <memory>
 #include <random>
 #include <stdexcept>
+#include <unordered_map>
 #include <utility>
 
 namespace lve {
+
+namespace {
+
+wgen::PlanetLodStreamingConfig planetStreamingConfig(
+        const wgen::PlanetConfig& config) {
+    if (config.lodPatchGenerationBudget < 4 ||
+            config.lodPatchUploadBudget == 0 ||
+            config.lodPatchUploadBudget >
+                wgen::DEFAULT_PLANET_RESIDENT_PATCH_BUDGET ||
+            config.lodMaximumConcurrentPatchJobs == 0 ||
+            config.lodMaximumConcurrentPatchJobs >
+                (wgen::DEFAULT_PLANET_RESIDENT_PATCH_BUDGET - wgen::FACES.size()) /
+                    config.lodPatchGenerationBudget) {
+        throw std::invalid_argument("planet LOD streaming budgets are invalid");
+    }
+    return {
+        .residentPatchBudget = wgen::DEFAULT_PLANET_RESIDENT_PATCH_BUDGET,
+        .patchGenerationBudget = config.lodPatchGenerationBudget,
+        .patchUploadBudget = config.lodPatchUploadBudget,
+        .maximumConcurrentPatchJobs = config.lodMaximumConcurrentPatchJobs,
+    };
+}
+
+wgen::PlanetLodConfig planetLodConfig(const wgen::PlanetConfig& config) {
+    const wgen::PlanetLodStreamingConfig streaming = planetStreamingConfig(config);
+    wgen::PlanetLodConfig result;
+    result.selectedLeafBudget = streaming.residentPatchBudget -
+        streaming.patchGenerationBudget * streaming.maximumConcurrentPatchJobs;
+    return result;
+}
+
+} // namespace
 
 void appendHeightMapMesh(
         const wgen::HeightMap<float>& heightMap,
@@ -95,8 +128,8 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
       pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)},
       planetPipelineSpec_{defaultPlanetPipelineSpec(config_.planetConfig)},
       planetLodCoordinator_{
-          {},
-          {},
+          planetLodConfig(config_.planetConfig),
+          planetStreamingConfig(config_.planetConfig),
           {
               .durationSeconds = config_.planetConfig.lodTransitionDurationSeconds,
               .debugTimeScale = config_.planetConfig.lodTransitionTimeScale,
@@ -106,7 +139,7 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
 }
 
 void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTarget target) {
-    if (terrainJobRunning_) {
+    if (terrainRegenerationRunning_) {
         return;
     }
 
@@ -128,8 +161,12 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
         : desiredPlanetRequestRevision_;
     const std::vector<wgen::PlanetPatchId> rootIds = fixedLevelPlanetPatchIds(0);
 
-    terrainJobRunning_ = true;
-    terrainJobKind_ = TerrainJobKind::Regeneration;
+    terrainRegenerationRunning_ = true;
+    planetRegenerationPending_ = buildPlanet;
+    if (buildPlanet) {
+        planetLodCoordinator_.cancelPendingRequestsBefore(requestRevision);
+        discardStalePlanetUploads();
+    }
     terrainGenerationJob_ = std::async(std::launch::async, [
         this,
         terrainConfig,
@@ -204,7 +241,7 @@ void TerrainAppCore::rotateColorFunction() {
 }
 
 void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
-    if (terrainJobRunning_) {
+    if (terrainRegenerationRunning_) {
         return;
     }
 
@@ -216,7 +253,7 @@ void TerrainAppCore::setPipeline(wgen::GeneratorPipelineSpec pipeline) {
 }
 
 void TerrainAppCore::setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline) {
-    if (terrainJobRunning_) {
+    if (terrainRegenerationRunning_) {
         return;
     }
 
@@ -248,24 +285,48 @@ void TerrainAppCore::setMaximumPlanetPatchLevel(std::uint8_t level) {
 void TerrainAppCore::updatePlanetLod(
         const wgen::PlanetLodView& view,
         double deltaSeconds) {
-    if (terrainJobRunning_) {
-        planetLodCoordinator_.updateVisibility(view);
-        planetLodCoordinator_.advanceTransitions(deltaSeconds);
-        return;
+    if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.0) {
+        throw std::invalid_argument("planet LOD frame delta must be finite and non-negative");
     }
+    planetLodCoordinator_.updateVisibility(view);
+    planetLodCoordinator_.advanceTransitions(deltaSeconds);
     if (activeTerrainField_ == nullptr || activeTerrainEpoch_ == 0) {
         return;
     }
-
-    const bool selectionChanged = planetLodCoordinator_.updateSelection(view);
-    planetLodCoordinator_.advanceTransitions(deltaSeconds);
-    if (selectionChanged || planetLodSelectionDirty_) {
-        ++desiredPlanetRequestRevision_;
-        planetLodSelectionDirty_ = false;
+    if (planetRegenerationPending_) {
+        return;
     }
 
-    wgen::PlanetLodPatchPlan plan = planetLodCoordinator_.makePatchPlan();
-    if (!plan.upserts.empty() || !plan.removals.empty()) {
+    planetLodSelectionElapsedSeconds_ += deltaSeconds;
+    const double selectionInterval = config_.planetConfig.lodSelectionIntervalSeconds;
+    const bool selectionDue = planetLodSelectionDirty_ || selectionInterval == 0.0 ||
+        planetLodSelectionElapsedSeconds_ >= selectionInterval;
+    if (selectionDue) {
+        const bool selectionChanged = planetLodCoordinator_.updateSelection(view);
+        planetLodSelectionElapsedSeconds_ = 0.0;
+        if (selectionChanged || planetLodSelectionDirty_) {
+            ++desiredPlanetRequestRevision_;
+            planetLodCoordinator_.cancelPendingRequestsBefore(
+                desiredPlanetRequestRevision_);
+            discardStalePlanetUploads();
+            planetLodSelectionDirty_ = false;
+        }
+    }
+
+    const std::size_t outstandingLimit =
+        planetLodCoordinator_.streamingConfig().patchGenerationBudget *
+        planetLodCoordinator_.streamingConfig().maximumConcurrentPatchJobs;
+    while (planetPatchJobs_.size() <
+            planetLodCoordinator_.streamingConfig().maximumConcurrentPatchJobs &&
+            queuedPlanetPatchUploadCount() < outstandingLimit) {
+        wgen::PlanetLodPatchPlan plan = planetLodCoordinator_.makePatchPlan();
+        if (plan.upserts.empty() && plan.removals.empty()) {
+            break;
+        }
+        if (queuedPlanetPatchUploadCount() + plan.upserts.size() >
+                outstandingLimit) {
+            break;
+        }
         startPlanetLodJob(std::move(plan));
     }
 }
@@ -276,7 +337,23 @@ void TerrainAppCore::setPlanetLodTransitionTimeScale(double timeScale) {
 }
 
 bool TerrainAppCore::isBlockingTerrainJobRunning() const {
-    return terrainJobRunning_ && terrainJobKind_ == TerrainJobKind::Regeneration;
+    return terrainRegenerationRunning_;
+}
+
+bool TerrainAppCore::isTerrainJobRunning() const {
+    return terrainRegenerationRunning_ || !planetPatchJobs_.empty() ||
+        !readyPlanetUploads_.empty();
+}
+
+std::size_t TerrainAppCore::queuedPlanetPatchUploadCount() const {
+    std::size_t result = 0;
+    for (const PlanetPatchJob& job : planetPatchJobs_) {
+        result += job.plan.upserts.size();
+    }
+    for (const PlanetPatchMeshBatch& batch : readyPlanetUploads_) {
+        result += batch.upserts.size();
+    }
+    return result;
 }
 
 wgen::GeneratorPipelineSpec TerrainAppCore::currentPipeline() const {
@@ -295,38 +372,45 @@ wgen::TerrainDisplayHeightRange TerrainAppCore::activePlanetDisplayHeightRange()
 }
 
 std::optional<TerrainJobResult> TerrainAppCore::tryTakeFinishedTerrainJob() {
-    if (!terrainJobRunning_) {
-        return std::nullopt;
-    }
-
-    if (terrainGenerationJob_.valid() && terrainGenerationJob_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+    std::optional<TerrainJobResult> delivery;
+    if (terrainRegenerationRunning_ && terrainGenerationJob_.valid() &&
+            terrainGenerationJob_.wait_for(std::chrono::seconds{0}) ==
+                std::future_status::ready) {
         TerrainJobResult result = terrainGenerationJob_.get();
         const bool replacesPlanetEpoch = result.planetBatch &&
             result.terrainEpoch != activeTerrainEpoch_;
         activeHeightMap_ = result.heightMap;
         activeTerrainField_ = result.terrainField;
         activeTerrainEpoch_ = result.terrainEpoch;
-        terrainJobRunning_ = false;
-        terrainJobKind_ = TerrainJobKind::None;
-        const bool discardedPlanetBatch = discardStalePlanetPatchMeshBatch(
-                result.planetBatch,
-                desiredPlanetRequestRevision_);
-        if (discardedPlanetBatch) {
-            planetLodCoordinator_.cancelPendingRequests();
-        } else if (result.planetBatch) {
+        terrainRegenerationRunning_ = false;
+        planetRegenerationPending_ = false;
+        if (result.planetBatch &&
+                isCurrentPlanetPatchMeshBatch(
+                    *result.planetBatch,
+                    desiredPlanetRequestRevision_)) {
             if (replacesPlanetEpoch) {
                 planetLodCoordinator_.reset();
                 planetLodCoordinator_.setSurface(buildPlanetLodSurface(
                     *activeTerrainField_,
                     planetLodCoordinator_.lodConfig().patchQuadCount));
                 planetLodSelectionDirty_ = true;
+                planetLodSelectionElapsedSeconds_ = 0.0;
             }
-            publishPlanetPatchBatch(*result.planetBatch);
+            readyPlanetUploads_.push_back(std::move(*result.planetBatch));
         }
-        return result;
+        result.planetBatch.reset();
+        delivery = std::move(result);
     }
 
-    return std::nullopt;
+    pollFinishedPlanetPatchJobs();
+    if (std::optional<PlanetPatchMeshBatch> batch = takeNextPlanetUploadBatch()) {
+        if (!delivery) {
+            delivery.emplace();
+        }
+        delivery->terrainEpoch = batch->terrainEpoch;
+        delivery->planetBatch = std::move(*batch);
+    }
+    return delivery;
 }
 
 void TerrainAppCore::initGenerators(
@@ -585,35 +669,65 @@ void TerrainAppCore::publishPlanetPatchBatch(const PlanetPatchMeshBatch& batch) 
     for (const PlanetPatchRemoval& removal : batch.removals) {
         removals.push_back(removal.id);
     }
-    planetLodCoordinator_.publishPatchChanges(upserts, removals);
+    std::unordered_map<
+        wgen::PlanetPatchId,
+        double,
+        wgen::PlanetPatchIdHash> errorsByParent;
+    if (activeTerrainField_ != nullptr) {
+        const double inverseRadius = 1.0 /
+            static_cast<double>(activeTerrainField_->radius());
+        for (const PlanetPatchMeshData& upsert : batch.upserts) {
+            const std::optional<wgen::PlanetPatchId> parentId =
+                wgen::parent(upsert.id);
+            if (!parentId) {
+                continue;
+            }
+            errorsByParent[*parentId] = std::max(
+                errorsByParent.contains(*parentId)
+                    ? errorsByParent.at(*parentId)
+                    : 0.0,
+                static_cast<double>(upsert.maximumParentErrorMeters) *
+                    inverseRadius);
+        }
+    }
+    std::vector<wgen::PlanetPatchErrorSample> errorSamples;
+    errorSamples.reserve(errorsByParent.size());
+    for (const auto& [id, maximumWorldError] : errorsByParent) {
+        errorSamples.push_back({id, maximumWorldError});
+    }
+    std::sort(errorSamples.begin(), errorSamples.end(), [](const auto& lhs, const auto& rhs) {
+        return wgen::PlanetPatchIdLess{}(lhs.id, rhs.id);
+    });
+    planetLodCoordinator_.publishPatchChanges(
+        upserts,
+        removals,
+        batch.requestRevision,
+        errorSamples);
 }
 
 void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
-    wgen::HeightMap<float> heightMap = activeHeightMap_;
     wgen::TerrainFieldSnapshot terrainField = activeTerrainField_;
     const std::uint64_t terrainEpoch = activeTerrainEpoch_;
     const std::uint64_t requestRevision = desiredPlanetRequestRevision_;
     const float skirtDepthMultiplier = config_.planetConfig.skirtDepthMultiplier;
 
-    planetLodCoordinator_.beginPatchPlan(plan);
-    terrainJobRunning_ = true;
-    terrainJobKind_ = TerrainJobKind::PlanetLodStreaming;
-    terrainGenerationJob_ = std::async(
+    planetLodCoordinator_.beginPatchPlan(plan, requestRevision);
+    PlanetPatchJob job{
+        .plan = plan,
+        .terrainEpoch = terrainEpoch,
+        .requestRevision = requestRevision,
+    };
+    job.future = std::async(
         std::launch::async,
         [
-            heightMap = std::move(heightMap),
             terrainField = std::move(terrainField),
             terrainEpoch,
             requestRevision,
             skirtDepthMultiplier,
             plan = std::move(plan)
         ]() mutable {
-            TerrainJobResult result;
-            result.heightMap = std::move(heightMap);
-            result.terrainField = std::move(terrainField);
-            result.terrainEpoch = terrainEpoch;
-            result.planetBatch = buildPlanetPatchBatch(
-                result.terrainField,
+            return buildPlanetPatchBatch(
+                terrainField,
                 PlanetPatchVersion{
                     .terrainEpoch = terrainEpoch,
                     .dependencyRevision = 0,
@@ -622,8 +736,76 @@ void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
                 plan.upserts,
                 plan.removals,
                 skirtDepthMultiplier);
-            return result;
         });
+    planetPatchJobs_.push_back(std::move(job));
+}
+
+void TerrainAppCore::pollFinishedPlanetPatchJobs() {
+    for (std::size_t index = 0; index < planetPatchJobs_.size();) {
+        PlanetPatchJob& job = planetPatchJobs_[index];
+        if (!job.future.valid() ||
+                job.future.wait_for(std::chrono::seconds{0}) !=
+                    std::future_status::ready) {
+            ++index;
+            continue;
+        }
+
+        try {
+            PlanetPatchMeshBatch batch = job.future.get();
+            if (job.terrainEpoch == activeTerrainEpoch_ &&
+                    job.requestRevision == desiredPlanetRequestRevision_) {
+                readyPlanetUploads_.push_back(std::move(batch));
+            } else {
+                planetLodCoordinator_.cancelPatchPlan(
+                    job.plan,
+                    job.requestRevision);
+            }
+        } catch (...) {
+            planetLodCoordinator_.cancelPatchPlan(
+                job.plan,
+                job.requestRevision);
+            planetPatchJobs_.erase(planetPatchJobs_.begin() + index);
+            throw;
+        }
+        planetPatchJobs_.erase(planetPatchJobs_.begin() + index);
+    }
+}
+
+void TerrainAppCore::discardStalePlanetUploads() {
+    std::erase_if(readyPlanetUploads_, [this](const PlanetPatchMeshBatch& batch) {
+        return batch.terrainEpoch != activeTerrainEpoch_ ||
+            batch.requestRevision != desiredPlanetRequestRevision_;
+    });
+}
+
+std::optional<PlanetPatchMeshBatch> TerrainAppCore::takeNextPlanetUploadBatch() {
+    discardStalePlanetUploads();
+    if (readyPlanetUploads_.empty()) {
+        return std::nullopt;
+    }
+
+    PlanetPatchMeshBatch& source = readyPlanetUploads_.front();
+    std::size_t uploadBudget =
+        planetLodCoordinator_.streamingConfig().patchUploadBudget;
+    if (planetLodCoordinator_.activeLeaves().empty() &&
+            isCompletePlanetRootPatchBatch(source)) {
+        // Replacing an epoch is a single six-root bootstrap operation. Keeping
+        // it atomic prevents a selection revision from invalidating the tail
+        // of the planet's only fallback coverage.
+        uploadBudget = source.upserts.size();
+    }
+    PlanetPatchMeshBatch result = takePlanetPatchMeshBatchPrefix(
+        source,
+        uploadBudget);
+    if (source.upserts.empty() && source.removals.empty()) {
+        readyPlanetUploads_.pop_front();
+    }
+    if (result.upserts.empty() && result.removals.empty()) {
+        return std::nullopt;
+    }
+    validatePlanetPatchMeshBatch(result);
+    publishPlanetPatchBatch(result);
+    return result;
 }
 
 std::function<glm::vec3(float)> TerrainAppCore::getActiveColorFunc() const {

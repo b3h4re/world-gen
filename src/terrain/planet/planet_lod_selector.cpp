@@ -183,6 +183,15 @@ void validatePlanetLodConfig(const PlanetLodConfig& config) {
     }
 }
 
+PlanetLodErrorThresholds planetLodErrorThresholds(
+        const PlanetLodConfig& config) {
+    validatePlanetLodConfig(config);
+    return {
+        .splitPixels = config.targetErrorPixels,
+        .mergePixels = config.targetErrorPixels * config.mergeRatio,
+    };
+}
+
 void validatePlanetLodView(const PlanetLodView& view) {
     if (!isFinite(view.position) || !isFinite(view.forward) ||
             !isFinite(view.right) || !isFinite(view.up)) {
@@ -226,26 +235,48 @@ void validatePlanetLodSurface(const PlanetLodSurface& surface) {
     }
 }
 
-double planetPatchScreenErrorPixels(
+double PlanetPatchWorldError::maximum() const {
+    return std::max({sphereCurvature, omittedTerrainDetail, cachedData});
+}
+
+PlanetPatchWorldError planetPatchWorldError(
         const PlanetPatchId& id,
-        const PlanetLodView& view,
         const PlanetLodSurface& surface,
-        std::uint32_t patchQuadCount) {
+        std::uint32_t patchQuadCount,
+        double knownCachedDataError) {
     validate(id);
-    validatePlanetLodView(view);
     validatePlanetLodSurface(surface);
     if (patchQuadCount == 0) {
         throw std::invalid_argument{"planet LOD patch quad count must be positive"};
     }
+    if (!std::isfinite(knownCachedDataError) || knownCachedDataError < 0.0) {
+        throw std::invalid_argument{"planet LOD cached data error must be finite and non-negative"};
+    }
 
     const PatchGeometry geometry = patchGeometry(id, surface);
-    const double angularDiameter = 2.0 * geometry.angularRadius;
-    const double sampleSpacingError =
-        (surface.radius + surface.maximumDisplacement) * angularDiameter /
+    const double cellAngle = 2.0 * geometry.angularRadius /
         static_cast<double>(patchQuadCount);
-    const double worldError = std::max(
-        sampleSpacingError,
-        surface.maximumOmittedDetailError[id.level]);
+    const double outerRadius = surface.radius + surface.maximumDisplacement;
+    return {
+        .sphereCurvature = outerRadius * (1.0 - std::cos(cellAngle * 0.5)),
+        .omittedTerrainDetail = surface.maximumOmittedDetailError[id.level],
+        .cachedData = knownCachedDataError,
+    };
+}
+
+double planetPatchScreenErrorPixels(
+        const PlanetPatchId& id,
+        const PlanetLodView& view,
+        const PlanetLodSurface& surface,
+        std::uint32_t patchQuadCount,
+    double knownCachedDataError) {
+    validatePlanetLodView(view);
+    const double worldError = planetPatchWorldError(
+        id,
+        surface,
+        patchQuadCount,
+        knownCachedDataError).maximum();
+    const PatchGeometry geometry = patchGeometry(id, surface);
     const double distance = std::max(
         glm::length(view.position - geometry.center) - geometry.boundingRadius,
         0.000001);
@@ -308,10 +339,13 @@ PlanetLodSelection PlanetLodSelector::select(
         const PlanetLodView& view,
         const PlanetLodSurface& surface,
         const PlanetLodConfig& config,
-        std::span<const PlanetPatchId> previousLeaves) const {
+        std::span<const PlanetPatchId> previousLeaves,
+        const PlanetPatchErrorCache& cachedErrors) const {
     validatePlanetLodConfig(config);
     validatePlanetLodView(view);
     validatePlanetLodSurface(surface);
+    const PlanetLodErrorThresholds thresholds =
+        planetLodErrorThresholds(config);
 
     std::unordered_set<PlanetPatchId, PlanetPatchIdHash> previousSplitNodes;
     for (const PlanetPatchId& leaf : previousLeaves) {
@@ -333,13 +367,14 @@ PlanetLodSelection PlanetLodSelector::select(
 
         const bool wasSplit = previousSplitNodes.contains(id);
         const double threshold = wasSplit
-            ? config.targetErrorPixels * config.mergeRatio
-            : config.targetErrorPixels;
+            ? thresholds.mergePixels
+            : thresholds.splitPixels;
         const double error = planetPatchScreenErrorPixels(
             id,
             view,
             surface,
-            config.patchQuadCount);
+            config.patchQuadCount,
+            cachedErrors.contains(id) ? cachedErrors.at(id) : 0.0);
         const bool forced = id.level < config.minimumLevel;
         if (forced || (wasSplit ? error >= threshold : error > threshold)) {
             queue.push({

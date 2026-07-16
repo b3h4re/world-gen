@@ -114,6 +114,22 @@ PlanetPatchEdgeMask stitchMaskFromActiveSet(
     return result;
 }
 
+bool sameVector(glm::dvec3 lhs, glm::dvec3 rhs) {
+    return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameView(const PlanetLodView& lhs, const PlanetLodView& rhs) {
+    return sameVector(lhs.position, rhs.position) &&
+        sameVector(lhs.forward, rhs.forward) &&
+        sameVector(lhs.right, rhs.right) &&
+        sameVector(lhs.up, rhs.up) &&
+        lhs.verticalFov == rhs.verticalFov &&
+        lhs.aspectRatio == rhs.aspectRatio &&
+        lhs.nearPlane == rhs.nearPlane &&
+        lhs.farPlane == rhs.farPlane &&
+        lhs.viewportHeight == rhs.viewportHeight;
+}
+
 } // namespace
 
 void validatePlanetLodTransitionConfig(const PlanetLodTransitionConfig& config) {
@@ -146,12 +162,16 @@ PlanetLodCoordinator::PlanetLodCoordinator(
     validatePlanetLodConfig(lodConfig_);
     validatePlanetLodTransitionConfig(transitionConfig_);
     if (streamingConfig_.residentPatchBudget < FACES.size() ||
-            streamingConfig_.patchUploadBudget < 4 ||
-            streamingConfig_.patchUploadBudget > streamingConfig_.residentPatchBudget) {
+            streamingConfig_.patchGenerationBudget < 4 ||
+            streamingConfig_.patchUploadBudget == 0 ||
+            streamingConfig_.patchUploadBudget > streamingConfig_.residentPatchBudget ||
+            streamingConfig_.maximumConcurrentPatchJobs == 0) {
         throw std::invalid_argument{"planet LOD streaming budgets are invalid"};
     }
-    if (lodConfig_.selectedLeafBudget + streamingConfig_.patchUploadBudget >
-            streamingConfig_.residentPatchBudget) {
+    if (lodConfig_.selectedLeafBudget > streamingConfig_.residentPatchBudget ||
+            streamingConfig_.patchGenerationBudget >
+                (streamingConfig_.residentPatchBudget - lodConfig_.selectedLeafBudget) /
+                    streamingConfig_.maximumConcurrentPatchJobs) {
         throw std::invalid_argument{"planet LOD selection leaves no streaming headroom"};
     }
     reset();
@@ -164,9 +184,13 @@ void PlanetLodCoordinator::reset() {
     visibleDrawStates_.clear();
     transitions_.clear();
     residentIds_.clear();
-    pendingIds_.clear();
+    pendingUpserts_.clear();
+    pendingRemovals_.clear();
+    knownPatchErrors_.clear();
     lastUsedTick_.clear();
     latestView_.reset();
+    previousView_.reset();
+    minimumAcceptedRevision_ = 0;
     selectionTick_ = 0;
 }
 
@@ -183,13 +207,15 @@ void PlanetLodCoordinator::setSurface(PlanetLodSurface surface) {
 }
 
 bool PlanetLodCoordinator::updateSelection(const PlanetLodView& view) {
-    latestView_ = view;
+    validatePlanetLodView(view);
+    recordView(view);
     ++selectionTick_;
     const PlanetLodSelection selection = selector_.select(
         view,
         surface_,
         lodConfig_,
-        desiredLeaves_);
+        desiredLeaves_,
+        knownPatchErrors_);
     const bool changed = selection.leaves != desiredLeaves_;
     desiredLeaves_ = selection.leaves;
     for (const PlanetPatchId& id : selection.visibleLeaves) {
@@ -202,7 +228,7 @@ bool PlanetLodCoordinator::updateSelection(const PlanetLodView& view) {
 
 void PlanetLodCoordinator::updateVisibility(const PlanetLodView& view) {
     validatePlanetLodView(view);
-    latestView_ = view;
+    recordView(view);
     ++selectionTick_;
     rebuildVisibleActiveLeaves();
     for (const PlanetPatchId& id : visibleActiveLeaves_) {
@@ -263,20 +289,58 @@ void PlanetLodCoordinator::advanceTransitions(double deltaSeconds) {
 }
 
 PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
-    if (!pendingIds_.empty()) {
-        return {};
-    }
-
     struct RequestGroup {
+        bool visibleReplacement{};
+        double screenError{};
+        bool predictedVisible{};
         bool merge{};
         std::uint8_t level{};
         PlanetPatchId anchor{};
         std::vector<PlanetPatchId> ids{};
     };
     std::vector<RequestGroup> groups;
+    const std::size_t maximumPendingUpserts =
+        streamingConfig_.patchGenerationBudget *
+        streamingConfig_.maximumConcurrentPatchJobs;
+    if (pendingUpserts_.size() >= maximumPendingUpserts) {
+        return {};
+    }
+    const std::size_t requestBudget = std::min(
+        streamingConfig_.patchGenerationBudget,
+        maximumPendingUpserts - pendingUpserts_.size());
     const std::unordered_set<PlanetPatchId, PlanetPatchIdHash> active{
         activeLeaves_.begin(),
         activeLeaves_.end(),
+    };
+    std::optional<PlanetLodView> predictedView;
+    if (latestView_) {
+        predictedView = *latestView_;
+        if (previousView_) {
+            predictedView->position += latestView_->position - previousView_->position;
+        }
+    }
+    const auto appendGroup = [this, &groups, &predictedView](RequestGroup group) {
+        if (latestView_) {
+            group.visibleReplacement = isPlanetPatchVisible(
+                group.anchor,
+                *latestView_,
+                surface_);
+            group.screenError = planetPatchScreenErrorPixels(
+                group.anchor,
+                *latestView_,
+                surface_,
+                lodConfig_.patchQuadCount,
+                knownPatchErrors_.contains(group.anchor)
+                    ? knownPatchErrors_.at(group.anchor)
+                    : 0.0);
+        }
+        if (predictedView) {
+            group.predictedVisible = isPlanetPatchVisible(
+                group.anchor,
+                *predictedView,
+                surface_);
+        }
+        groups.push_back(std::move(group));
     };
 
     for (const PlanetPatchId& leaf : activeLeaves_) {
@@ -294,8 +358,9 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
             [&parentId](const PlanetPatchId& desired) {
                 return isDescendantOrSelf(*parentId, desired);
             });
-        if (desiredCoarser && !residentIds_.contains(*parentId)) {
-            groups.push_back({
+        if (desiredCoarser && !residentIds_.contains(*parentId) &&
+                !pendingUpserts_.contains(*parentId)) {
+            appendGroup({
                 .merge = true,
                 .level = leaf.level,
                 .anchor = *parentId,
@@ -310,12 +375,13 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
         }
         std::vector<PlanetPatchId> missing;
         for (const PlanetPatchId& childId : children(leaf)) {
-            if (!residentIds_.contains(childId)) {
+            if (!residentIds_.contains(childId) &&
+                    !pendingUpserts_.contains(childId)) {
                 missing.push_back(childId);
             }
         }
         if (!missing.empty()) {
-            groups.push_back({
+            appendGroup({
                 .merge = false,
                 .level = leaf.level,
                 .anchor = leaf,
@@ -325,6 +391,15 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
     }
 
     std::sort(groups.begin(), groups.end(), [](const RequestGroup& lhs, const RequestGroup& rhs) {
+        if (lhs.visibleReplacement != rhs.visibleReplacement) {
+            return lhs.visibleReplacement;
+        }
+        if (lhs.screenError != rhs.screenError) {
+            return lhs.screenError > rhs.screenError;
+        }
+        if (lhs.predictedVisible != rhs.predictedVisible) {
+            return lhs.predictedVisible;
+        }
         if (lhs.merge != rhs.merge) {
             return lhs.merge;
         }
@@ -336,15 +411,14 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
 
     PlanetLodPatchPlan plan;
     for (const RequestGroup& group : groups) {
-        if (plan.upserts.size() + group.ids.size() > streamingConfig_.patchUploadBudget) {
+        if (plan.upserts.size() + group.ids.size() > requestBudget) {
             continue;
         }
         plan.upserts.insert(plan.upserts.end(), group.ids.begin(), group.ids.end());
     }
-    std::sort(plan.upserts.begin(), plan.upserts.end(), PlanetPatchIdLess{});
-    plan.upserts.erase(std::unique(plan.upserts.begin(), plan.upserts.end()), plan.upserts.end());
 
-    const std::size_t projectedCount = residentIds_.size() + plan.upserts.size();
+    const std::size_t projectedCount = residentIds_.size() - pendingRemovals_.size() +
+        pendingUpserts_.size() + plan.upserts.size();
     if (projectedCount <= streamingConfig_.residentPatchBudget) {
         return plan;
     }
@@ -360,7 +434,7 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
     }();
     std::vector<PlanetPatchId> candidates;
     for (const PlanetPatchId& id : residentIds_) {
-        if (!protectedIds.contains(id)) {
+        if (!protectedIds.contains(id) && !pendingRemovals_.contains(id)) {
             candidates.push_back(id);
         }
     }
@@ -383,46 +457,147 @@ PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
     return plan;
 }
 
-void PlanetLodCoordinator::beginPatchPlan(const PlanetLodPatchPlan& plan) {
-    if (!pendingIds_.empty()) {
-        throw std::logic_error{"planet LOD patch requests are already pending"};
+void PlanetLodCoordinator::beginPatchPlan(
+        const PlanetLodPatchPlan& plan,
+        std::uint64_t requestRevision) {
+    if (requestRevision == 0) {
+        throw std::invalid_argument{"planet LOD patch request revision must be initialized"};
     }
-    if (plan.upserts.size() > streamingConfig_.patchUploadBudget) {
-        throw std::invalid_argument{"planet LOD patch plan exceeds the upload budget"};
+    if (requestRevision < minimumAcceptedRevision_) {
+        throw std::invalid_argument{"planet LOD patch request revision is stale"};
     }
+    if (plan.upserts.size() > streamingConfig_.patchGenerationBudget) {
+        throw std::invalid_argument{"planet LOD patch plan exceeds the generation budget"};
+    }
+    const std::size_t maximumPendingUpserts =
+        streamingConfig_.patchGenerationBudget *
+        streamingConfig_.maximumConcurrentPatchJobs;
+    if (plan.upserts.size() > maximumPendingUpserts -
+            std::min(maximumPendingUpserts, pendingUpserts_.size())) {
+        throw std::invalid_argument{"planet LOD patch plan exceeds bounded pending work"};
+    }
+    std::unordered_set<PlanetPatchId, PlanetPatchIdHash> uniqueUpserts;
+    std::unordered_set<PlanetPatchId, PlanetPatchIdHash> uniqueRemovals;
+    const std::vector<PlanetPatchId> protectedVector = protectedCacheIds();
+    const std::unordered_set<PlanetPatchId, PlanetPatchIdHash> protectedIds{
+        protectedVector.begin(),
+        protectedVector.end(),
+    };
     for (const PlanetPatchId& id : plan.upserts) {
         validate(id);
-        if (residentIds_.contains(id) || !pendingIds_.insert(id).second) {
+        if (residentIds_.contains(id) || pendingUpserts_.contains(id) ||
+                pendingRemovals_.contains(id) || !uniqueUpserts.insert(id).second) {
             throw std::invalid_argument{"planet LOD patch plan contains a duplicate request"};
         }
     }
     for (const PlanetPatchId& id : plan.removals) {
         validate(id);
-        if (!residentIds_.contains(id) || pendingIds_.contains(id)) {
-            pendingIds_.clear();
+        if (!residentIds_.contains(id) || pendingUpserts_.contains(id) ||
+                pendingRemovals_.contains(id) || uniqueUpserts.contains(id) ||
+                protectedIds.contains(id) || !uniqueRemovals.insert(id).second) {
             throw std::invalid_argument{"planet LOD patch plan contains an invalid removal"};
         }
+    }
+    for (const PlanetPatchId& id : plan.upserts) {
+        pendingUpserts_.emplace(id, requestRevision);
+    }
+    for (const PlanetPatchId& id : plan.removals) {
+        pendingRemovals_.emplace(id, requestRevision);
     }
 }
 
 void PlanetLodCoordinator::cancelPendingRequests() {
-    pendingIds_.clear();
+    pendingUpserts_.clear();
+    pendingRemovals_.clear();
 }
 
-void PlanetLodCoordinator::publishPatchChanges(
+void PlanetLodCoordinator::cancelPendingRequestsBefore(
+        std::uint64_t requestRevision) {
+    if (requestRevision == 0) {
+        throw std::invalid_argument{"planet LOD cancellation revision must be initialized"};
+    }
+    minimumAcceptedRevision_ = std::max(
+        minimumAcceptedRevision_,
+        requestRevision);
+    std::erase_if(pendingUpserts_, [requestRevision](const auto& entry) {
+        return entry.second < requestRevision;
+    });
+    std::erase_if(pendingRemovals_, [requestRevision](const auto& entry) {
+        return entry.second < requestRevision;
+    });
+}
+
+void PlanetLodCoordinator::cancelPatchPlan(
+        const PlanetLodPatchPlan& plan,
+        std::uint64_t requestRevision) {
+    const auto eraseMatching = [requestRevision](auto& pending, const PlanetPatchId& id) {
+        const auto entry = pending.find(id);
+        if (entry != pending.end() && entry->second == requestRevision) {
+            pending.erase(entry);
+        }
+    };
+    for (const PlanetPatchId& id : plan.upserts) {
+        eraseMatching(pendingUpserts_, id);
+    }
+    for (const PlanetPatchId& id : plan.removals) {
+        eraseMatching(pendingRemovals_, id);
+    }
+}
+
+bool PlanetLodCoordinator::publishPatchChanges(
         std::span<const PlanetPatchId> upserts,
-        std::span<const PlanetPatchId> removals) {
+        std::span<const PlanetPatchId> removals,
+        std::uint64_t requestRevision,
+        std::span<const PlanetPatchErrorSample> errorSamples) {
+    const auto eraseMatching = [requestRevision](auto& pending, const PlanetPatchId& id) {
+        const auto entry = pending.find(id);
+        if (entry != pending.end() &&
+                (requestRevision == 0 || entry->second == requestRevision)) {
+            pending.erase(entry);
+        }
+    };
+    if (requestRevision != 0 && requestRevision < minimumAcceptedRevision_) {
+        for (const PlanetPatchId& id : upserts) {
+            eraseMatching(pendingUpserts_, id);
+        }
+        for (const PlanetPatchId& id : removals) {
+            eraseMatching(pendingRemovals_, id);
+        }
+        return false;
+    }
+    const std::vector<PlanetPatchId> protectedVector = protectedCacheIds();
+    const std::unordered_set<PlanetPatchId, PlanetPatchIdHash> protectedIds{
+        protectedVector.begin(),
+        protectedVector.end(),
+    };
     for (const PlanetPatchId& id : removals) {
-        residentIds_.erase(id);
-        lastUsedTick_.erase(id);
+        validate(id);
+        eraseMatching(pendingRemovals_, id);
+        if (!protectedIds.contains(id)) {
+            residentIds_.erase(id);
+            knownPatchErrors_.erase(id);
+            lastUsedTick_.erase(id);
+        }
     }
     for (const PlanetPatchId& id : upserts) {
         validate(id);
         residentIds_.insert(id);
-        pendingIds_.erase(id);
+        eraseMatching(pendingUpserts_, id);
         lastUsedTick_[id] = selectionTick_;
     }
-    pendingIds_.clear();
+    for (const PlanetPatchErrorSample& sample : errorSamples) {
+        validate(sample.id);
+        if (!std::isfinite(sample.maximumWorldError) ||
+                sample.maximumWorldError < 0.0) {
+            throw std::invalid_argument{"planet patch cached error sample is invalid"};
+        }
+        knownPatchErrors_[sample.id] = std::max(
+            knownPatchErrors_.contains(sample.id)
+                ? knownPatchErrors_.at(sample.id)
+                : 0.0,
+            sample.maximumWorldError);
+    }
+    pruneKnownPatchErrors();
 
     if (activeLeaves_.empty()) {
         const std::vector<PlanetPatchId> roots = rootPatchIds();
@@ -434,6 +609,7 @@ void PlanetLodCoordinator::publishPatchChanges(
     }
     reconcileActiveLeaves();
     rebuildVisibleActiveLeaves();
+    return true;
 }
 
 void PlanetLodCoordinator::reconcileActiveLeaves() {
@@ -564,12 +740,55 @@ bool PlanetLodCoordinator::transitionLocks(const PlanetPatchId& id) const {
         });
 }
 
+void PlanetLodCoordinator::recordView(const PlanetLodView& view) {
+    if (latestView_ && sameView(*latestView_, view)) {
+        return;
+    }
+    previousView_ = latestView_;
+    latestView_ = view;
+}
+
+void PlanetLodCoordinator::pruneKnownPatchErrors() {
+    if (knownPatchErrors_.size() <= streamingConfig_.residentPatchBudget) {
+        return;
+    }
+    const std::vector<PlanetPatchId> protectedVector = protectedCacheIds();
+    const std::unordered_set<PlanetPatchId, PlanetPatchIdHash> protectedIds{
+        protectedVector.begin(),
+        protectedVector.end(),
+    };
+    std::vector<PlanetPatchId> candidates;
+    for (const auto& [id, error] : knownPatchErrors_) {
+        static_cast<void>(error);
+        if (!protectedIds.contains(id)) {
+            candidates.push_back(id);
+        }
+    }
+    std::sort(candidates.begin(), candidates.end(), [this](const auto& lhs, const auto& rhs) {
+        const std::uint64_t lhsTick = lastUsedTick_.contains(lhs) ? lastUsedTick_.at(lhs) : 0;
+        const std::uint64_t rhsTick = lastUsedTick_.contains(rhs) ? lastUsedTick_.at(rhs) : 0;
+        if (lhsTick != rhsTick) {
+            return lhsTick < rhsTick;
+        }
+        return PlanetPatchIdLess{}(lhs, rhs);
+    });
+    const std::size_t removalCount = std::min(
+        candidates.size(),
+        knownPatchErrors_.size() - streamingConfig_.residentPatchBudget);
+    for (std::size_t index = 0; index < removalCount; ++index) {
+        knownPatchErrors_.erase(candidates[index]);
+    }
+}
+
 std::vector<PlanetPatchId> PlanetLodCoordinator::protectedCacheIds() const {
     std::unordered_set<PlanetPatchId, PlanetPatchIdHash> result{
         activeLeaves_.begin(),
         activeLeaves_.end(),
     };
-    result.insert(pendingIds_.begin(), pendingIds_.end());
+    for (const auto& [id, revision] : pendingUpserts_) {
+        static_cast<void>(revision);
+        result.insert(id);
+    }
     for (const PlanetLodTransitionState& transition : transitions_) {
         result.insert(transition.parent);
         const std::array<PlanetPatchId, 4> childIds = children(transition.parent);

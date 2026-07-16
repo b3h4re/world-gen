@@ -93,7 +93,14 @@ TerrainAppCore::TerrainAppCore() : TerrainAppCore(wgen::AppConfig{}) {}
 TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
     : config_{config},
       pipelineSpec_{defaultPipelineSpec(config_.terrainConfig)},
-      planetPipelineSpec_{defaultPlanetPipelineSpec(config_.planetConfig)} {
+      planetPipelineSpec_{defaultPlanetPipelineSpec(config_.planetConfig)},
+      planetLodCoordinator_{
+          {},
+          {},
+          {
+              .durationSeconds = config_.planetConfig.lodTransitionDurationSeconds,
+              .debugTimeScale = config_.planetConfig.lodTransitionTimeScale,
+          }} {
     const wgen::SeedType seed = activeSeed();
     initGenerators(generators_, pipelineSpec_, seed);
 }
@@ -176,7 +183,8 @@ void TerrainAppCore::regenerateTerrain(wgen::SeedType seed, TerrainGenerationTar
                     .requestRevision = requestRevision,
                 },
                 rootIds,
-                {});
+                {},
+                planetConfig.skirtDepthMultiplier);
         }
 
         return result;
@@ -237,9 +245,12 @@ void TerrainAppCore::setMaximumPlanetPatchLevel(std::uint8_t level) {
     planetLodSelectionDirty_ = true;
 }
 
-void TerrainAppCore::updatePlanetLod(const wgen::PlanetLodView& view) {
+void TerrainAppCore::updatePlanetLod(
+        const wgen::PlanetLodView& view,
+        double deltaSeconds) {
     if (terrainJobRunning_) {
         planetLodCoordinator_.updateVisibility(view);
+        planetLodCoordinator_.advanceTransitions(deltaSeconds);
         return;
     }
     if (activeTerrainField_ == nullptr || activeTerrainEpoch_ == 0) {
@@ -247,6 +258,7 @@ void TerrainAppCore::updatePlanetLod(const wgen::PlanetLodView& view) {
     }
 
     const bool selectionChanged = planetLodCoordinator_.updateSelection(view);
+    planetLodCoordinator_.advanceTransitions(deltaSeconds);
     if (selectionChanged || planetLodSelectionDirty_) {
         ++desiredPlanetRequestRevision_;
         planetLodSelectionDirty_ = false;
@@ -256,6 +268,11 @@ void TerrainAppCore::updatePlanetLod(const wgen::PlanetLodView& view) {
     if (!plan.upserts.empty() || !plan.removals.empty()) {
         startPlanetLodJob(std::move(plan));
     }
+}
+
+void TerrainAppCore::setPlanetLodTransitionTimeScale(double timeScale) {
+    planetLodCoordinator_.setTransitionDebugTimeScale(timeScale);
+    config_.planetConfig.lodTransitionTimeScale = timeScale;
 }
 
 bool TerrainAppCore::isBlockingTerrainJobRunning() const {
@@ -479,9 +496,13 @@ PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
         const wgen::TerrainFieldSnapshot& terrainField,
         const PlanetPatchVersion& version,
         const std::vector<wgen::PlanetPatchId>& upsertIds,
-        const std::vector<wgen::PlanetPatchId>& removalIds) {
+        const std::vector<wgen::PlanetPatchId>& removalIds,
+        float skirtDepthMultiplier) {
     if (terrainField == nullptr) {
         throw std::invalid_argument("planet patch batch requires a terrain field snapshot");
+    }
+    if (!std::isfinite(skirtDepthMultiplier) || skirtDepthMultiplier < 0.0F) {
+        throw std::invalid_argument("planet skirt depth multiplier must be finite and non-negative");
     }
 
     PlanetPatchMeshBatch batch{
@@ -494,12 +515,30 @@ PlanetPatchMeshBatch TerrainAppCore::buildPlanetPatchBatch(
         const wgen::TerrainDetailLevel detail = detailPolicy.detailForCubeFacePatch(
             id.level,
             PLANET_PATCH_QUADS);
+        const wgen::TerrainDetailLevel parentDetail = id.level == 0
+            ? detail
+            : detailPolicy.detailForCubeFacePatch(
+                static_cast<std::uint8_t>(id.level - 1),
+                PLANET_PATCH_QUADS);
+        const wgen::TerrainHeightBounds& bounds = terrainField->heightBounds();
+        const float conservativeDepth = std::max({
+            bounds.maximumAbsoluteDisplacementMeters,
+            bounds.omittedDetailErrorMeters(detail),
+            terrainField->radius() * 0.000001F,
+        });
         batch.upserts.push_back(buildRequestedPlanetPatchMesh(
             PlanetPatchMeshRequest{.id = id, .version = version},
             PLANET_PATCH_QUADS,
             terrainField->radius(),
             [&terrainField, detail](const wgen::PlanetSurfaceSample& surface) {
                 return terrainField->sample(surface, detail);
+            },
+            PlanetPatchMeshBuildConfig{
+                .skirtDepthMeters = conservativeDepth * skirtDepthMultiplier,
+                .parentHeightSampler = [&terrainField, parentDetail](
+                        const wgen::PlanetSurfaceSample& surface) {
+                    return terrainField->sample(surface, parentDetail);
+                },
             }));
     }
     batch.removals.reserve(removalIds.size());
@@ -554,6 +593,7 @@ void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
     wgen::TerrainFieldSnapshot terrainField = activeTerrainField_;
     const std::uint64_t terrainEpoch = activeTerrainEpoch_;
     const std::uint64_t requestRevision = desiredPlanetRequestRevision_;
+    const float skirtDepthMultiplier = config_.planetConfig.skirtDepthMultiplier;
 
     planetLodCoordinator_.beginPatchPlan(plan);
     terrainJobRunning_ = true;
@@ -565,6 +605,7 @@ void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
             terrainField = std::move(terrainField),
             terrainEpoch,
             requestRevision,
+            skirtDepthMultiplier,
             plan = std::move(plan)
         ]() mutable {
             TerrainJobResult result;
@@ -579,7 +620,8 @@ void TerrainAppCore::startPlanetLodJob(wgen::PlanetLodPatchPlan plan) {
                     .requestRevision = requestRevision,
                 },
                 plan.upserts,
-                plan.removals);
+                plan.removals,
+                skirtDepthMultiplier);
             return result;
         });
 }

@@ -41,6 +41,10 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .maximumPlanetPatchLevelChanged = [this](std::uint8_t level) {
                   core_.setMaximumPlanetPatchLevel(level);
               },
+              .planetLodTransitionTimeScaleChanged = [this](double timeScale) {
+                  config_.planetConfig.lodTransitionTimeScale = timeScale;
+                  core_.setPlanetLodTransitionTimeScale(timeScale);
+              },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
               },
@@ -193,7 +197,7 @@ void TerrainApp::run() {
                 .nearPlane = cameraPlanet.nearPlane(),
                 .farPlane = cameraPlanet.farPlane(),
                 .viewportHeight = lveRenderer.getViewportHeight(),
-            });
+            }, frameTime);
         }
 
         if (const VkCommandBuffer commandBuffer = lveRenderer.beginFrame()) {
@@ -201,7 +205,7 @@ void TerrainApp::run() {
 
             renderer_.clearRetiredObjects(frameIndex);
             applyFinishedTerrainJob(frameIndex);
-            renderer_.setPlanetDrawPatches(core_.planetDrawPatchIds());
+            renderer_.setPlanetDrawPatches(core_.planetDrawPatchStates());
 
             FrameInfo frameInfo{
                 frameIndex,

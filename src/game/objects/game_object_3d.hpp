@@ -4,6 +4,7 @@
 
 #include <glm/glm.hpp>
 #include <memory>
+#include <cstddef>
 
 namespace lve {
 
@@ -18,6 +19,8 @@ struct Transform3d {
 struct GameObject3d {
     std::shared_ptr<Mesh3d> mesh;
     Transform3d transform{};
+    float terrainMorph{1.0F};
+    std::size_t meshIndexVariant{};
 };
 
 } // namespace lve

@@ -295,6 +295,36 @@ namespace wgen {
             throw std::runtime_error("planet.radius must be finite and positive");
         }
 
+        config.skirtDepthMultiplier = checked_float(
+            root["planet"]["skirt_depth_multiplier"],
+            config.skirtDepthMultiplier,
+            "planet.skirt_depth_multiplier"
+        );
+        if (!std::isfinite(config.skirtDepthMultiplier) ||
+                config.skirtDepthMultiplier < 0.0F) {
+            throw std::runtime_error("planet.skirt_depth_multiplier must be finite and non-negative");
+        }
+
+        config.lodTransitionDurationSeconds = checked_float(
+            root["planet"]["lod_transition_seconds"],
+            static_cast<float>(config.lodTransitionDurationSeconds),
+            "planet.lod_transition_seconds"
+        );
+        if (!std::isfinite(config.lodTransitionDurationSeconds) ||
+                config.lodTransitionDurationSeconds <= 0.0) {
+            throw std::runtime_error("planet.lod_transition_seconds must be finite and positive");
+        }
+
+        config.lodTransitionTimeScale = checked_float(
+            root["planet"]["lod_transition_time_scale"],
+            static_cast<float>(config.lodTransitionTimeScale),
+            "planet.lod_transition_time_scale"
+        );
+        if (!std::isfinite(config.lodTransitionTimeScale) ||
+                config.lodTransitionTimeScale < 0.0) {
+            throw std::runtime_error("planet.lod_transition_time_scale must be finite and non-negative");
+        }
+
         const std::string computeMethod = checked_string(
             root["planet"]["compute_method"],
             "vulkan_compute",

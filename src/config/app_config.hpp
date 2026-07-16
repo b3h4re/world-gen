@@ -143,6 +143,9 @@ namespace wgen {
         // Planet radius and physical generator heights are authored in meters.
         float radius{100.0F};
         TerrainHeightSemantics heightSemantics{TerrainHeightSemantics::PhysicalMeters};
+        float skirtDepthMultiplier{1.0F};
+        double lodTransitionDurationSeconds{0.25};
+        double lodTransitionTimeScale{1.0};
         TerrainComputeMethod computeMethod{TerrainComputeMethod::VulkanCompute};
         float perlinCellSize{1.0F};
         std::size_t octaves{5};

@@ -113,6 +113,19 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             callbacks_.maximumPlanetPatchLevelChanged(static_cast<std::uint8_t>(level));
         }
     });
+    ui_->planetLodTransitionTimeScaleSpinBox->setMaximum(
+        std::numeric_limits<double>::max());
+    ui_->planetLodTransitionTimeScaleSpinBox->setValue(
+        initialPlanetConfig.lodTransitionTimeScale);
+    connect(
+        ui_->planetLodTransitionTimeScaleSpinBox,
+        &QDoubleSpinBox::valueChanged,
+        this,
+        [this](double timeScale) {
+            if (callbacks_.planetLodTransitionTimeScaleChanged) {
+                callbacks_.planetLodTransitionTimeScaleChanged(timeScale);
+            }
+        });
 
     auto notifyPipelineChanged = [this] {
         if (callbacks_.pipelineChanged) {

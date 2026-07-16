@@ -20,6 +20,13 @@ enum class PlanetPatchEdge : std::uint8_t {
     VMax,
 };
 
+using PlanetPatchEdgeMask = std::uint8_t;
+inline constexpr std::size_t PLANET_PATCH_EDGE_MASK_COUNT = 16;
+
+constexpr PlanetPatchEdgeMask planetPatchEdgeBit(PlanetPatchEdge edge) {
+    return PlanetPatchEdgeMask{1} << static_cast<PlanetPatchEdgeMask>(edge);
+}
+
 struct PlanetPatchId {
     CubeSphereFace face{};
     std::uint8_t level{};

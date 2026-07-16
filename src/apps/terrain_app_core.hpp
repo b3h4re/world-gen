@@ -66,15 +66,16 @@ public:
     void setPlanetPipeline(wgen::Generator3dPipelineSpec pipeline);
     void setPlanetShape(std::size_t resolution, float radius);
     void setMaximumPlanetPatchLevel(std::uint8_t level);
-    void updatePlanetLod(const wgen::PlanetLodView& view);
+    void updatePlanetLod(const wgen::PlanetLodView& view, double deltaSeconds);
+    void setPlanetLodTransitionTimeScale(double timeScale);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
     wgen::TerrainDisplayHeightRange activePlanetDisplayHeightRange() const;
     std::optional<TerrainJobResult> tryTakeFinishedTerrainJob();
     bool isTerrainJobRunning() const { return terrainJobRunning_; }
     bool isBlockingTerrainJobRunning() const;
-    const std::vector<wgen::PlanetPatchId>& planetDrawPatchIds() const {
-        return planetLodCoordinator_.visibleActiveLeaves();
+    const std::vector<wgen::PlanetPatchDrawState>& planetDrawPatchStates() const {
+        return planetLodCoordinator_.visibleDrawStates();
     }
 
     const wgen::AppConfig& config() const { return config_; }
@@ -106,7 +107,8 @@ private:
         const wgen::TerrainFieldSnapshot& terrainField,
         const PlanetPatchVersion& version,
         const std::vector<wgen::PlanetPatchId>& upsertIds,
-        const std::vector<wgen::PlanetPatchId>& removalIds);
+        const std::vector<wgen::PlanetPatchId>& removalIds,
+        float skirtDepthMultiplier);
     static wgen::PlanetLodSurface buildPlanetLodSurface(
         const wgen::TerrainField& terrainField,
         std::uint32_t patchQuadCount);

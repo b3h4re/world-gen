@@ -4,6 +4,7 @@
 #include "renderer/objects/mesh_3d.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <utility>
 #include <vulkan/vulkan.h>
@@ -77,7 +78,24 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
     std::vector<PreparedPlanetPatch> preparedUpserts;
     preparedUpserts.reserve(acceptedUpserts.size());
     for (const PlanetPatchMeshData* upsert : acceptedUpserts) {
-        auto mesh = std::make_shared<Mesh3d>(device_, upsert->vertices, upsert->indices);
+        if (planetPatchIndexSet_ == nullptr ||
+                planetPatchIndexQuadCount_ != upsert->quadCount) {
+            if (planetPatchIndexSet_ != nullptr && !replacesEpoch) {
+                throw std::invalid_argument{"planet patch quad count changed within an epoch"};
+            }
+            const PlanetPatchIndexVariants variants =
+                buildPlanetPatchIndexVariants(upsert->quadCount);
+            planetPatchIndexSet_ = std::make_shared<Mesh3dIndexSet>(
+                device_,
+                std::span<const std::vector<std::uint32_t>>{
+                    variants.data(),
+                    variants.size()});
+            planetPatchIndexQuadCount_ = upsert->quadCount;
+        }
+        auto mesh = std::make_shared<Mesh3d>(
+            device_,
+            upsert->vertices,
+            planetPatchIndexSet_);
         preparedUpserts.push_back({
             .id = upsert->id,
             .resident = {
@@ -102,20 +120,23 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
         nextResidents.insert_or_assign(upsert.id, std::move(upsert.resident));
     }
 
-    std::vector<wgen::PlanetPatchId> nextDrawOrder;
+    std::vector<wgen::PlanetPatchDrawState> nextDrawOrder;
     if (!replacesEpoch) {
         nextDrawOrder.reserve(planetDrawOrder_.size());
-        for (const wgen::PlanetPatchId& id : planetDrawOrder_) {
-            if (nextResidents.contains(id)) {
-                nextDrawOrder.push_back(id);
+        for (const wgen::PlanetPatchDrawState& state : planetDrawOrder_) {
+            if (nextResidents.contains(state.id)) {
+                nextDrawOrder.push_back(state);
             }
         }
     }
 
     std::vector<GameObject3d> nextObjectsPlanet;
     nextObjectsPlanet.reserve(nextDrawOrder.size());
-    for (const wgen::PlanetPatchId& id : nextDrawOrder) {
-        nextObjectsPlanet.push_back(nextResidents.at(id).object);
+    for (const wgen::PlanetPatchDrawState& state : nextDrawOrder) {
+        GameObject3d object = nextResidents.at(state.id).object;
+        object.terrainMorph = state.morph;
+        object.meshIndexVariant = state.stitchMask;
+        nextObjectsPlanet.push_back(std::move(object));
     }
 
     std::vector<wgen::PlanetPatchId> retiredIds;
@@ -139,25 +160,38 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
 }
 
 void TerrainAppRenderer::setPlanetDrawPatches(
-        std::span<const wgen::PlanetPatchId> ids) {
-    std::vector<wgen::PlanetPatchId> nextDrawOrder{ids.begin(), ids.end()};
-    for (const wgen::PlanetPatchId& id : nextDrawOrder) {
-        wgen::validate(id);
-        const auto resident = residentPlanetPatches_.find(id);
+        std::span<const wgen::PlanetPatchDrawState> states) {
+    std::vector<wgen::PlanetPatchDrawState> nextDrawOrder{states.begin(), states.end()};
+    for (const wgen::PlanetPatchDrawState& state : nextDrawOrder) {
+        wgen::validate(state.id);
+        if (!std::isfinite(state.morph) || state.morph < 0.0F || state.morph > 1.0F ||
+                state.stitchMask >= wgen::PLANET_PATCH_EDGE_MASK_COUNT) {
+            throw std::invalid_argument{"planet patch draw state is invalid"};
+        }
+        const auto resident = residentPlanetPatches_.find(state.id);
         if (resident == residentPlanetPatches_.end() ||
                 resident->second.version.terrainEpoch != activePlanetEpoch_) {
             throw std::invalid_argument{"planet draw patch is not resident in the active epoch"};
         }
     }
-    std::sort(nextDrawOrder.begin(), nextDrawOrder.end(), wgen::PlanetPatchIdLess{});
-    if (std::adjacent_find(nextDrawOrder.begin(), nextDrawOrder.end()) != nextDrawOrder.end()) {
+    std::sort(nextDrawOrder.begin(), nextDrawOrder.end(), [](const auto& lhs, const auto& rhs) {
+        return wgen::PlanetPatchIdLess{}(lhs.id, rhs.id);
+    });
+    if (std::adjacent_find(
+            nextDrawOrder.begin(),
+            nextDrawOrder.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.id == rhs.id; }) !=
+            nextDrawOrder.end()) {
         throw std::invalid_argument{"planet draw patch list contains duplicate IDs"};
     }
 
     std::vector<GameObject3d> nextObjectsPlanet;
     nextObjectsPlanet.reserve(nextDrawOrder.size());
-    for (const wgen::PlanetPatchId& id : nextDrawOrder) {
-        nextObjectsPlanet.push_back(residentPlanetPatches_.at(id).object);
+    for (const wgen::PlanetPatchDrawState& state : nextDrawOrder) {
+        GameObject3d object = residentPlanetPatches_.at(state.id).object;
+        object.terrainMorph = state.morph;
+        object.meshIndexVariant = state.stitchMask;
+        nextObjectsPlanet.push_back(std::move(object));
     }
     planetDrawOrder_.swap(nextDrawOrder);
     objectsPlanet_.swap(nextObjectsPlanet);
@@ -188,6 +222,8 @@ void TerrainAppRenderer::shutdownVulkanResources() {
     objectsPlanet_.clear();
     planetDrawOrder_.clear();
     residentPlanetPatches_.clear();
+    planetPatchIndexSet_.reset();
+    planetPatchIndexQuadCount_ = 0;
     activePlanetEpoch_ = 0;
     globalPool_.reset();
     renderer_.destroySwapChain();

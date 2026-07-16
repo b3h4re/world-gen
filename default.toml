@@ -35,6 +35,9 @@ resolution=0
 # Planet radius, generator scale, and generator bias are meters in this mode.
 height_mode="physical_meters"
 radius=10.0
+skirt_depth_multiplier=1.0
+lod_transition_seconds=0.25
+lod_transition_time_scale=1.0
 compute_method="vulkan_compute"
 perlin_cell_size=1.0
 octaves=5

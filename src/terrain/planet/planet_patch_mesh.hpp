@@ -5,6 +5,7 @@
 #include "terrain/planet/planet_patch.hpp"
 
 #include <cstdint>
+#include <array>
 #include <functional>
 #include <optional>
 #include <span>
@@ -16,6 +17,15 @@ inline constexpr std::uint32_t PLANET_PATCH_QUADS = 32;
 inline constexpr std::uint8_t MAX_FIXED_PLANET_PATCH_LEVEL = 3;
 
 using PlanetHeightSampler = std::function<float(const wgen::PlanetSurfaceSample&)>;
+
+struct PlanetPatchMeshBuildConfig {
+    float skirtDepthMeters{};
+    PlanetHeightSampler parentHeightSampler{};
+};
+
+using PlanetPatchIndexVariants = std::array<
+    std::vector<std::uint32_t>,
+    wgen::PLANET_PATCH_EDGE_MASK_COUNT>;
 
 struct PlanetPatchVersion {
     std::uint64_t terrainEpoch{};
@@ -35,6 +45,12 @@ struct PlanetPatchMeshData {
     PlanetPatchVersion version{};
     std::vector<Vertex3d> vertices{};
     std::vector<std::uint32_t> indices{};
+    std::uint32_t quadCount{};
+    // Surface geometry is a prefix so surface-only operations such as picking
+    // and normal generation can explicitly exclude the following skirt data.
+    std::size_t surfaceVertexCount{};
+    std::size_t surfaceIndexCount{};
+    float skirtDepthMeters{};
 };
 
 struct PlanetPatchRemoval {
@@ -64,13 +80,27 @@ PlanetPatchMeshData buildPlanetPatchMesh(
     const wgen::PlanetPatchId& id,
     std::uint32_t quadCount,
     float planetRadius,
-    const PlanetHeightSampler& heightSampler);
+    const PlanetHeightSampler& heightSampler,
+    PlanetPatchMeshBuildConfig config = {});
 
 PlanetPatchMeshData buildRequestedPlanetPatchMesh(
     const PlanetPatchMeshRequest& request,
     std::uint32_t quadCount,
     float planetRadius,
-    const PlanetHeightSampler& heightSampler);
+    const PlanetHeightSampler& heightSampler,
+    PlanetPatchMeshBuildConfig config = {});
+
+PlanetPatchIndexVariants buildPlanetPatchIndexVariants(std::uint32_t quadCount);
+
+std::uint32_t planetPatchSurfaceVertexIndex(
+    std::uint32_t quadCount,
+    std::uint32_t localX,
+    std::uint32_t localY);
+
+std::uint32_t planetPatchSkirtVertexIndex(
+    std::uint32_t quadCount,
+    wgen::PlanetPatchEdge edge,
+    std::uint32_t edgeSample);
 
 std::vector<PlanetPatchMeshData> buildFixedLevelPlanetPatchMeshes(
     const wgen::CubeSphere<float>& source,

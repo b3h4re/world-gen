@@ -14,12 +14,16 @@ namespace {
 lve::PlanetPatchMeshData makeUpsert(
         const wgen::PlanetPatchId& id,
         const lve::PlanetPatchVersion& version) {
-    return {
+    lve::PlanetPatchMeshData result{
         .id = id,
         .version = version,
-        .vertices = {{{0.0F, 0.0F, 0.0F}, 0.0F}},
-        .indices = {0},
+        .quadCount = 2,
+        .surfaceVertexCount = 9,
+        .surfaceIndexCount = 24,
     };
+    result.vertices.resize(21);
+    result.indices.resize(72);
+    return result;
 }
 
 std::vector<lve::PlanetPatchMeshData> makeUpserts(
@@ -153,6 +157,12 @@ void testBatchValidation() {
     wgen::tests::requireThrows<std::invalid_argument>(
         [&emptyMesh] { lve::validatePlanetPatchMeshBatch(emptyMesh); },
         "empty upsert meshes should be rejected");
+
+    lve::PlanetPatchMeshBatch badMeshMetadata = batch;
+    badMeshMetadata.upserts.front().surfaceVertexCount = 2;
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&badMeshMetadata] { lve::validatePlanetPatchMeshBatch(badMeshMetadata); },
+        "out-of-range surface metadata should be rejected");
 
     lve::PlanetPatchMeshBatch badUpsertTag = batch;
     ++badUpsertTag.upserts.front().version.requestRevision;

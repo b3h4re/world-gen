@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -86,13 +87,64 @@ std::vector<PlanetPatchId> sortedIds(
     return result;
 }
 
+bool desiredIsCoarserThan(
+        const PlanetPatchId& parentId,
+        std::span<const PlanetPatchId> desiredLeaves) {
+    return std::any_of(
+        desiredLeaves.begin(),
+        desiredLeaves.end(),
+        [&parentId](const PlanetPatchId& desired) {
+            return isDescendantOrSelf(parentId, desired);
+        });
+}
+
+PlanetPatchEdgeMask stitchMaskFromActiveSet(
+        const PlanetPatchId& id,
+        const std::unordered_set<PlanetPatchId, PlanetPatchIdHash>& active) {
+    PlanetPatchEdgeMask result = 0;
+    for (const PlanetPatchEdge edge : PLANET_PATCH_EDGES) {
+        const PlanetPatchId sameLevel = sameLevelNeighbor(id, edge).id;
+        const std::optional<PlanetPatchId> neighbor = selectedCoveringAncestor(
+            sameLevel,
+            active);
+        if (neighbor && neighbor->level + 1 == id.level) {
+            result |= planetPatchEdgeBit(edge);
+        }
+    }
+    return result;
+}
+
 } // namespace
+
+void validatePlanetLodTransitionConfig(const PlanetLodTransitionConfig& config) {
+    if (!std::isfinite(config.durationSeconds) || config.durationSeconds <= 0.0 ||
+            !std::isfinite(config.debugTimeScale) || config.debugTimeScale < 0.0) {
+        throw std::invalid_argument{"planet LOD transition config is invalid"};
+    }
+}
+
+PlanetPatchEdgeMask planetPatchStitchMask(
+        const PlanetPatchId& id,
+        std::span<const PlanetPatchId> activeLeaves) {
+    validate(id);
+    std::unordered_set<PlanetPatchId, PlanetPatchIdHash> active;
+    active.reserve(activeLeaves.size());
+    for (const PlanetPatchId& leaf : activeLeaves) {
+        validate(leaf);
+        active.insert(leaf);
+    }
+    return stitchMaskFromActiveSet(id, active);
+}
 
 PlanetLodCoordinator::PlanetLodCoordinator(
         PlanetLodConfig lodConfig,
-        PlanetLodStreamingConfig streamingConfig)
-    : lodConfig_{lodConfig}, streamingConfig_{streamingConfig} {
+        PlanetLodStreamingConfig streamingConfig,
+        PlanetLodTransitionConfig transitionConfig)
+    : lodConfig_{lodConfig},
+      streamingConfig_{streamingConfig},
+      transitionConfig_{transitionConfig} {
     validatePlanetLodConfig(lodConfig_);
+    validatePlanetLodTransitionConfig(transitionConfig_);
     if (streamingConfig_.residentPatchBudget < FACES.size() ||
             streamingConfig_.patchUploadBudget < 4 ||
             streamingConfig_.patchUploadBudget > streamingConfig_.residentPatchBudget) {
@@ -109,6 +161,8 @@ void PlanetLodCoordinator::reset() {
     desiredLeaves_ = rootPatchIds();
     activeLeaves_.clear();
     visibleActiveLeaves_.clear();
+    visibleDrawStates_.clear();
+    transitions_.clear();
     residentIds_.clear();
     pendingIds_.clear();
     lastUsedTick_.clear();
@@ -154,6 +208,58 @@ void PlanetLodCoordinator::updateVisibility(const PlanetLodView& view) {
     for (const PlanetPatchId& id : visibleActiveLeaves_) {
         lastUsedTick_[id] = selectionTick_;
     }
+}
+
+void PlanetLodCoordinator::setTransitionDebugTimeScale(double timeScale) {
+    PlanetLodTransitionConfig updated = transitionConfig_;
+    updated.debugTimeScale = timeScale;
+    validatePlanetLodTransitionConfig(updated);
+    transitionConfig_ = updated;
+}
+
+void PlanetLodCoordinator::advanceTransitions(double deltaSeconds) {
+    if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.0) {
+        throw std::invalid_argument{"planet LOD transition delta must be finite and non-negative"};
+    }
+    if (transitions_.empty() || deltaSeconds == 0.0 ||
+            transitionConfig_.debugTimeScale == 0.0) {
+        return;
+    }
+
+    const double progressDelta = deltaSeconds * transitionConfig_.debugTimeScale /
+        transitionConfig_.durationSeconds;
+    for (PlanetLodTransitionState& transition : transitions_) {
+        if (transition.kind == PlanetLodTransitionKind::Split) {
+            transition.childMorph = std::min(1.0, transition.childMorph + progressDelta);
+        } else {
+            transition.childMorph = std::max(0.0, transition.childMorph - progressDelta);
+        }
+    }
+
+    std::unordered_set<PlanetPatchId, PlanetPatchIdHash> active{
+        activeLeaves_.begin(),
+        activeLeaves_.end(),
+    };
+    for (const PlanetLodTransitionState& transition : transitions_) {
+        if (transition.kind != PlanetLodTransitionKind::Merge ||
+                transition.childMorph > 0.0) {
+            continue;
+        }
+        const std::array<PlanetPatchId, 4> childIds = children(transition.parent);
+        for (const PlanetPatchId& childId : childIds) {
+            active.erase(childId);
+        }
+        active.insert(transition.parent);
+    }
+    std::erase_if(transitions_, [](const PlanetLodTransitionState& transition) {
+        return (transition.kind == PlanetLodTransitionKind::Split &&
+                transition.childMorph >= 1.0) ||
+            (transition.kind == PlanetLodTransitionKind::Merge &&
+                transition.childMorph <= 0.0);
+    });
+    activeLeaves_ = sortedIds(active);
+    reconcileActiveLeaves();
+    rebuildVisibleActiveLeaves();
 }
 
 PlanetLodPatchPlan PlanetLodCoordinator::makePatchPlan() const {
@@ -335,91 +441,127 @@ void PlanetLodCoordinator::reconcileActiveLeaves() {
         return;
     }
 
+    for (PlanetLodTransitionState& transition : transitions_) {
+        transition.kind = desiredIsCoarserThan(transition.parent, desiredLeaves_)
+            ? PlanetLodTransitionKind::Merge
+            : PlanetLodTransitionKind::Split;
+    }
+
     std::unordered_set<PlanetPatchId, PlanetPatchIdHash> active{
         activeLeaves_.begin(),
         activeLeaves_.end(),
     };
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        std::vector<PlanetPatchId> ordered = sortedIds(active);
-        std::sort(ordered.begin(), ordered.end(), [](const PlanetPatchId& lhs, const PlanetPatchId& rhs) {
-            if (lhs.level != rhs.level) {
-                return lhs.level > rhs.level;
-            }
-            return PlanetPatchIdLess{}(lhs, rhs);
-        });
 
-        for (const PlanetPatchId& leaf : ordered) {
-            const std::optional<PlanetPatchId> parentId = parent(leaf);
-            if (!parentId || !residentIds_.contains(*parentId)) {
-                continue;
-            }
-            const std::array<PlanetPatchId, 4> siblings = children(*parentId);
-            if (leaf != siblings.front() || !containsAll(active, siblings)) {
-                continue;
-            }
-            const bool desiredCoarser = std::any_of(
-                desiredLeaves_.begin(),
-                desiredLeaves_.end(),
-                [&parentId](const PlanetPatchId& desired) {
-                    return isDescendantOrSelf(*parentId, desired);
-                });
-            if (!desiredCoarser) {
-                continue;
-            }
-
-            auto candidate = active;
-            for (const PlanetPatchId& sibling : siblings) {
-                candidate.erase(sibling);
-            }
-            candidate.insert(*parentId);
-            if (leavesAreBalanced(candidate)) {
-                active.swap(candidate);
-                changed = true;
-                break;
-            }
+    std::vector<PlanetPatchId> ordered = sortedIds(active);
+    std::sort(ordered.begin(), ordered.end(), [](const PlanetPatchId& lhs, const PlanetPatchId& rhs) {
+        if (lhs.level != rhs.level) {
+            return lhs.level > rhs.level;
         }
-        if (changed) {
+        return PlanetPatchIdLess{}(lhs, rhs);
+    });
+    for (const PlanetPatchId& leaf : ordered) {
+        const std::optional<PlanetPatchId> parentId = parent(leaf);
+        if (!parentId || !residentIds_.contains(*parentId) ||
+                transitionLocks(*parentId)) {
             continue;
         }
-
-        ordered = sortedIds(active);
-        std::sort(ordered.begin(), ordered.end(), [](const PlanetPatchId& lhs, const PlanetPatchId& rhs) {
-            if (lhs.level != rhs.level) {
-                return lhs.level < rhs.level;
-            }
-            return PlanetPatchIdLess{}(lhs, rhs);
-        });
-        for (const PlanetPatchId& leaf : ordered) {
-            if (!hasDescendant(leaf, desiredLeaves_)) {
-                continue;
-            }
-            const std::array<PlanetPatchId, 4> childIds = children(leaf);
-            if (!containsAll(residentIds_, childIds)) {
-                continue;
-            }
-
-            auto candidate = active;
-            candidate.erase(leaf);
-            candidate.insert(childIds.begin(), childIds.end());
-            if (leavesAreBalanced(candidate)) {
-                active.swap(candidate);
-                changed = true;
-                break;
-            }
+        const std::array<PlanetPatchId, 4> siblings = children(*parentId);
+        if (leaf != siblings.front() || !containsAll(active, siblings) ||
+                !desiredIsCoarserThan(*parentId, desiredLeaves_)) {
+            continue;
+        }
+        auto candidate = active;
+        for (const PlanetPatchId& sibling : siblings) {
+            candidate.erase(sibling);
+        }
+        candidate.insert(*parentId);
+        if (leavesAreBalanced(candidate)) {
+            transitions_.push_back({
+                .parent = *parentId,
+                .kind = PlanetLodTransitionKind::Merge,
+                .childMorph = 1.0,
+            });
         }
     }
 
+    ordered = sortedIds(active);
+    std::sort(ordered.begin(), ordered.end(), [](const PlanetPatchId& lhs, const PlanetPatchId& rhs) {
+        if (lhs.level != rhs.level) {
+            return lhs.level < rhs.level;
+        }
+        return PlanetPatchIdLess{}(lhs, rhs);
+    });
+    for (const PlanetPatchId& leaf : ordered) {
+        if (!active.contains(leaf) || transitionLocks(leaf) ||
+                !hasDescendant(leaf, desiredLeaves_)) {
+            continue;
+        }
+        const std::array<PlanetPatchId, 4> childIds = children(leaf);
+        if (!containsAll(residentIds_, childIds)) {
+            continue;
+        }
+        auto candidate = active;
+        candidate.erase(leaf);
+        candidate.insert(childIds.begin(), childIds.end());
+        if (leavesAreBalanced(candidate)) {
+            active.swap(candidate);
+            transitions_.push_back({
+                .parent = leaf,
+                .kind = PlanetLodTransitionKind::Split,
+                .childMorph = 0.0,
+            });
+        }
+    }
+
+    std::sort(transitions_.begin(), transitions_.end(), [](const auto& lhs, const auto& rhs) {
+        return PlanetPatchIdLess{}(lhs.parent, rhs.parent);
+    });
     activeLeaves_ = sortedIds(active);
 }
 
 void PlanetLodCoordinator::rebuildVisibleActiveLeaves() {
     if (!latestView_) {
         visibleActiveLeaves_ = activeLeaves_;
-        return;
+    } else {
+        visibleActiveLeaves_ = selector_.visibleLeaves(activeLeaves_, *latestView_, surface_);
     }
-    visibleActiveLeaves_ = selector_.visibleLeaves(activeLeaves_, *latestView_, surface_);
+
+    const std::unordered_set<PlanetPatchId, PlanetPatchIdHash> active{
+        activeLeaves_.begin(),
+        activeLeaves_.end(),
+    };
+    visibleDrawStates_.clear();
+    visibleDrawStates_.reserve(visibleActiveLeaves_.size());
+    for (const PlanetPatchId& id : visibleActiveLeaves_) {
+        float morph = 1.0F;
+        const std::optional<PlanetPatchId> parentId = parent(id);
+        if (parentId) {
+            const auto transition = std::find_if(
+                transitions_.begin(),
+                transitions_.end(),
+                [&parentId](const PlanetLodTransitionState& value) {
+                    return value.parent == *parentId;
+                });
+            if (transition != transitions_.end()) {
+                morph = static_cast<float>(transition->childMorph);
+            }
+        }
+        visibleDrawStates_.push_back({
+            .id = id,
+            .morph = morph,
+            .stitchMask = stitchMaskFromActiveSet(id, active),
+        });
+    }
+}
+
+bool PlanetLodCoordinator::transitionLocks(const PlanetPatchId& id) const {
+    return std::any_of(
+        transitions_.begin(),
+        transitions_.end(),
+        [&id](const PlanetLodTransitionState& transition) {
+            return isDescendantOrSelf(id, transition.parent) ||
+                isDescendantOrSelf(transition.parent, id);
+        });
 }
 
 std::vector<PlanetPatchId> PlanetLodCoordinator::protectedCacheIds() const {
@@ -428,6 +570,11 @@ std::vector<PlanetPatchId> PlanetLodCoordinator::protectedCacheIds() const {
         activeLeaves_.end(),
     };
     result.insert(pendingIds_.begin(), pendingIds_.end());
+    for (const PlanetLodTransitionState& transition : transitions_) {
+        result.insert(transition.parent);
+        const std::array<PlanetPatchId, 4> childIds = children(transition.parent);
+        result.insert(childIds.begin(), childIds.end());
+    }
 
     for (const PlanetPatchId& leaf : activeLeaves_) {
         if (hasDescendant(leaf, desiredLeaves_)) {

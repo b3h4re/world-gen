@@ -32,6 +32,21 @@ void testPlanetConfigDefaults() {
     wgen::tests::require(config.octaves == 5, "default planet octaves is wrong");
     wgen::tests::expectNear(config.lacunarity, 2.0F, 0.00001F, "default planet lacunarity is wrong");
     wgen::tests::expectNear(config.persistence, 0.5F, 0.00001F, "default planet persistence is wrong");
+    wgen::tests::expectNear(
+        config.skirtDepthMultiplier,
+        1.0F,
+        0.00001F,
+        "default skirt depth multiplier is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodTransitionDurationSeconds),
+        0.25F,
+        0.00001F,
+        "default LOD transition duration is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodTransitionTimeScale),
+        1.0F,
+        0.00001F,
+        "default LOD transition speed is wrong");
 }
 
 void testPlanetConfigOverrides() {
@@ -45,6 +60,9 @@ void testPlanetConfigOverrides() {
         octaves = 3
         lacunarity = 2.5
         persistence = 0.4
+        skirt_depth_multiplier = 2.5
+        lod_transition_seconds = 0.75
+        lod_transition_time_scale = 0.2
     )");
     const wgen::PlanetConfig config = wgen::parse_planet_config(root);
 
@@ -58,6 +76,17 @@ void testPlanetConfigOverrides() {
     wgen::tests::require(config.octaves == 3, "planet octaves override is wrong");
     wgen::tests::expectNear(config.lacunarity, 2.5F, 0.00001F, "planet lacunarity override is wrong");
     wgen::tests::expectNear(config.persistence, 0.4F, 0.00001F, "planet persistence override is wrong");
+    wgen::tests::expectNear(config.skirtDepthMultiplier, 2.5F, 0.00001F, "skirt multiplier override is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodTransitionDurationSeconds),
+        0.75F,
+        0.00001F,
+        "LOD transition duration override is wrong");
+    wgen::tests::expectNear(
+        static_cast<float>(config.lodTransitionTimeScale),
+        0.2F,
+        0.00001F,
+        "LOD transition speed override is wrong");
 }
 
 void testPlanetConfigRejectsBadComputeMethod() {
@@ -136,6 +165,30 @@ void testPlanetConfigRejectsBadValues() {
         [&] { wgen::parse_planet_config(badPersistence); },
         "planet config should reject negative persistence"
     );
+
+    const toml::table badSkirtDepth = parseToml(R"(
+        [planet]
+        skirt_depth_multiplier = -1.0
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badSkirtDepth); },
+        "planet config should reject a negative skirt multiplier");
+
+    const toml::table badTransitionDuration = parseToml(R"(
+        [planet]
+        lod_transition_seconds = 0.0
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badTransitionDuration); },
+        "planet config should reject a non-positive transition duration");
+
+    const toml::table badTransitionTimeScale = parseToml(R"(
+        [planet]
+        lod_transition_time_scale = -0.1
+    )");
+    wgen::tests::requireThrows<std::runtime_error>(
+        [&] { wgen::parse_planet_config(badTransitionTimeScale); },
+        "planet config should reject a negative transition speed");
 }
 
 } // namespace

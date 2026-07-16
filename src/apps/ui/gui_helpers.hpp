@@ -24,6 +24,7 @@ struct Callbacks {
     std::function<void(wgen::Generator3dPipelineSpec)> planetPipelineChanged;
     std::function<void(std::size_t, float)> planetShapeChanged;
     std::function<void(std::uint8_t)> maximumPlanetPatchLevelChanged;
+    std::function<void(double)> planetLodTransitionTimeScaleChanged;
     std::function<wgen::GeneratorPipelineSpec()> currentPipeline;
     std::function<wgen::Generator3dPipelineSpec()> currentPlanetPipeline;
     std::function<wgen::AppConfig()> getConfig;

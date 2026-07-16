@@ -49,7 +49,7 @@ public:
 
     void applyTerrainMesh(int frameIndex, TerrainPlaneMeshData data);
     void applyPlanetPatchBatch(int frameIndex, PlanetPatchMeshBatch batch);
-    void setPlanetDrawPatches(std::span<const wgen::PlanetPatchId> ids);
+    void setPlanetDrawPatches(std::span<const wgen::PlanetPatchDrawState> states);
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
     void shutdownVulkanResources();
@@ -84,8 +84,10 @@ private:
         wgen::PlanetPatchId,
         ResidentPlanetPatch,
         wgen::PlanetPatchIdHash> residentPlanetPatches_{};
-    std::vector<wgen::PlanetPatchId> planetDrawOrder_{};
+    std::vector<wgen::PlanetPatchDrawState> planetDrawOrder_{};
     std::vector<GameObject3d> objectsPlanet_{};
+    std::shared_ptr<const Mesh3dIndexSet> planetPatchIndexSet_{};
+    std::uint32_t planetPatchIndexQuadCount_{};
     std::uint64_t activePlanetEpoch_{0};
     std::array<RetiredFrameObjects, LveSwapChain::MAX_FRAMES_IN_FLIGHT> retiredObjects_{};
     bool vulkanResourcesShutdown_{false};

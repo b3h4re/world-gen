@@ -8,7 +8,7 @@ namespace lve {
 
 struct PushConstantDataPlanet {
     glm::mat4 projectionView{1.0F};
-    glm::mat4 model{1.0F};
+    float terrainMorph{1.0F};
 };
 
 RenderSystemPlanet::RenderSystemPlanet(
@@ -52,7 +52,7 @@ void RenderSystemPlanet::createPipeline(VkRenderPass renderPass) {
     PipelineConfigInfo config{};
     LvePipeline::defaultPipelineConfigInfo(config);
     config.bindingDescriptions = Vertex3d::getBindingDescriptions();
-    config.attributeDescriptions = Vertex3d::getAttributeDescriptions();
+    config.attributeDescriptions = Vertex3d::getMorphAttributeDescriptions();
     config.depthStencilInfo.depthTestEnable = VK_TRUE;
     config.depthStencilInfo.depthWriteEnable = VK_TRUE;
     config.renderPass = renderPass;
@@ -86,7 +86,7 @@ void RenderSystemPlanet::render(
     for (const auto &object : objects) {
         PushConstantDataPlanet push{};
         push.projectionView = camera.projectionView();
-        push.model = object.transform.mat4();
+        push.terrainMorph = object.terrainMorph;
         vkCmdPushConstants(
             commandBuffer,
             pipelineLayout_,
@@ -94,8 +94,8 @@ void RenderSystemPlanet::render(
             0,
             sizeof(PushConstantDataPlanet),
             &push);
-        object.mesh->bind(commandBuffer);
-        object.mesh->draw(commandBuffer);
+        object.mesh->bind(commandBuffer, object.meshIndexVariant);
+        object.mesh->draw(commandBuffer, object.meshIndexVariant);
     }
 }
 

@@ -5,8 +5,258 @@
 #include <limits>
 #include <stdexcept>
 #include <unordered_set>
+#include <utility>
 
 namespace lve {
+
+namespace {
+
+constexpr std::array PLANET_PATCH_EDGES{
+    wgen::PlanetPatchEdge::UMin,
+    wgen::PlanetPatchEdge::UMax,
+    wgen::PlanetPatchEdge::VMin,
+    wgen::PlanetPatchEdge::VMax,
+};
+
+struct PlanetPatchTopologyCounts {
+    std::uint64_t surfaceVertices{};
+    std::uint64_t vertices{};
+    std::uint64_t surfaceIndices{};
+    std::uint64_t indices{};
+};
+
+PlanetPatchTopologyCounts planetPatchTopologyCounts(std::uint32_t quadCount) {
+    if (quadCount == 0) {
+        throw std::invalid_argument{"planet patch topology requires positive quads"};
+    }
+    constexpr std::uint64_t MAX_BUFFER_COUNT =
+        std::numeric_limits<std::uint32_t>::max();
+    const std::uint64_t quads = quadCount;
+    const std::uint64_t samplesPerAxis = quads + 1;
+    if (samplesPerAxis > MAX_BUFFER_COUNT / samplesPerAxis ||
+            quads > MAX_BUFFER_COUNT / quads) {
+        throw std::overflow_error{"planet patch topology exceeds uint32 indexing"};
+    }
+    const std::uint64_t surfaceVertices = samplesPerAxis * samplesPerAxis;
+    const std::uint64_t skirtVertices = 4 * samplesPerAxis;
+    const std::uint64_t quadArea = quads * quads;
+    if (skirtVertices > MAX_BUFFER_COUNT - surfaceVertices ||
+            quadArea > MAX_BUFFER_COUNT / 6) {
+        throw std::overflow_error{"planet patch topology exceeds uint32 indexing"};
+    }
+    const std::uint64_t surfaceIndices = quadArea * 6;
+    const std::uint64_t skirtIndices = 24 * quads;
+    if (skirtIndices > MAX_BUFFER_COUNT - surfaceIndices) {
+        throw std::overflow_error{"planet patch topology exceeds uint32 indexing"};
+    }
+    return {
+        .surfaceVertices = surfaceVertices,
+        .vertices = surfaceVertices + skirtVertices,
+        .surfaceIndices = surfaceIndices,
+        .indices = surfaceIndices + skirtIndices,
+    };
+}
+
+std::size_t edgeIndex(wgen::PlanetPatchEdge edge) {
+    switch (edge) {
+        case wgen::PlanetPatchEdge::UMin: return 0;
+        case wgen::PlanetPatchEdge::UMax: return 1;
+        case wgen::PlanetPatchEdge::VMin: return 2;
+        case wgen::PlanetPatchEdge::VMax: return 3;
+    }
+    throw std::invalid_argument{"planet patch mesh edge is invalid"};
+}
+
+std::pair<std::uint32_t, std::uint32_t> edgeCoordinates(
+        wgen::PlanetPatchEdge edge,
+        std::uint32_t quadCount,
+        std::uint32_t sample) {
+    switch (edge) {
+        case wgen::PlanetPatchEdge::UMin: return {0, sample};
+        case wgen::PlanetPatchEdge::UMax: return {quadCount, sample};
+        case wgen::PlanetPatchEdge::VMin: return {sample, 0};
+        case wgen::PlanetPatchEdge::VMax: return {sample, quadCount};
+    }
+    throw std::invalid_argument{"planet patch mesh edge is invalid"};
+}
+
+std::uint32_t remappedSurfaceVertexIndex(
+        std::uint32_t quadCount,
+        std::uint32_t localX,
+        std::uint32_t localY,
+        wgen::PlanetPatchEdgeMask stitchMask) {
+    if ((stitchMask & wgen::planetPatchEdgeBit(wgen::PlanetPatchEdge::UMin)) != 0 &&
+            localX == 0 && localY % 2 == 1) {
+        --localY;
+    }
+    if ((stitchMask & wgen::planetPatchEdgeBit(wgen::PlanetPatchEdge::UMax)) != 0 &&
+            localX == quadCount && localY % 2 == 1) {
+        --localY;
+    }
+    if ((stitchMask & wgen::planetPatchEdgeBit(wgen::PlanetPatchEdge::VMin)) != 0 &&
+            localY == 0 && localX % 2 == 1) {
+        --localX;
+    }
+    if ((stitchMask & wgen::planetPatchEdgeBit(wgen::PlanetPatchEdge::VMax)) != 0 &&
+            localY == quadCount && localX % 2 == 1) {
+        --localX;
+    }
+    return planetPatchSurfaceVertexIndex(quadCount, localX, localY);
+}
+
+struct ParentGridVertex {
+    glm::vec3 position{};
+    float height{};
+};
+
+ParentGridVertex interpolateParentGrid(
+        const std::vector<ParentGridVertex>& grid,
+        std::uint32_t quadCount,
+        double gridX,
+        double gridY) {
+    const std::uint32_t x0 = std::min(
+        static_cast<std::uint32_t>(std::floor(gridX)),
+        quadCount - 1);
+    const std::uint32_t y0 = std::min(
+        static_cast<std::uint32_t>(std::floor(gridY)),
+        quadCount - 1);
+    const double xWeight = gridX - static_cast<double>(x0);
+    const double yWeight = gridY - static_cast<double>(y0);
+    const auto& topLeft = grid[planetPatchSurfaceVertexIndex(quadCount, x0, y0)];
+    const auto& topRight = grid[planetPatchSurfaceVertexIndex(quadCount, x0 + 1, y0)];
+    const auto& bottomLeft = grid[planetPatchSurfaceVertexIndex(quadCount, x0, y0 + 1)];
+    const auto& bottomRight = grid[planetPatchSurfaceVertexIndex(quadCount, x0 + 1, y0 + 1)];
+
+    ParentGridVertex result;
+    if (xWeight >= yWeight) {
+        const float topLeftWeight = static_cast<float>(1.0 - xWeight);
+        const float topRightWeight = static_cast<float>(xWeight - yWeight);
+        const float bottomRightWeight = static_cast<float>(yWeight);
+        result.position = topLeft.position * topLeftWeight +
+            topRight.position * topRightWeight +
+            bottomRight.position * bottomRightWeight;
+        result.height = topLeft.height * topLeftWeight +
+            topRight.height * topRightWeight +
+            bottomRight.height * bottomRightWeight;
+    } else {
+        const float topLeftWeight = static_cast<float>(1.0 - yWeight);
+        const float bottomRightWeight = static_cast<float>(xWeight);
+        const float bottomLeftWeight = static_cast<float>(yWeight - xWeight);
+        result.position = topLeft.position * topLeftWeight +
+            bottomRight.position * bottomRightWeight +
+            bottomLeft.position * bottomLeftWeight;
+        result.height = topLeft.height * topLeftWeight +
+            bottomRight.height * bottomRightWeight +
+            bottomLeft.height * bottomLeftWeight;
+    }
+    return result;
+}
+
+} // namespace
+
+std::uint32_t planetPatchSurfaceVertexIndex(
+        std::uint32_t quadCount,
+        std::uint32_t localX,
+        std::uint32_t localY) {
+    if (localX > quadCount || localY > quadCount) {
+        throw std::out_of_range{"planet patch surface vertex coordinate is out of range"};
+    }
+    const std::uint64_t result =
+        std::uint64_t{localY} * (std::uint64_t{quadCount} + 1) + localX;
+    if (result > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::overflow_error{"planet patch surface vertex index overflows uint32"};
+    }
+    return static_cast<std::uint32_t>(result);
+}
+
+std::uint32_t planetPatchSkirtVertexIndex(
+        std::uint32_t quadCount,
+        wgen::PlanetPatchEdge edge,
+        std::uint32_t edgeSample) {
+    if (edgeSample > quadCount) {
+        throw std::out_of_range{"planet patch skirt sample is out of range"};
+    }
+    const std::uint64_t samplesPerAxis = std::uint64_t{quadCount} + 1;
+    if (samplesPerAxis > std::numeric_limits<std::uint32_t>::max() /
+            samplesPerAxis) {
+        throw std::overflow_error{"planet patch skirt vertex index overflows uint32"};
+    }
+    const std::uint64_t surfaceCount = samplesPerAxis * samplesPerAxis;
+    const std::uint64_t result = surfaceCount +
+        edgeIndex(edge) * samplesPerAxis + edgeSample;
+    if (result > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::overflow_error{"planet patch skirt vertex index overflows uint32"};
+    }
+    return static_cast<std::uint32_t>(result);
+}
+
+namespace {
+
+std::vector<std::uint32_t> buildPlanetPatchIndices(
+        std::uint32_t quadCount,
+        wgen::PlanetPatchEdgeMask mask) {
+    if (quadCount == 0) {
+        throw std::invalid_argument{"planet patch indices require positive quads"};
+    }
+    const PlanetPatchTopologyCounts counts =
+        planetPatchTopologyCounts(quadCount);
+
+    std::vector<std::uint32_t> indices;
+    indices.reserve(static_cast<std::size_t>(counts.indices));
+    for (std::uint32_t y = 0; y < quadCount; ++y) {
+        for (std::uint32_t x = 0; x < quadCount; ++x) {
+            const std::uint32_t topLeft =
+                remappedSurfaceVertexIndex(quadCount, x, y, mask);
+            const std::uint32_t topRight =
+                remappedSurfaceVertexIndex(quadCount, x + 1, y, mask);
+            const std::uint32_t bottomLeft =
+                remappedSurfaceVertexIndex(quadCount, x, y + 1, mask);
+            const std::uint32_t bottomRight =
+                remappedSurfaceVertexIndex(quadCount, x + 1, y + 1, mask);
+            indices.insert(
+                indices.end(),
+                {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
+        }
+    }
+
+    for (const wgen::PlanetPatchEdge edge : PLANET_PATCH_EDGES) {
+        const bool stitched = (mask & wgen::planetPatchEdgeBit(edge)) != 0;
+        for (std::uint32_t sample = 0; sample < quadCount; ++sample) {
+            const std::uint32_t sourceSample = stitched && sample % 2 == 1
+                ? sample - 1
+                : sample;
+            const std::uint32_t targetSample = stitched && (sample + 1) % 2 == 1
+                ? sample
+                : sample + 1;
+            const auto [sourceX, sourceY] = edgeCoordinates(edge, quadCount, sourceSample);
+            const auto [targetX, targetY] = edgeCoordinates(edge, quadCount, targetSample);
+            const std::uint32_t top0 = planetPatchSurfaceVertexIndex(
+                quadCount, sourceX, sourceY);
+            const std::uint32_t top1 = planetPatchSurfaceVertexIndex(
+                quadCount, targetX, targetY);
+            const std::uint32_t skirt0 = planetPatchSkirtVertexIndex(
+                quadCount, edge, sourceSample);
+            const std::uint32_t skirt1 = planetPatchSkirtVertexIndex(
+                quadCount, edge, targetSample);
+            indices.insert(
+                indices.end(),
+                {top0, top1, skirt1, top0, skirt1, skirt0});
+        }
+    }
+    return indices;
+}
+
+} // namespace
+
+PlanetPatchIndexVariants buildPlanetPatchIndexVariants(std::uint32_t quadCount) {
+    PlanetPatchIndexVariants variants;
+    for (std::size_t maskIndex = 0; maskIndex < variants.size(); ++maskIndex) {
+        variants[maskIndex] = buildPlanetPatchIndices(
+            quadCount,
+            static_cast<wgen::PlanetPatchEdgeMask>(maskIndex));
+    }
+    return variants;
+}
 
 float sampleCubeSphereBilinear(
         const wgen::CubeSphere<float>& source,
@@ -45,7 +295,8 @@ PlanetPatchMeshData buildPlanetPatchMesh(
         const wgen::PlanetPatchId& id,
         std::uint32_t quadCount,
         float planetRadius,
-        const PlanetHeightSampler& heightSampler) {
+        const PlanetHeightSampler& heightSampler,
+        PlanetPatchMeshBuildConfig config) {
     wgen::validate(id);
     if (quadCount == 0) {
         throw std::invalid_argument{"planet patch mesh quad count must be positive"};
@@ -56,26 +307,52 @@ PlanetPatchMeshData buildPlanetPatchMesh(
     if (!heightSampler) {
         throw std::invalid_argument{"planet patch mesh height sampler must be callable"};
     }
-
-    const std::uint64_t samplesPerAxis = std::uint64_t{quadCount} + 1;
-    constexpr std::uint64_t MAX_BUFFER_COUNT = std::numeric_limits<std::uint32_t>::max();
-    if (samplesPerAxis > MAX_BUFFER_COUNT / samplesPerAxis ||
-            std::uint64_t{quadCount} > MAX_BUFFER_COUNT / quadCount ||
-            std::uint64_t{quadCount} * quadCount > MAX_BUFFER_COUNT / 6) {
-        throw std::overflow_error{"planet patch mesh exceeds supported buffer counts"};
+    if (!std::isfinite(config.skirtDepthMeters) || config.skirtDepthMeters < 0.0F) {
+        throw std::invalid_argument{"planet patch skirt depth must be finite and non-negative"};
+    }
+    if (id.level > 0 && quadCount % 2 != 0) {
+        throw std::invalid_argument{"morphable child patches require an even quad count"};
     }
 
-    const std::uint64_t vertexCount = samplesPerAxis * samplesPerAxis;
-    const std::uint64_t indexCount = std::uint64_t{quadCount} * quadCount * 6;
-    if (vertexCount > std::numeric_limits<std::size_t>::max() ||
-            indexCount > std::numeric_limits<std::size_t>::max()) {
-        throw std::overflow_error{"planet patch mesh exceeds supported buffer counts"};
-    }
+    const PlanetPatchTopologyCounts counts =
+        planetPatchTopologyCounts(quadCount);
 
     PlanetPatchMeshData result;
     result.id = id;
-    result.vertices.reserve(static_cast<std::size_t>(vertexCount));
-    result.indices.reserve(static_cast<std::size_t>(indexCount));
+    result.quadCount = quadCount;
+    result.surfaceVertexCount = static_cast<std::size_t>(counts.surfaceVertices);
+    result.surfaceIndexCount = static_cast<std::size_t>(counts.surfaceIndices);
+    result.skirtDepthMeters = config.skirtDepthMeters;
+    result.vertices.reserve(static_cast<std::size_t>(counts.vertices));
+    result.indices.reserve(static_cast<std::size_t>(counts.indices));
+
+    const PlanetHeightSampler& parentHeightSampler = config.parentHeightSampler
+        ? config.parentHeightSampler
+        : heightSampler;
+    std::vector<ParentGridVertex> parentGrid;
+    std::optional<wgen::PlanetPatchId> parentId;
+    if (id.level > 0) {
+        parentId = wgen::parent(id);
+        parentGrid.reserve(static_cast<std::size_t>(counts.surfaceVertices));
+        for (std::uint32_t parentY = 0; parentY <= quadCount; ++parentY) {
+            for (std::uint32_t parentX = 0; parentX <= quadCount; ++parentX) {
+                const wgen::PlanetSurfaceSample parentSurface = wgen::patchSurfaceSample(
+                    *parentId,
+                    quadCount,
+                    parentX,
+                    parentY);
+                const float parentHeight = parentHeightSampler(parentSurface);
+                if (!std::isfinite(parentHeight)) {
+                    throw std::invalid_argument{"planet patch parent height must be finite"};
+                }
+                parentGrid.push_back({
+                    glm::vec3{parentSurface.direction} *
+                        (parentHeight + planetRadius) / planetRadius,
+                    parentHeight,
+                });
+            }
+        }
+    }
 
     for (std::uint32_t localY = 0; localY <= quadCount; ++localY) {
         for (std::uint32_t localX = 0; localX <= quadCount; ++localX) {
@@ -85,25 +362,56 @@ PlanetPatchMeshData buildPlanetPatchMesh(
             if (!std::isfinite(height)) {
                 throw std::invalid_argument{"planet patch mesh height must be finite"};
             }
+            const glm::vec3 position = glm::vec3{surface.direction} *
+                (height + planetRadius) / planetRadius;
+            ParentGridVertex parentRepresentation{position, height};
+            if (parentId) {
+                const double parentGridX =
+                    static_cast<double>(id.x & 1U) * quadCount / 2.0 +
+                    static_cast<double>(localX) / 2.0;
+                const double parentGridY =
+                    static_cast<double>(id.y & 1U) * quadCount / 2.0 +
+                    static_cast<double>(localY) / 2.0;
+                parentRepresentation = interpolateParentGrid(
+                    parentGrid,
+                    quadCount,
+                    parentGridX,
+                    parentGridY);
+            }
             result.vertices.push_back({
-                glm::vec3{surface.direction} * (height + planetRadius) / planetRadius,
+                position,
                 height,
+                parentRepresentation.position,
+                parentRepresentation.height,
             });
         }
     }
 
-    const std::uint32_t rowSize = quadCount + 1;
-    for (std::uint32_t y = 0; y < quadCount; ++y) {
-        for (std::uint32_t x = 0; x < quadCount; ++x) {
-            const std::uint32_t topLeft = y * rowSize + x;
-            const std::uint32_t topRight = topLeft + 1;
-            const std::uint32_t bottomLeft = (y + 1) * rowSize + x;
-            const std::uint32_t bottomRight = bottomLeft + 1;
-            result.indices.insert(
-                result.indices.end(),
-                {topLeft, topRight, bottomRight, topLeft, bottomRight, bottomLeft});
+    const float normalizedSkirtDepth = config.skirtDepthMeters / planetRadius;
+    for (const wgen::PlanetPatchEdge edge : PLANET_PATCH_EDGES) {
+        for (std::uint32_t sample = 0; sample <= quadCount; ++sample) {
+            const auto [localX, localY] = edgeCoordinates(edge, quadCount, sample);
+            const wgen::PlanetSurfaceSample surface = wgen::patchSurfaceSample(
+                id,
+                quadCount,
+                localX,
+                localY);
+            const Vertex3d& top = result.vertices[
+                planetPatchSurfaceVertexIndex(quadCount, localX, localY)];
+            glm::vec3 parentDirection = glm::vec3{surface.direction};
+            if (glm::length(top.parentPosition) > 0.0F) {
+                parentDirection = glm::normalize(top.parentPosition);
+            }
+            result.vertices.push_back({
+                top.position - glm::vec3{surface.direction} * normalizedSkirtDepth,
+                top.height - config.skirtDepthMeters,
+                top.parentPosition - parentDirection * normalizedSkirtDepth,
+                top.parentHeight - config.skirtDepthMeters,
+            });
         }
     }
+
+    result.indices = buildPlanetPatchIndices(quadCount, 0);
 
     return result;
 }
@@ -112,12 +420,14 @@ PlanetPatchMeshData buildRequestedPlanetPatchMesh(
         const PlanetPatchMeshRequest& request,
         std::uint32_t quadCount,
         float planetRadius,
-        const PlanetHeightSampler& heightSampler) {
+        const PlanetHeightSampler& heightSampler,
+        PlanetPatchMeshBuildConfig config) {
     PlanetPatchMeshData result = buildPlanetPatchMesh(
         request.id,
         quadCount,
         planetRadius,
-        heightSampler);
+        heightSampler,
+        std::move(config));
     result.version = request.version;
     return result;
 }
@@ -256,6 +566,25 @@ void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch) {
         if (upsert.vertices.empty() || upsert.indices.empty()) {
             throw std::invalid_argument{"planet patch upsert mesh must not be empty"};
         }
+        if ((upsert.id.level > 0 && upsert.quadCount % 2 != 0) ||
+                !std::isfinite(upsert.skirtDepthMeters) ||
+                upsert.skirtDepthMeters < 0.0F) {
+            throw std::invalid_argument{"planet patch upsert mesh metadata is invalid"};
+        }
+        const PlanetPatchTopologyCounts counts =
+            planetPatchTopologyCounts(upsert.quadCount);
+        if (upsert.surfaceVertexCount != counts.surfaceVertices ||
+                upsert.vertices.size() != counts.vertices ||
+                upsert.surfaceIndexCount != counts.surfaceIndices ||
+                upsert.indices.size() != counts.indices ||
+                std::any_of(
+                    upsert.indices.begin(),
+                    upsert.indices.end(),
+                    [&upsert](std::uint32_t index) {
+                        return index >= upsert.vertices.size();
+                    })) {
+            throw std::invalid_argument{"planet patch upsert mesh topology is invalid"};
+        }
         if (upsert.version.terrainEpoch != batch.terrainEpoch ||
                 upsert.version.requestRevision != batch.requestRevision) {
             throw std::invalid_argument{"planet patch upsert version disagrees with its batch"};
@@ -350,8 +679,12 @@ void appendCubeSphereMesh(
         for (std::size_t y = 0; y < resolution; ++y) {
             for (std::size_t x = 0; x < resolution; ++x) {
                 const float height = cubeSphere.at(face, x, y);
+                const glm::vec3 position = cubeSphere.pointUnitDir(face, x, y) *
+                    (height + radius) / radius;
                 vertices.push_back({
-                    cubeSphere.pointUnitDir(face, x, y) * (height + radius) / radius,
+                    position,
+                    height,
+                    position,
                     height,
                 });
             }

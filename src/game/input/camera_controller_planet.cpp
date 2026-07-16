@@ -101,6 +101,10 @@ void CameraControllerPlanet::update(
             planetRadiusMeters),
         {},
         cameraUp);
+    // Rendering is rebased independently of the persistent PlanetLocation.
+    // Using the camera itself as the current origin maximizes nearby float
+    // precision; patch identities and terrain requests remain global.
+    camera.rebaseRenderOrigin(camera.globalPosition());
 }
 
 } // namespace lve

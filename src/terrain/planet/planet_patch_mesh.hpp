@@ -43,6 +43,12 @@ struct PlanetPatchMeshRequest {
 struct PlanetPatchMeshData {
     wgen::PlanetPatchId id{};
     PlanetPatchVersion version{};
+    // Render-space global coordinates are measured in planet radii. Keeping
+    // the patch origin and bounds in double lets very fine patches retain
+    // their identity while GPU vertices remain compact float offsets.
+    glm::dvec3 globalOrigin{};
+    glm::dvec3 globalBoundsCenter{};
+    double globalBoundsRadius{};
     std::vector<Vertex3d> vertices{};
     std::vector<std::uint32_t> indices{};
     std::uint32_t quadCount{};
@@ -53,6 +59,10 @@ struct PlanetPatchMeshData {
     float skirtDepthMeters{};
     float maximumParentErrorMeters{};
 };
+
+glm::dvec3 planetPatchGlobalPosition(
+    const PlanetPatchMeshData& mesh,
+    glm::vec3 localPosition) noexcept;
 
 struct PlanetPatchRemoval {
     wgen::PlanetPatchId id{};

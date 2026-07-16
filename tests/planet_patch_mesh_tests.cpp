@@ -16,6 +16,20 @@ void expectVectorNear(const glm::vec3& actual, const glm::vec3& expected, std::s
     wgen::tests::require(glm::length(actual - expected) <= 0.00001F, message);
 }
 
+void expectGlobalVectorNear(
+        const glm::dvec3& actual,
+        const glm::dvec3& expected,
+        std::string_view message,
+        double tolerance = 0.00001) {
+    wgen::tests::require(glm::length(actual - expected) <= tolerance, message);
+}
+
+glm::dvec3 globalPosition(
+        const lve::PlanetPatchMeshData& mesh,
+        glm::vec3 localPosition) {
+    return lve::planetPatchGlobalPosition(mesh, localPosition);
+}
+
 void testBilinearDenseSampling() {
     wgen::CubeSphere<float> source{10.0F, 2, 0.0F};
     source.at(wgen::CubeSphereFace::Top, 0, 0) = 0.0F;
@@ -97,10 +111,13 @@ void testPatchMeshCountsAndWinding() {
             wgen::tests::require(index < mesh.vertices.size(), "patch mesh index is out of range");
         }
         for (std::size_t i = 0; i < mesh.surfaceIndexCount; i += 3) {
-            const glm::vec3 a = mesh.vertices[mesh.indices[i]].position;
-            const glm::vec3 b = mesh.vertices[mesh.indices[i + 1]].position;
-            const glm::vec3 c = mesh.vertices[mesh.indices[i + 2]].position;
-            const glm::vec3 normal = glm::cross(b - a, c - a);
+            const glm::dvec3 a = globalPosition(
+                mesh, mesh.vertices[mesh.indices[i]].position);
+            const glm::dvec3 b = globalPosition(
+                mesh, mesh.vertices[mesh.indices[i + 1]].position);
+            const glm::dvec3 c = globalPosition(
+                mesh, mesh.vertices[mesh.indices[i + 2]].position);
+            const glm::dvec3 normal = glm::cross(b - a, c - a);
             wgen::tests::require(
                 glm::dot(normal, a + b + c) > 0.0F,
                 "patch mesh triangle should wind outward");
@@ -134,7 +151,10 @@ void testRootPatchesMatchDenseMesh() {
         for (std::size_t i = 0; i < verticesPerFace; ++i) {
             const lve::Vertex3d& expected = denseVertices[faceIndex * verticesPerFace + i];
             wgen::tests::expectNear(patch.vertices[i].height, expected.height, 0.00001F, "root height changed");
-            expectVectorNear(patch.vertices[i].position, expected.position, "root position changed");
+            expectGlobalVectorNear(
+                globalPosition(patch, patch.vertices[i].position),
+                glm::dvec3{expected.position},
+                "root position changed");
         }
         for (std::size_t i = 0; i < indicesPerFace; ++i) {
             const std::uint32_t expected = denseIndices[faceIndex * indicesPerFace + i] -
@@ -193,23 +213,35 @@ void testPatchMeshSeams() {
                 const std::uint32_t targetSample = neighbor.edgeCoordinateReversed
                     ? lve::PLANET_PATCH_QUADS - sample
                     : sample;
-                const glm::vec3 sourcePosition = mesh.vertices[
-                    edgeVertexIndex(edge, lve::PLANET_PATCH_QUADS, sample)].position;
-                const glm::vec3 targetPosition = target.vertices[
-                    edgeVertexIndex(neighbor.touchingEdge, lve::PLANET_PATCH_QUADS, targetSample)].position;
-                expectVectorNear(sourcePosition, targetPosition, "adjacent patch positions should match");
+                const glm::dvec3 sourcePosition = globalPosition(
+                    mesh,
+                    mesh.vertices[
+                        edgeVertexIndex(edge, lve::PLANET_PATCH_QUADS, sample)].position);
+                const glm::dvec3 targetPosition = globalPosition(
+                    target,
+                    target.vertices[
+                        edgeVertexIndex(
+                            neighbor.touchingEdge,
+                            lve::PLANET_PATCH_QUADS,
+                            targetSample)].position);
+                expectGlobalVectorNear(
+                    sourcePosition,
+                    targetPosition,
+                    "adjacent patch positions should match");
 
-                const glm::vec3 sourceSkirtPosition = mesh.vertices[
-                    lve::planetPatchSkirtVertexIndex(
+                const glm::dvec3 sourceSkirtPosition = globalPosition(
+                    mesh,
+                    mesh.vertices[lve::planetPatchSkirtVertexIndex(
                         lve::PLANET_PATCH_QUADS,
                         edge,
-                        sample)].position;
-                const glm::vec3 targetSkirtPosition = target.vertices[
-                    lve::planetPatchSkirtVertexIndex(
+                        sample)].position);
+                const glm::dvec3 targetSkirtPosition = globalPosition(
+                    target,
+                    target.vertices[lve::planetPatchSkirtVertexIndex(
                         lve::PLANET_PATCH_QUADS,
                         neighbor.touchingEdge,
-                        targetSample)].position;
-                expectVectorNear(
+                        targetSample)].position);
+                expectGlobalVectorNear(
                     sourceSkirtPosition,
                     targetSkirtPosition,
                     "adjacent patch skirts should match across every cube-face edge");
@@ -254,10 +286,13 @@ void testSkirtTopologyAndDepth() {
                 sample);
             const lve::Vertex3d& top = mesh.vertices[topIndex];
             const lve::Vertex3d& skirt = mesh.vertices[skirtIndex];
-            const glm::vec3 direction = glm::normalize(top.position);
-            expectVectorNear(
-                skirt.position,
-                top.position - direction * (SKIRT_DEPTH / PLANET_RADIUS),
+            const glm::dvec3 topGlobal = globalPosition(mesh, top.position);
+            const glm::dvec3 skirtGlobal = globalPosition(mesh, skirt.position);
+            const glm::dvec3 direction = glm::normalize(topGlobal);
+            expectGlobalVectorNear(
+                skirtGlobal,
+                topGlobal - direction * static_cast<double>(
+                    SKIRT_DEPTH / PLANET_RADIUS),
                 "skirt vertex should extend inward by the configured physical depth");
             wgen::tests::expectNear(
                 skirt.height,
@@ -365,8 +400,12 @@ void testParentGridMorphData() {
                 QUADS / 2 + localX / 2,
                 localY / 2);
             expectVectorNear(
-                childMesh.vertices[childIndex].parentPosition,
-                parentMesh.vertices[parentIndex].position,
+                glm::vec3{globalPosition(
+                    childMesh,
+                    childMesh.vertices[childIndex].parentPosition)},
+                glm::vec3{globalPosition(
+                    parentMesh,
+                    parentMesh.vertices[parentIndex].position)},
                 "even child vertices should reproduce the parent grid exactly");
             wgen::tests::expectNear(
                 childMesh.vertices[childIndex].parentHeight,
@@ -455,12 +494,51 @@ void testGenericFixedLevelSampler() {
         "child patches should sample both fine and parent terrain grids");
     for (const lve::PlanetPatchMeshData& mesh : meshes) {
         for (const lve::Vertex3d& vertex : mesh.vertices) {
-            const float expectedLength = (250.0F + vertex.height) / 250.0F;
+            const double expectedLength = (250.0 + vertex.height) / 250.0;
             wgen::tests::expectNear(
-                glm::length(vertex.position),
+                glm::length(globalPosition(mesh, vertex.position)),
                 expectedLength,
-                0.00001F,
+                0.00001,
                 "generic fixed-level sampler should preserve radius scaling");
+        }
+    }
+}
+
+void testMaximumLodLocalPrecisionAndBounds() {
+    constexpr std::uint32_t QUADS = 32;
+    constexpr float PLANET_RADIUS = 6'371'000.0F;
+    const std::uint32_t lastPatch = wgen::patchesPerAxis(
+        wgen::MAX_PLANET_PATCH_LEVEL) - 1;
+    const wgen::PlanetPatchId id{
+        wgen::CubeSphereFace::Front,
+        wgen::MAX_PLANET_PATCH_LEVEL,
+        lastPatch,
+        lastPatch,
+    };
+    const lve::PlanetPatchMeshData mesh = lve::buildPlanetPatchMesh(
+        id,
+        QUADS,
+        PLANET_RADIUS,
+        [](const wgen::PlanetSurfaceSample&) { return 0.0F; });
+
+    const std::uint32_t first = lve::planetPatchSurfaceVertexIndex(QUADS, 0, 0);
+    const std::uint32_t adjacent = lve::planetPatchSurfaceVertexIndex(QUADS, 1, 0);
+    wgen::tests::require(
+        mesh.vertices[first].position != mesh.vertices[adjacent].position,
+        "maximum-LOD neighbors should remain distinct as local float offsets");
+    wgen::tests::require(
+        glm::length(
+            globalPosition(mesh, mesh.vertices[first].position) -
+            globalPosition(mesh, mesh.vertices[adjacent].position)) > 0.0,
+        "maximum-LOD reconstructed global positions should remain distinct");
+
+    for (const lve::Vertex3d& vertex : mesh.vertices) {
+        for (const glm::vec3 local : {vertex.position, vertex.parentPosition}) {
+            wgen::tests::require(
+                glm::length(
+                    globalPosition(mesh, local) - mesh.globalBoundsCenter) <=
+                    mesh.globalBoundsRadius + 1.0e-7,
+                "double global patch bounds should contain every morph position");
         }
     }
 }
@@ -561,6 +639,9 @@ int main() {
         wgen::tests::runTest("parent-grid morph data", testParentGridMorphData);
         wgen::tests::runTest("fixed-level patch counts and order", testFixedLevelPatchCountsAndOrder);
         wgen::tests::runTest("generic fixed-level sampler", testGenericFixedLevelSampler);
+        wgen::tests::runTest(
+            "maximum-LOD local precision and bounds",
+            testMaximumLodLocalPrecisionAndBounds);
         wgen::tests::runTest("patch mesh validation", testPatchMeshValidation);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';

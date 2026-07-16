@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iterator>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -106,7 +107,7 @@ std::uint32_t remappedSurfaceVertexIndex(
 }
 
 struct ParentGridVertex {
-    glm::vec3 position{};
+    glm::dvec3 position{};
     float height{};
 };
 
@@ -130,9 +131,9 @@ ParentGridVertex interpolateParentGrid(
 
     ParentGridVertex result;
     if (xWeight >= yWeight) {
-        const float topLeftWeight = static_cast<float>(1.0 - xWeight);
-        const float topRightWeight = static_cast<float>(xWeight - yWeight);
-        const float bottomRightWeight = static_cast<float>(yWeight);
+        const double topLeftWeight = 1.0 - xWeight;
+        const double topRightWeight = xWeight - yWeight;
+        const double bottomRightWeight = yWeight;
         result.position = topLeft.position * topLeftWeight +
             topRight.position * topRightWeight +
             bottomRight.position * bottomRightWeight;
@@ -140,9 +141,9 @@ ParentGridVertex interpolateParentGrid(
             topRight.height * topRightWeight +
             bottomRight.height * bottomRightWeight;
     } else {
-        const float topLeftWeight = static_cast<float>(1.0 - yWeight);
-        const float bottomRightWeight = static_cast<float>(xWeight);
-        const float bottomLeftWeight = static_cast<float>(yWeight - xWeight);
+        const double topLeftWeight = 1.0 - yWeight;
+        const double bottomRightWeight = xWeight;
+        const double bottomLeftWeight = yWeight - xWeight;
         result.position = topLeft.position * topLeftWeight +
             bottomRight.position * bottomRightWeight +
             bottomLeft.position * bottomLeftWeight;
@@ -154,6 +155,12 @@ ParentGridVertex interpolateParentGrid(
 }
 
 } // namespace
+
+glm::dvec3 planetPatchGlobalPosition(
+        const PlanetPatchMeshData& mesh,
+        glm::vec3 localPosition) noexcept {
+    return mesh.globalOrigin + glm::dvec3{localPosition};
+}
 
 std::uint32_t planetPatchSurfaceVertexIndex(
         std::uint32_t quadCount,
@@ -320,6 +327,12 @@ PlanetPatchMeshData buildPlanetPatchMesh(
 
     PlanetPatchMeshData result;
     result.id = id;
+    const wgen::PlanetPatchBounds bounds = wgen::patchBounds(id);
+    result.globalOrigin = wgen::cubeSphereDirection(
+        id.face,
+        std::midpoint(bounds.uMin, bounds.uMax),
+        std::midpoint(bounds.vMin, bounds.vMax));
+    result.globalBoundsCenter = result.globalOrigin;
     result.quadCount = quadCount;
     result.surfaceVertexCount = static_cast<std::size_t>(counts.surfaceVertices);
     result.surfaceIndexCount = static_cast<std::size_t>(counts.surfaceIndices);
@@ -347,8 +360,9 @@ PlanetPatchMeshData buildPlanetPatchMesh(
                     throw std::invalid_argument{"planet patch parent height must be finite"};
                 }
                 parentGrid.push_back({
-                    glm::vec3{parentSurface.direction} *
-                        (parentHeight + planetRadius) / planetRadius,
+                    parentSurface.direction *
+                        (static_cast<double>(parentHeight) + planetRadius) /
+                        static_cast<double>(planetRadius),
                     parentHeight,
                 });
             }
@@ -363,9 +377,12 @@ PlanetPatchMeshData buildPlanetPatchMesh(
             if (!std::isfinite(height)) {
                 throw std::invalid_argument{"planet patch mesh height must be finite"};
             }
-            const glm::vec3 position = glm::vec3{surface.direction} *
-                (height + planetRadius) / planetRadius;
-            ParentGridVertex parentRepresentation{position, height};
+            const glm::dvec3 globalPosition = surface.direction *
+                (static_cast<double>(height) + planetRadius) /
+                static_cast<double>(planetRadius);
+            const glm::vec3 position = glm::vec3{
+                globalPosition - result.globalOrigin};
+            ParentGridVertex parentRepresentation{globalPosition, height};
             if (parentId) {
                 const double parentGridX =
                     static_cast<double>(id.x & 1U) * quadCount / 2.0 +
@@ -381,11 +398,18 @@ PlanetPatchMeshData buildPlanetPatchMesh(
             }
             result.maximumParentErrorMeters = std::max(
                 result.maximumParentErrorMeters,
-                glm::length(position - parentRepresentation.position) * planetRadius);
+                static_cast<float>(
+                    glm::length(globalPosition - parentRepresentation.position) *
+                    planetRadius));
+            result.globalBoundsRadius = std::max({
+                result.globalBoundsRadius,
+                glm::length(globalPosition - result.globalBoundsCenter),
+                glm::length(parentRepresentation.position - result.globalBoundsCenter),
+            });
             result.vertices.push_back({
                 position,
                 height,
-                parentRepresentation.position,
+                glm::vec3{parentRepresentation.position - result.globalOrigin},
                 parentRepresentation.height,
             });
         }
@@ -402,14 +426,27 @@ PlanetPatchMeshData buildPlanetPatchMesh(
                 localY);
             const Vertex3d& top = result.vertices[
                 planetPatchSurfaceVertexIndex(quadCount, localX, localY)];
-            glm::vec3 parentDirection = glm::vec3{surface.direction};
-            if (glm::length(top.parentPosition) > 0.0F) {
-                parentDirection = glm::normalize(top.parentPosition);
+            glm::dvec3 parentDirection = surface.direction;
+            const glm::dvec3 parentGlobalPosition =
+                planetPatchGlobalPosition(result, top.parentPosition);
+            if (glm::length(parentGlobalPosition) > 0.0) {
+                parentDirection = glm::normalize(parentGlobalPosition);
             }
+            const glm::dvec3 globalSkirtPosition =
+                planetPatchGlobalPosition(result, top.position) -
+                surface.direction * static_cast<double>(normalizedSkirtDepth);
+            const glm::dvec3 parentGlobalSkirtPosition =
+                parentGlobalPosition -
+                parentDirection * static_cast<double>(normalizedSkirtDepth);
+            result.globalBoundsRadius = std::max({
+                result.globalBoundsRadius,
+                glm::length(globalSkirtPosition - result.globalBoundsCenter),
+                glm::length(parentGlobalSkirtPosition - result.globalBoundsCenter),
+            });
             result.vertices.push_back({
-                top.position - glm::vec3{surface.direction} * normalizedSkirtDepth,
+                glm::vec3{globalSkirtPosition - result.globalOrigin},
                 top.height - config.skirtDepthMeters,
-                top.parentPosition - parentDirection * normalizedSkirtDepth,
+                glm::vec3{parentGlobalSkirtPosition - result.globalOrigin},
                 top.parentHeight - config.skirtDepthMeters,
             });
         }
@@ -571,6 +608,14 @@ void validatePlanetPatchMeshBatch(const PlanetPatchMeshBatch& batch) {
             throw std::invalid_argument{"planet patch upsert mesh must not be empty"};
         }
         if ((upsert.id.level > 0 && upsert.quadCount % 2 != 0) ||
+                !std::isfinite(upsert.globalOrigin.x) ||
+                !std::isfinite(upsert.globalOrigin.y) ||
+                !std::isfinite(upsert.globalOrigin.z) ||
+                !std::isfinite(upsert.globalBoundsCenter.x) ||
+                !std::isfinite(upsert.globalBoundsCenter.y) ||
+                !std::isfinite(upsert.globalBoundsCenter.z) ||
+                !std::isfinite(upsert.globalBoundsRadius) ||
+                upsert.globalBoundsRadius < 0.0 ||
                 !std::isfinite(upsert.skirtDepthMeters) ||
                 upsert.skirtDepthMeters < 0.0F ||
                 !std::isfinite(upsert.maximumParentErrorMeters) ||

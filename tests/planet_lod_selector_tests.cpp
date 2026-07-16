@@ -1,12 +1,14 @@
 #include "terrain/planet/planet_lod_selector.hpp"
 
 #include "game/camera/camera_3d.hpp"
+#include "game/input/planet_camera_depth.hpp"
 #include "helpers.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <numbers>
 #include <numeric>
 #include <stdexcept>
@@ -369,6 +371,110 @@ void testCameraLodState() {
         "camera should reject an up vector parallel to its view direction");
 }
 
+void testCameraRenderOriginRebase() {
+    lve::Camera3d camera;
+    camera.setPerspectiveProjection(0.9F, 16.0F / 9.0F, 0.001F, 20.0F);
+    const glm::dvec3 cameraPosition{0.0000000001, 0.0, 3.0};
+    camera.setGlobalViewTarget(cameraPosition, {}, {0.0, 1.0, 0.0});
+
+    const glm::dvec3 globalPoint = cameraPosition +
+        camera.globalForward() * 0.00000025 +
+        camera.globalRight() * 0.00000005;
+    camera.rebaseRenderOrigin(cameraPosition);
+    const glm::vec4 firstViewPosition = camera.renderView() * glm::vec4{
+        camera.positionRelativeToRenderOrigin(globalPoint),
+        1.0F};
+
+    const wgen::PlanetLodView view{
+        .position = camera.globalPosition(),
+        .forward = camera.globalForward(),
+        .right = camera.globalRight(),
+        .up = camera.globalUp(),
+        .verticalFov = camera.verticalFov(),
+        .aspectRatio = camera.aspectRatio(),
+        .nearPlane = camera.nearPlane(),
+        .farPlane = camera.farPlane(),
+        .viewportHeight = 720,
+    };
+    wgen::PlanetLodConfig config;
+    config.maximumLevel = 5;
+    config.selectedLeafBudget = 128;
+    const wgen::PlanetLodSurface surface{
+        .radius = 1.0,
+        .minimumDisplacement = -0.01,
+        .maximumDisplacement = 0.01,
+    };
+    const wgen::PlanetLodSelection beforeRebase =
+        wgen::PlanetLodSelector{}.select(view, surface, config);
+
+    camera.rebaseRenderOrigin(cameraPosition + glm::dvec3{0.125, -0.25, 0.5});
+    const glm::vec4 secondViewPosition = camera.renderView() * glm::vec4{
+        camera.positionRelativeToRenderOrigin(globalPoint),
+        1.0F};
+    wgen::tests::require(
+        glm::length(glm::vec3{firstViewPosition - secondViewPosition}) <= 0.0000001F,
+        "rebasing should preserve camera-relative view coordinates");
+    wgen::tests::require(
+        camera.globalPosition() == cameraPosition,
+        "rebasing should not change the global camera position");
+
+    wgen::PlanetLodView afterView = view;
+    afterView.position = camera.globalPosition();
+    afterView.forward = camera.globalForward();
+    afterView.right = camera.globalRight();
+    afterView.up = camera.globalUp();
+    const wgen::PlanetLodSelection afterRebase =
+        wgen::PlanetLodSelector{}.select(afterView, surface, config);
+    wgen::tests::require(
+        beforeRebase.leaves == afterRebase.leaves &&
+            beforeRebase.visibleLeaves == afterRebase.visibleLeaves,
+        "render-origin rebasing should not change selected patch IDs");
+
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&camera] {
+            camera.rebaseRenderOrigin({
+                std::numeric_limits<double>::quiet_NaN(),
+                0.0,
+                0.0});
+        },
+        "camera should reject a non-finite render origin");
+}
+
+void testPlanetCameraDepthPolicies() {
+    constexpr double PLANET_RADIUS = 6'371'000.0;
+    const lve::PlanetCameraDepthRange local =
+        lve::planetCameraDepthRange(100.0, PLANET_RADIUS);
+    const lve::PlanetCameraDepthRange transition =
+        lve::planetCameraDepthRange(0.05 * PLANET_RADIUS, PLANET_RADIUS);
+    const lve::PlanetCameraDepthRange orbital =
+        lve::planetCameraDepthRange(7.0 * PLANET_RADIUS, PLANET_RADIUS);
+
+    wgen::tests::require(
+        local.regime == lve::PlanetCameraDepthRegime::Local &&
+            transition.regime == lve::PlanetCameraDepthRegime::Transition &&
+            orbital.regime == lve::PlanetCameraDepthRegime::Orbital,
+        "planet depth policy should identify local, transition, and orbital ranges");
+    wgen::tests::require(
+        local.nearPlane > 0.0F && local.farPlane > local.nearPlane,
+        "local depth range should be valid");
+    wgen::tests::require(
+        orbital.nearPlane > local.nearPlane &&
+            orbital.farPlane > 7.0F + 2.0F,
+        "orbital depth range should preserve precision and cover the full planet");
+    wgen::tests::require(
+        transition.nearPlane > local.nearPlane &&
+            transition.nearPlane < orbital.nearPlane &&
+            transition.farPlane > transition.nearPlane,
+        "transition depth range should blend between the two policies");
+
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { lve::planetCameraDepthRange(-1.0, PLANET_RADIUS); },
+        "planet depth policy should reject negative altitude");
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [] { lve::planetCameraDepthRange(1.0, 0.0); },
+        "planet depth policy should reject a non-positive radius");
+}
+
 } // namespace
 
 int main() {
@@ -383,6 +489,12 @@ int main() {
             testOmittedDetailErrorContributesToScreenError);
         wgen::tests::runTest("LOD validation", testValidation);
         wgen::tests::runTest("camera LOD state", testCameraLodState);
+        wgen::tests::runTest(
+            "camera render-origin rebase",
+            testCameraRenderOriginRebase);
+        wgen::tests::runTest(
+            "planet camera depth policies",
+            testPlanetCameraDepthPolicies);
     } catch (const std::exception& exception) {
         std::cerr << exception.what() << '\n';
         return 1;

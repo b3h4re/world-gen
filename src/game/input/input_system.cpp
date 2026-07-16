@@ -1,4 +1,5 @@
 #include "input_system.hpp"
+#include "game/input/planet_camera_depth.hpp"
 #include "renderer/lve_frame_info.hpp"
 
 #include <glm/glm.hpp>
@@ -44,13 +45,20 @@ void AppInputSystem::updateCameras(
                 }
                 break;
             case TerrainRenderModes::PlanetView:
-                target.first.camera3d->setPerspectiveProjection(glm::radians(50.0F), aspectRatio, 0.1F, 20.0F);
                 if (target.first.active) {
                     planetCameraController3d_.update(
                         input,
                         frameTime,
                         planetRadiusMeters,
                         *target.first.camera3d);
+                    const PlanetCameraDepthRange depth = planetCameraDepthRange(
+                        planetCameraController3d_.location().altitudeMeters,
+                        planetRadiusMeters);
+                    target.first.camera3d->setPerspectiveProjection(
+                        glm::radians(50.0F),
+                        aspectRatio,
+                        depth.nearPlane,
+                        depth.farPlane);
                 }
                 break;
         }

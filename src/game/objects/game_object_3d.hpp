@@ -19,6 +19,9 @@ struct Transform3d {
 struct GameObject3d {
     std::shared_ptr<Mesh3d> mesh;
     Transform3d transform{};
+    // Planet objects use a double global origin; ordinary local objects leave
+    // this at zero and continue to use Transform3d.
+    glm::dvec3 globalOrigin{};
     float terrainMorph{1.0F};
     std::size_t meshIndexVariant{};
 };

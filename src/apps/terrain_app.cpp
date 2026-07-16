@@ -240,8 +240,8 @@ void TerrainApp::run() {
                 }
                 case TerrainRenderModes::PlanetView: {
                     ubo.projection = cameraPlanet.projection();
-                    ubo.view = cameraPlanet.view();
-                    ubo.inverseView = glm::inverse(cameraPlanet.view());
+                    ubo.view = cameraPlanet.renderView();
+                    ubo.inverseView = glm::inverse(cameraPlanet.renderView());
                     const wgen::TerrainDisplayHeightRange displayRange =
                         core_.activePlanetDisplayHeightRange();
                     ubo.heightParams = {

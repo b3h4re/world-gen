@@ -99,7 +99,10 @@ void TerrainAppRenderer::applyPlanetPatchBatch(
         preparedUpserts.push_back({
             .id = upsert->id,
             .resident = {
-                .object = {std::move(mesh), {}},
+                .object = {
+                    .mesh = std::move(mesh),
+                    .globalOrigin = upsert->globalOrigin,
+                },
                 .version = upsert->version,
             },
         });

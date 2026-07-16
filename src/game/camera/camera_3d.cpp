@@ -7,6 +7,15 @@
 
 namespace lve {
 
+namespace {
+
+bool isFinite(glm::dvec3 value) {
+    return std::isfinite(value.x) && std::isfinite(value.y) &&
+        std::isfinite(value.z);
+}
+
+} // namespace
+
 void Camera3d::setPerspectiveProjection(float fovy, float aspectRatio, float near, float far) {
     if (!std::isfinite(fovy) || fovy <= 0.0F || fovy >= std::numbers::pi_v<float> ||
             !std::isfinite(aspectRatio) || aspectRatio <= 0.0F ||
@@ -40,9 +49,6 @@ void Camera3d::setGlobalViewTarget(
         glm::dvec3 position,
         glm::dvec3 target,
         glm::dvec3 up) {
-    const auto isFinite = [](glm::dvec3 value) {
-        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
-    };
     const glm::dvec3 targetOffset = target - position;
     if (!isFinite(position) || !isFinite(target) || !isFinite(up) ||
             glm::length(targetOffset) <= std::numeric_limits<double>::epsilon() ||
@@ -80,6 +86,41 @@ void Camera3d::setGlobalViewTarget(
     view_[3][0] = static_cast<float>(-glm::dot(normalizedRight, position));
     view_[3][1] = static_cast<float>(-glm::dot(cameraUp, position));
     view_[3][2] = static_cast<float>(-glm::dot(forward, position));
+    updateRenderView();
+}
+
+void Camera3d::rebaseRenderOrigin(glm::dvec3 origin) {
+    if (!isFinite(origin)) {
+        throw std::invalid_argument{"3D camera render origin must be finite"};
+    }
+    renderOrigin_ = origin;
+    updateRenderView();
+}
+
+glm::vec3 Camera3d::positionRelativeToRenderOrigin(
+        glm::dvec3 globalPosition) const noexcept {
+    return glm::vec3{globalPosition - renderOrigin_};
+}
+
+void Camera3d::updateRenderView() {
+    renderView_ = glm::mat4{1.0F};
+    renderView_[0][0] = static_cast<float>(globalRight_.x);
+    renderView_[1][0] = static_cast<float>(globalRight_.y);
+    renderView_[2][0] = static_cast<float>(globalRight_.z);
+    renderView_[0][1] = static_cast<float>(globalUp_.x);
+    renderView_[1][1] = static_cast<float>(globalUp_.y);
+    renderView_[2][1] = static_cast<float>(globalUp_.z);
+    renderView_[0][2] = static_cast<float>(globalForward_.x);
+    renderView_[1][2] = static_cast<float>(globalForward_.y);
+    renderView_[2][2] = static_cast<float>(globalForward_.z);
+
+    const glm::dvec3 relativePosition = globalPosition_ - renderOrigin_;
+    renderView_[3][0] = static_cast<float>(
+        -glm::dot(globalRight_, relativePosition));
+    renderView_[3][1] = static_cast<float>(
+        -glm::dot(globalUp_, relativePosition));
+    renderView_[3][2] = static_cast<float>(
+        -glm::dot(globalForward_, relativePosition));
 }
 
 } // namespace lve

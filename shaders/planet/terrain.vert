@@ -9,11 +9,13 @@ layout(location = 0) out float fragmentHeight;
 
 layout(push_constant) uniform Push {
     mat4 projectionView;
+    vec3 relativePatchOrigin;
     float terrainMorph;
 } push;
 
 void main() {
     vec3 morphedPosition = mix(parentPosition, position, push.terrainMorph);
-    gl_Position = push.projectionView * vec4(morphedPosition, 1.0);
+    gl_Position = push.projectionView *
+        vec4(push.relativePatchOrigin + morphedPosition, 1.0);
     fragmentHeight = mix(parentHeight, height, push.terrainMorph);
 }

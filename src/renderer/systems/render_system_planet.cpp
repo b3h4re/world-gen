@@ -1,5 +1,6 @@
 #include "render_system_planet.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -8,8 +9,13 @@ namespace lve {
 
 struct PushConstantDataPlanet {
     glm::mat4 projectionView{1.0F};
+    glm::vec3 relativePatchOrigin{};
     float terrainMorph{1.0F};
 };
+
+static_assert(offsetof(PushConstantDataPlanet, relativePatchOrigin) == 64);
+static_assert(offsetof(PushConstantDataPlanet, terrainMorph) == 76);
+static_assert(sizeof(PushConstantDataPlanet) == 80);
 
 RenderSystemPlanet::RenderSystemPlanet(
         LveDevice &device,
@@ -85,7 +91,9 @@ void RenderSystemPlanet::render(
 
     for (const auto &object : objects) {
         PushConstantDataPlanet push{};
-        push.projectionView = camera.projectionView();
+        push.projectionView = camera.renderProjectionView();
+        push.relativePatchOrigin =
+            camera.positionRelativeToRenderOrigin(object.globalOrigin);
         push.terrainMorph = object.terrainMorph;
         vkCmdPushConstants(
             commandBuffer,

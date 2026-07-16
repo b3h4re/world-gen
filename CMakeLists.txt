@@ -344,6 +344,8 @@ if(BUILD_TESTING)
         tests/helpers.hpp
         src/game/camera/camera_3d.cpp
         src/game/camera/camera_3d.hpp
+        src/game/input/planet_camera_depth.cpp
+        src/game/input/planet_camera_depth.hpp
         src/terrain/planet/cube_sphere.cpp
         src/terrain/planet/cube_sphere.hpp
         src/terrain/planet/planet_patch.cpp

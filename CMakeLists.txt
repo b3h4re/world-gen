@@ -399,6 +399,19 @@ if(BUILD_TESTING)
     target_link_libraries(planet_lod_coordinator_tests PRIVATE glm::glm)
     add_test(NAME planet_lod_coordinator_tests COMMAND planet_lod_coordinator_tests)
 
+    # Renderer-independent local clipmap topology tests
+    add_executable(local_clipmap_topology_tests
+        tests/local_clipmap_topology_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/local_clipmap_topology.cpp
+        src/terrain/planet/local_clipmap_topology.hpp
+    )
+    target_include_directories(local_clipmap_topology_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(local_clipmap_topology_tests PRIVATE cxx_std_20)
+    target_link_libraries(local_clipmap_topology_tests PRIVATE glm::glm)
+    add_test(NAME local_clipmap_topology_tests COMMAND local_clipmap_topology_tests)
+
     # Renderer-independent terrain detail policy tests
     add_executable(terrain_detail_tests
         tests/terrain_detail_tests.cpp

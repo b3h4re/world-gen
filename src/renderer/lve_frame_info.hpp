@@ -4,6 +4,7 @@
 #include "game/camera/camera_3d.hpp"
 #include "game/objects/game_object_2d.hpp"
 #include "game/objects/game_object_3d.hpp"
+#include "renderer/objects/local_clipmap_render_resources.hpp"
 
 #include <vulkan/vulkan.h>
 
@@ -33,7 +34,8 @@ namespace lve {
     enum class TerrainRenderModes {
         FlatPicture,
         PlaneMesh3D,
-        PlanetView
+        PlanetView,
+        LocalClipmapDebug,
     };
 
     struct FrameInfo {
@@ -48,5 +50,6 @@ namespace lve {
         const std::vector<GameObject2d> &objects2d;
         const std::vector<GameObject3d> &objects3d;
         const std::vector<GameObject3d> &objectsPlanet;
+        const std::vector<LocalClipmapRenderObject> &objectsLocalClipmap;
     };
 }

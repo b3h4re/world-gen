@@ -11,6 +11,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <stdexcept>
 #include <utility>
 #include <vulkan/vulkan.h>
 
@@ -19,7 +20,8 @@ namespace lve {
 TerrainApp::TerrainApp() : TerrainApp(wgen::AppConfig{}) {}
 
 TerrainApp::TerrainApp(const wgen::AppConfig& config)
-    : config_{config}, core_{config_}, renderer_{config_.windowConfig},
+    : config_{config}, core_{config_},
+      renderer_{config_.windowConfig, core_.localClipmapConfig()},
       gui_{
           renderer_.window().controlsWidget(),
           Callbacks{
@@ -101,6 +103,9 @@ void TerrainApp::rotateCameraViews() {
             renderMode_ = TerrainRenderModes::PlanetView;
             return;
         case TerrainRenderModes::PlanetView:
+            renderMode_ = TerrainRenderModes::LocalClipmapDebug;
+            return;
+        case TerrainRenderModes::LocalClipmapDebug:
             renderMode_ = TerrainRenderModes::FlatPicture;
             return;
     }
@@ -158,7 +163,8 @@ void TerrainApp::run() {
     std::vector<std::pair<CameraUpdateTarget, TerrainRenderModes>> cameraTargets{
         {makeCameraTarget(camera2d, renderMode_ == TerrainRenderModes::FlatPicture), TerrainRenderModes::FlatPicture},
         {makeCameraTarget(camera3d, renderMode_ == TerrainRenderModes::PlaneMesh3D), TerrainRenderModes::PlaneMesh3D},
-        {makeCameraTarget(cameraPlanet, renderMode_ == TerrainRenderModes::PlanetView), TerrainRenderModes::PlanetView}
+        {makeCameraTarget(cameraPlanet, renderMode_ == TerrainRenderModes::PlanetView), TerrainRenderModes::PlanetView},
+        {makeCameraTarget(cameraPlanet, renderMode_ == TerrainRenderModes::LocalClipmapDebug), TerrainRenderModes::LocalClipmapDebug}
     };
 
     auto previousTime = std::chrono::steady_clock::now();
@@ -212,6 +218,29 @@ void TerrainApp::run() {
 
             renderer_.clearRetiredObjects(frameIndex);
             applyFinishedTerrainJob(frameIndex);
+            if (renderMode_ == TerrainRenderModes::LocalClipmapDebug) {
+                const PlanetNavigationState& navigation =
+                    appInputSystem.planetNavigationState();
+                const wgen::LocalPlanetFrame localFrame =
+                    wgen::makeLocalPlanetFrame(
+                        navigation.localFrame,
+                        static_cast<double>(config_.planetConfig.radius),
+                        navigation.localFrameRevision);
+                const std::vector<wgen::LocalClipmapGpuUploadBatch> uploads =
+                    core_.updateLocalClipmapDebug(
+                        localFrame,
+                        navigation.localOffsetMeters);
+                for (const wgen::LocalClipmapGpuUploadBatch& upload : uploads) {
+                    renderer_.applyLocalClipmapHeightUpload(upload);
+                    if (!core_.commitLocalClipmapGpuUpload(upload)) {
+                        throw std::logic_error{
+                            "local clipmap renderer committed a stale upload"};
+                    }
+                }
+                renderer_.applyLocalClipmapMeshUpdate(
+                    frameIndex,
+                    core_.takeLocalClipmapMeshUpdate());
+            }
             renderer_.setPlanetDrawPatches(core_.planetDrawPatchStates());
 
             FrameInfo frameInfo{
@@ -225,7 +254,8 @@ void TerrainApp::run() {
                 renderMode_,
                 renderer_.objects2d(),
                 renderer_.objects3d(),
-                renderer_.objectsPlanet()
+                renderer_.objectsPlanet(),
+                renderer_.objectsLocalClipmap()
             };
 
             GlobalUbo ubo{};
@@ -240,7 +270,8 @@ void TerrainApp::run() {
                     ubo.inverseView = glm::inverse(camera3d.view());
                     break;
                 }
-                case TerrainRenderModes::PlanetView: {
+                case TerrainRenderModes::PlanetView:
+                case TerrainRenderModes::LocalClipmapDebug: {
                     ubo.projection = cameraPlanet.projection();
                     ubo.view = cameraPlanet.renderView();
                     ubo.inverseView = glm::inverse(cameraPlanet.renderView());
@@ -293,6 +324,7 @@ TerrainGenerationTarget TerrainApp::currentGenerationTarget() const {
         case TerrainRenderModes::PlaneMesh3D:
             return TerrainGenerationTarget::Terrain;
         case TerrainRenderModes::PlanetView:
+        case TerrainRenderModes::LocalClipmapDebug:
             return TerrainGenerationTarget::Planet;
     }
 

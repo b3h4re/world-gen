@@ -7,6 +7,7 @@
 #include "game/objects/game_object_3d.hpp"
 #include "pipeline/descriptors/lve_descriptors.hpp"
 #include "renderer/lve_renderer.hpp"
+#include "renderer/objects/local_clipmap_render_resources.hpp"
 #include "window/qt_window_backend.hpp"
 
 #include <array>
@@ -22,11 +23,13 @@ struct RetiredFrameObjects {
     std::vector<GameObject2d> objects2d;
     std::vector<GameObject3d> objects3d;
     std::vector<GameObject3d> objectsPlanet;
+    std::vector<GameObject3d> objectsLocalClipmap;
 
     void clear() {
         objects2d.clear();
         objects3d.clear();
         objectsPlanet.clear();
+        objectsLocalClipmap.clear();
     }
 };
 
@@ -41,7 +44,9 @@ public:
     static constexpr int HEIGHT = 720;
 
     TerrainAppRenderer();
-    explicit TerrainAppRenderer(const wgen::WindowConfig& config);
+    explicit TerrainAppRenderer(
+        const wgen::WindowConfig& config,
+        wgen::LocalClipmapConfig localClipmapConfig = {});
     ~TerrainAppRenderer();
 
     TerrainAppRenderer(const TerrainAppRenderer&) = delete;
@@ -49,6 +54,11 @@ public:
 
     void applyTerrainMesh(int frameIndex, TerrainPlaneMeshData data);
     void applyPlanetPatchBatch(int frameIndex, PlanetPatchMeshBatch batch);
+    void applyLocalClipmapHeightUpload(
+        const wgen::LocalClipmapGpuUploadBatch& batch);
+    void applyLocalClipmapMeshUpdate(
+        int frameIndex,
+        LocalClipmapMeshUpdate update);
     void setPlanetDrawPatches(std::span<const wgen::PlanetPatchDrawState> states);
     void clearRetiredObjects(int frameIndex);
     void waitIdle();
@@ -65,6 +75,9 @@ public:
     const std::vector<GameObject2d>& objects2d() const { return objects2d_; }
     const std::vector<GameObject3d>& objects3d() const { return objects3d_; }
     const std::vector<GameObject3d>& objectsPlanet() const { return objectsPlanet_; }
+    const std::vector<LocalClipmapRenderObject>& objectsLocalClipmap() const {
+        return localClipmapResources_.objects();
+    }
     std::size_t residentPlanetPatchCount() const { return residentPlanetPatches_.size(); }
 
 private:
@@ -76,6 +89,7 @@ private:
     LveDevice device_;
     LveRenderer renderer_;
     ColorMapper colorMapper_;
+    LocalClipmapRenderResources localClipmapResources_;
     PresentMode desiredPresentMode_{PresentMode::VSync};
     std::unique_ptr<LveDescriptorPool> globalPool_{};
     std::vector<GameObject2d> objects2d_{};

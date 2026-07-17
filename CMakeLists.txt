@@ -488,6 +488,27 @@ if(BUILD_TESTING)
     target_link_libraries(local_clipmap_residency_tests PRIVATE glm::glm)
     add_test(NAME local_clipmap_residency_tests COMMAND local_clipmap_residency_tests)
 
+    # CPU-position fallback contract for the curved clipmap debug renderer
+    add_executable(local_clipmap_mesh_tests
+        tests/local_clipmap_mesh_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_location.cpp
+        src/terrain/planet/planet_location.hpp
+        src/terrain/planet/local_clipmap_topology.cpp
+        src/terrain/planet/local_clipmap_topology.hpp
+        src/terrain/planet/local_planet_frame.cpp
+        src/terrain/planet/local_planet_frame.hpp
+        src/terrain/planet/local_clipmap_mesh.cpp
+        src/terrain/planet/local_clipmap_mesh.hpp
+    )
+    target_include_directories(local_clipmap_mesh_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(local_clipmap_mesh_tests PRIVATE cxx_std_20)
+    target_link_libraries(local_clipmap_mesh_tests PRIVATE glm::glm Vulkan::Vulkan)
+    add_test(NAME local_clipmap_mesh_tests COMMAND local_clipmap_mesh_tests)
+
     # Renderer-independent terrain detail policy tests
     add_executable(terrain_detail_tests
         tests/terrain_detail_tests.cpp

@@ -5,7 +5,8 @@ namespace lve {
 TerrainRenderSystem::TerrainRenderSystem(LveDevice &device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
     : renderSystem2d_{device, renderPass, globalSetLayout},
       renderSystem3d_{device, renderPass, globalSetLayout},
-      renderSystemPlanet_{device, renderPass, globalSetLayout} {}
+      renderSystemPlanet_{device, renderPass, globalSetLayout},
+      renderSystemLocalClipmap_{device, renderPass} {}
 
 void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
     switch (frameInfo.renderMode) {
@@ -17,6 +18,9 @@ void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
             return;
         case TerrainRenderModes::PlanetView:
             renderSystemPlanet_.render(frameInfo);
+            return;
+        case TerrainRenderModes::LocalClipmapDebug:
+            renderSystemLocalClipmap_.render(frameInfo);
             return;
     }
 }

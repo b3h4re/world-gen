@@ -45,6 +45,7 @@ void AppInputSystem::updateCameras(
                 }
                 break;
             case TerrainRenderModes::PlanetView:
+            case TerrainRenderModes::LocalClipmapDebug:
                 if (target.first.active) {
                     planetCameraController3d_.update(
                         input,

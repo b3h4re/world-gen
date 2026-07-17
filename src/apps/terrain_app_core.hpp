@@ -9,6 +9,8 @@
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
 #include "terrain/planet/planet_lod_coordinator.hpp"
+#include "terrain/planet/local_clipmap_mesh.hpp"
+#include "terrain/planet/local_clipmap_residency.hpp"
 #include "terrain/planet/planet_patch_mesh.hpp"
 #include "terrain/planet/terrain_field.hpp"
 #include "utils/thread_pool.hpp"
@@ -68,6 +70,12 @@ public:
     void setPlanetShape(std::size_t resolution, float radius);
     void setMaximumPlanetPatchLevel(std::uint8_t level);
     void updatePlanetLod(const wgen::PlanetLodView& view, double deltaSeconds);
+    std::vector<wgen::LocalClipmapGpuUploadBatch> updateLocalClipmapDebug(
+        const wgen::LocalPlanetFrame& frame,
+        const glm::dvec2& cameraPositionInLocalFrameMeters);
+    bool commitLocalClipmapGpuUpload(
+        const wgen::LocalClipmapGpuUploadBatch& batch);
+    LocalClipmapMeshUpdate takeLocalClipmapMeshUpdate();
     void setPlanetLodTransitionTimeScale(double timeScale);
     wgen::GeneratorPipelineSpec currentPipeline() const;
     wgen::Generator3dPipelineSpec currentPlanetPipeline() const;
@@ -82,6 +90,9 @@ public:
     }
 
     const wgen::AppConfig& config() const { return config_; }
+    const wgen::LocalClipmapConfig& localClipmapConfig() const {
+        return localClipmapConfig_;
+    }
 
     wgen::HeightMap<float>& activeHeightMap() { return activeHeightMap_; }
 
@@ -152,6 +163,15 @@ private:
     std::uint64_t activeTerrainEpoch_{0};
     std::uint64_t desiredPlanetRequestRevision_{0};
     wgen::PlanetLodCoordinator planetLodCoordinator_{};
+    wgen::LocalClipmapConfig localClipmapConfig_{};
+    wgen::LocalClipmapTopology localClipmapTopology_{};
+    wgen::LocalClipmapHeightResidency localClipmapResidency_;
+    std::optional<wgen::LocalPlanetFrame> localClipmapFrame_{};
+    std::vector<wgen::LocalClipmapCacheOrigin> requestedLocalClipmapOrigins_{};
+    std::vector<std::optional<wgen::LocalClipmapUpdateIdentity>>
+        publishedLocalClipmapIdentities_{};
+    std::uint64_t requestedLocalClipmapTerrainEpoch_{};
+    std::uint64_t localClipmapRequestRevision_{};
     std::mutex generatorsMutex_{};
 };
 

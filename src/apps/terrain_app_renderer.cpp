@@ -11,15 +11,35 @@
 
 namespace lve {
 
-TerrainAppRenderer::TerrainAppRenderer() : TerrainAppRenderer(wgen::WindowConfig{}) {}
+TerrainAppRenderer::TerrainAppRenderer()
+    : TerrainAppRenderer(wgen::WindowConfig{}, wgen::LocalClipmapConfig{}) {}
 
-TerrainAppRenderer::TerrainAppRenderer(const wgen::WindowConfig& config)
+TerrainAppRenderer::TerrainAppRenderer(
+        const wgen::WindowConfig& config,
+        wgen::LocalClipmapConfig localClipmapConfig)
     : window_{config.width, config.height, "World Generator"}, device_{window_},
-    renderer_{window_, device_, config.present_mode}, colorMapper_{device_} {
+      renderer_{window_, device_, config.present_mode}, colorMapper_{device_},
+      localClipmapResources_{device_, std::move(localClipmapConfig)} {
     initDescriptorPool();
     window_.setSurfaceAboutToBeDestroyedCallback([this] {
         shutdownVulkanResources();
     });
+}
+
+void TerrainAppRenderer::applyLocalClipmapHeightUpload(
+        const wgen::LocalClipmapGpuUploadBatch& batch) {
+    localClipmapResources_.applyHeightUpload(batch);
+}
+
+void TerrainAppRenderer::applyLocalClipmapMeshUpdate(
+        int frameIndex,
+        LocalClipmapMeshUpdate update) {
+    if (frameIndex < 0 || frameIndex >= static_cast<int>(retiredObjects_.size())) {
+        throw std::out_of_range{"local clipmap mesh frame index is out of range"};
+    }
+    localClipmapResources_.applyMeshUpdate(
+        std::move(update),
+        retiredObjects_[frameIndex].objectsLocalClipmap);
 }
 
 TerrainAppRenderer::~TerrainAppRenderer() {
@@ -228,6 +248,7 @@ void TerrainAppRenderer::shutdownVulkanResources() {
     planetPatchIndexSet_.reset();
     planetPatchIndexQuadCount_ = 0;
     activePlanetEpoch_ = 0;
+    localClipmapResources_.clear();
     globalPool_.reset();
     renderer_.destroySwapChain();
 }

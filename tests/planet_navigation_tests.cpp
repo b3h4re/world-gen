@@ -207,6 +207,104 @@ void testZoomRoundTripAndPersistentControllerState() {
         "the render camera should be derived from persistent navigation state");
 }
 
+void testIndependentAndDebuggableControlBlend() {
+    lve::PlanetNavigationConfig config;
+    config.localControlFullAltitudeRadii = 0.04;
+    config.localControlZeroAltitudeRadii = 0.06;
+    wgen::tests::require(
+        lve::planetLocalControlWeight(0.04 * RADIUS, RADIUS, config) == 1.0 &&
+            lve::planetLocalControlWeight(0.06 * RADIUS, RADIUS, config) == 0.0 &&
+            lve::planetLocalControlWeight(0.05 * RADIUS, RADIUS, config) > 0.0 &&
+            lve::planetLocalControlWeight(0.05 * RADIUS, RADIUS, config) < 1.0,
+        "navigation controls should use an independently tunable altitude interval");
+    wgen::tests::require(
+        lve::planetLocalControlWeight(
+            RADIUS,
+            RADIUS,
+            config,
+            0.35) == 0.35,
+        "the navigation blend debug override should freeze its exact value");
+
+    lve::CameraControllerPlanet controller;
+    controller.setLocalControlWeightOverride(0.75);
+    wgen::tests::requireThrows<std::invalid_argument>(
+        [&controller] { controller.setLocalControlWeightOverride(1.1); },
+        "camera controller should reject an invalid debug blend override");
+}
+
+void testOrbitGroundRoundTripsAtSeveralLocations() {
+    const std::array directions{
+        glm::dvec3{0.0, 1.0, 0.0},
+        glm::normalize(glm::dvec3{1.0, 2.0, 3.0}),
+        wgen::cubeSphereDirection(
+            wgen::CubeSphereFace::Right,
+            -0.9,
+            0.35),
+        wgen::cubeSphereDirection(
+            wgen::CubeSphereFace::Bottom,
+            0.6,
+            -0.8),
+    };
+    for (const glm::dvec3 direction : directions) {
+        lve::PlanetNavigationState state = lve::makePlanetNavigationState(
+            direction,
+            RADIUS,
+            RADIUS,
+            {
+                .headingRadians = 0.63,
+                .pitchRadians = -std::numbers::pi / 2.0,
+            });
+        const lve::PlanetNavigationState initial = state;
+        const lve::PlanetNavigationCameraPose initialPose =
+            lve::planetNavigationCameraPose(state, RADIUS);
+
+        lve::AppInputState zoomIn{};
+        zoomIn.cameraZoomIn = true;
+        for (std::size_t step = 0; step < 64; ++step) {
+            lve::updatePlanetNavigationState(
+                state,
+                zoomIn,
+                0.05,
+                RADIUS);
+        }
+        wgen::tests::require(
+            state.regime == lve::PlanetNavigationRegime::Local,
+            "an orbit-to-ground trip should enter local navigation");
+        lve::AppInputState zoomOut{};
+        zoomOut.cameraZoomOut = true;
+        for (std::size_t step = 0; step < 64; ++step) {
+            lve::updatePlanetNavigationState(
+                state,
+                zoomOut,
+                0.05,
+                RADIUS);
+        }
+        const lve::PlanetNavigationCameraPose finalPose =
+            lve::planetNavigationCameraPose(state, RADIUS);
+
+        requirePoseNear(
+            finalPose,
+            initialPose,
+            0.000000000001,
+            "orbit-to-ground-to-orbit should restore the camera pose anywhere on the planet");
+        wgen::tests::require(
+            glm::length(
+                state.location.unitSurfaceDirection -
+                    initial.location.unitSurfaceDirection) < 1.0e-15 &&
+                std::abs(
+                    state.location.altitudeMeters -
+                    initial.location.altitudeMeters) < 1.0e-7 &&
+                state.location.faceUv == initial.location.faceUv &&
+                state.location.orientation == initial.location.orientation &&
+                state.headingDirection == initial.headingDirection &&
+                state.localFrame.east == initial.localFrame.east &&
+                state.localFrame.north == initial.localFrame.north &&
+                state.localFrame.up == initial.localFrame.up &&
+                state.localOffsetMeters == initial.localOffsetMeters,
+            "presentation and regime transitions must not alter global navigation state");
+    }
+}
+
 void testLocalMovementCrossesFacesAndReanchors() {
     lve::PlanetNavigationState state = lve::makePlanetNavigationState(
         {0.0, 1.0, 0.0},
@@ -430,6 +528,12 @@ int main() {
         wgen::tests::runTest(
             "zoom round trip and persistent controller state",
             testZoomRoundTripAndPersistentControllerState);
+        wgen::tests::runTest(
+            "independent and debuggable control blend",
+            testIndependentAndDebuggableControlBlend);
+        wgen::tests::runTest(
+            "orbit-ground round trips at several locations",
+            testOrbitGroundRoundTripsAtSeveralLocations);
         wgen::tests::runTest(
             "local movement crosses faces and reanchors",
             testLocalMovementCrossesFacesAndReanchors);

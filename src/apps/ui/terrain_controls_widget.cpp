@@ -127,6 +127,54 @@ TerrainControlsWidget::TerrainControlsWidget(Callbacks callbacks, QWidget* paren
             }
         });
 
+    ui_->geometryBlendValueSpinBox->setEnabled(false);
+    const auto notifyGeometryBlendDebugChanged = [this] {
+        if (callbacks_.planetGeometryBlendDebugChanged) {
+            callbacks_.planetGeometryBlendDebugChanged(
+                ui_->freezeGeometryBlendCheckBox->isChecked(),
+                ui_->geometryBlendValueSpinBox->value());
+        }
+    };
+    connect(
+        ui_->freezeGeometryBlendCheckBox,
+        &QCheckBox::toggled,
+        this,
+        [this, notifyGeometryBlendDebugChanged](bool frozen) {
+            ui_->geometryBlendValueSpinBox->setEnabled(frozen);
+            notifyGeometryBlendDebugChanged();
+        });
+    connect(
+        ui_->geometryBlendValueSpinBox,
+        &QDoubleSpinBox::valueChanged,
+        this,
+        [notifyGeometryBlendDebugChanged](double) {
+            notifyGeometryBlendDebugChanged();
+        });
+
+    ui_->navigationBlendValueSpinBox->setEnabled(false);
+    const auto notifyNavigationBlendDebugChanged = [this] {
+        if (callbacks_.planetNavigationBlendDebugChanged) {
+            callbacks_.planetNavigationBlendDebugChanged(
+                ui_->freezeNavigationBlendCheckBox->isChecked(),
+                ui_->navigationBlendValueSpinBox->value());
+        }
+    };
+    connect(
+        ui_->freezeNavigationBlendCheckBox,
+        &QCheckBox::toggled,
+        this,
+        [this, notifyNavigationBlendDebugChanged](bool frozen) {
+            ui_->navigationBlendValueSpinBox->setEnabled(frozen);
+            notifyNavigationBlendDebugChanged();
+        });
+    connect(
+        ui_->navigationBlendValueSpinBox,
+        &QDoubleSpinBox::valueChanged,
+        this,
+        [notifyNavigationBlendDebugChanged](double) {
+            notifyNavigationBlendDebugChanged();
+        });
+
     auto notifyPipelineChanged = [this] {
         if (callbacks_.pipelineChanged) {
             callbacks_.pipelineChanged(pipelineModel_->pipeline());

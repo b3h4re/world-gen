@@ -154,6 +154,14 @@ void validatePlanetNavigationConfig(const PlanetNavigationConfig& config) {
             config.orbitalExitAltitudeRadii <= config.localExitAltitudeRadii ||
             config.orbitalEnterAltitudeRadii <= config.orbitalExitAltitudeRadii ||
             config.orbitalEnterAltitudeRadii >= config.maximumAltitudeRadii ||
+            !std::isfinite(config.localControlFullAltitudeRadii) ||
+            !std::isfinite(config.localControlZeroAltitudeRadii) ||
+            config.localControlFullAltitudeRadii <
+                config.minimumAltitudeRadii ||
+            config.localControlZeroAltitudeRadii <=
+                config.localControlFullAltitudeRadii ||
+            config.localControlZeroAltitudeRadii >
+                config.maximumAltitudeRadii ||
             !std::isfinite(config.localReanchorDistanceRadii) ||
             config.localReanchorDistanceRadii <= 0.0 ||
             !std::isfinite(config.orbitalAngularSpeedRadiansPerSecond) ||
@@ -229,18 +237,27 @@ PlanetNavigationState makePlanetNavigationState(
 double planetLocalControlWeight(
         double altitudeMeters,
         double planetRadiusMeters,
-        const PlanetNavigationConfig& config) {
+        const PlanetNavigationConfig& config,
+        std::optional<double> debugOverride) {
     validateRadius(planetRadiusMeters);
     validatePlanetNavigationConfig(config);
     if (!std::isfinite(altitudeMeters) || altitudeMeters < 0.0) {
         throw std::invalid_argument{
             "planet navigation altitude must be finite and non-negative"};
     }
+    if (debugOverride) {
+        if (!std::isfinite(*debugOverride) ||
+                *debugOverride < 0.0 || *debugOverride > 1.0) {
+            throw std::invalid_argument{
+                "planet local control debug override is invalid"};
+        }
+        return *debugOverride;
+    }
     const double altitudeRadii = altitudeMeters / planetRadiusMeters;
     const double linearWeight = std::clamp(
-        (config.orbitalExitAltitudeRadii - altitudeRadii) /
-            (config.orbitalExitAltitudeRadii -
-                config.localExitAltitudeRadii),
+        (config.localControlZeroAltitudeRadii - altitudeRadii) /
+            (config.localControlZeroAltitudeRadii -
+                config.localControlFullAltitudeRadii),
         0.0,
         1.0);
     return linearWeight * linearWeight * (3.0 - 2.0 * linearWeight);
@@ -381,7 +398,8 @@ void updatePlanetNavigationState(
         const AppInputState& input,
         double frameTimeSeconds,
         double planetRadiusMeters,
-        const PlanetNavigationConfig& config) {
+        const PlanetNavigationConfig& config,
+        std::optional<double> localControlWeightOverride) {
     validatePlanetNavigationConfig(config);
     validatePlanetNavigationState(state, planetRadiusMeters);
     if (!std::isfinite(frameTimeSeconds) || frameTimeSeconds < 0.0) {
@@ -407,7 +425,8 @@ void updatePlanetNavigationState(
     const double localWeight = planetLocalControlWeight(
         state.location.altitudeMeters,
         planetRadiusMeters,
-        config);
+        config,
+        localControlWeightOverride);
 
     glm::dvec2 motionInput{
         static_cast<double>(input.cameraMoveRight) -

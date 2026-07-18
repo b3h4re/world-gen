@@ -13,6 +13,19 @@ float hybridSquareCoverage(
         distanceToCenter);
 }
 
+float hybridPresentationCenterMask(
+        vec2 localPositionMeters,
+        vec2 presentationCenterMeters,
+        vec4 hybridParameters) {
+    float distanceToCenter = max(
+        abs(localPositionMeters.x - presentationCenterMeters.x),
+        abs(localPositionMeters.y - presentationCenterMeters.y));
+    return 1.0 - smoothstep(
+        hybridParameters.z,
+        hybridParameters.w,
+        distanceToCenter);
+}
+
 float hybridDitherThreshold(ivec2 pixel) {
     const float bayer4x4[16] = float[16](
          0.0,  8.0,  2.0, 10.0,

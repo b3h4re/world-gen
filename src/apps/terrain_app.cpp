@@ -6,6 +6,7 @@
 #include "renderer/systems/loading_overlay_system.hpp"
 #include "renderer/systems/terrain_render_system.hpp"
 #include "files/exporter.hpp"
+#include "terrain/planet/local_clipmap_presentation.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -46,6 +47,20 @@ TerrainApp::TerrainApp(const wgen::AppConfig& config)
               .planetLodTransitionTimeScaleChanged = [this](double timeScale) {
                   config_.planetConfig.lodTransitionTimeScale = timeScale;
                   core_.setPlanetLodTransitionTimeScale(timeScale);
+              },
+              .planetGeometryBlendDebugChanged = [this](
+                      bool frozen,
+                      double value) {
+                  geometryFlattenDebugOverride_ = frozen
+                      ? std::optional<double>{value}
+                      : std::nullopt;
+              },
+              .planetNavigationBlendDebugChanged = [this](
+                      bool frozen,
+                      double value) {
+                  navigationBlendDebugOverride_ = frozen
+                      ? std::optional<double>{value}
+                      : std::nullopt;
               },
               .currentPipeline = [this] {
                   return core_.currentPipeline();
@@ -193,6 +208,8 @@ void TerrainApp::run() {
         previousTime = currentTime;
 
         updateCamerasStatus(cameraTargets);
+        appInputSystem.setPlanetNavigationControlWeightOverride(
+            navigationBlendDebugOverride_);
         appInputSystem.updateCameras(
             input,
             frameTime,
@@ -317,6 +334,24 @@ void TerrainApp::run() {
                         const std::optional<wgen::LocalClipmapFootprint>&
                             footprint = core_.localClipmapFootprint();
                         if (footprint && core_.localClipmapOwnsCoverage()) {
+                            const PlanetNavigationState& navigation =
+                                appInputSystem.planetNavigationState();
+                            const wgen::LocalClipmapPresentationState
+                                presentation =
+                                    wgen::makeLocalClipmapPresentationState(
+                                        *footprint,
+                                        {
+                                            .altitudeMeters =
+                                                navigation.location.altitudeMeters,
+                                            .planetRadiusMeters =
+                                                footprint->frame.planetRadiusMeters,
+                                            .localNavigationRegime =
+                                                navigation.regime ==
+                                                PlanetNavigationRegime::Local,
+                                            .centerMeters =
+                                                navigation.localOffsetMeters,
+                                        },
+                                        geometryFlattenDebugOverride_);
                             ubo.localFrameEastRadius = {
                                 glm::vec3{footprint->frame.east},
                                 static_cast<float>(
@@ -324,11 +359,13 @@ void TerrainApp::run() {
                             };
                             ubo.localFrameNorth = {
                                 glm::vec3{footprint->frame.north},
-                                0.0F,
+                                static_cast<float>(
+                                    presentation.centerMeters.x),
                             };
                             ubo.localFrameUp = {
                                 glm::vec3{footprint->frame.up},
-                                0.0F,
+                                static_cast<float>(
+                                    presentation.centerMeters.y),
                             };
                             ubo.localCoverage = {
                                 static_cast<float>(footprint->centerMeters.x),
@@ -338,7 +375,15 @@ void TerrainApp::run() {
                                 static_cast<float>(
                                     footprint->outerHalfExtentMeters),
                             };
-                            ubo.hybridParams.x = 1.0F;
+                            ubo.hybridParams = {
+                                1.0F,
+                                static_cast<float>(
+                                    presentation.flattenAmount),
+                                static_cast<float>(
+                                    presentation.fullyFlatHalfExtentMeters),
+                                static_cast<float>(
+                                    presentation.curvedBoundaryHalfExtentMeters),
+                            };
                         }
                     }
                     break;

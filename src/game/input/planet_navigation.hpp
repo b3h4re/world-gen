@@ -4,6 +4,7 @@
 #include "terrain/planet/planet_location.hpp"
 
 #include <cstdint>
+#include <optional>
 
 #include <glm/glm.hpp>
 
@@ -22,6 +23,10 @@ struct PlanetNavigationConfig {
     double localExitAltitudeRadii{0.025};
     double orbitalExitAltitudeRadii{0.08};
     double orbitalEnterAltitudeRadii{0.1};
+    // Input interpretation has its own interval so presentation geometry can
+    // be tuned without changing when controls begin to feel local.
+    double localControlFullAltitudeRadii{0.025};
+    double localControlZeroAltitudeRadii{0.08};
     double localReanchorDistanceRadii{0.01};
     double orbitalAngularSpeedRadiansPerSecond{1.5};
     double localMinimumSpeedRadiiPerSecond{0.00001};
@@ -62,7 +67,8 @@ PlanetNavigationState makePlanetNavigationState(
 double planetLocalControlWeight(
     double altitudeMeters,
     double planetRadiusMeters,
-    const PlanetNavigationConfig& config = {});
+    const PlanetNavigationConfig& config = {},
+    std::optional<double> debugOverride = std::nullopt);
 
 glm::dvec3 planetDirectionFromLocalOffset(
     const wgen::PlanetTangentFrame& frame,
@@ -88,7 +94,8 @@ void updatePlanetNavigationState(
     const AppInputState& input,
     double frameTimeSeconds,
     double planetRadiusMeters,
-    const PlanetNavigationConfig& config = {});
+    const PlanetNavigationConfig& config = {},
+    std::optional<double> localControlWeightOverride = std::nullopt);
 
 PlanetNavigationCameraPose planetNavigationCameraPose(
     const PlanetNavigationState& state,

@@ -27,7 +27,7 @@ namespace lve {
         alignas(16) glm::vec4 localFrameUp{};
         // {center x, center y, inner half extent, outer half extent}, meters.
         alignas(16) glm::vec4 localCoverage{};
-        // x is one only while current local caches own hybrid coverage.
+        // {hybrid enabled, flatten amount, flat extent, curved extent}.
         alignas(16) glm::vec4 hybridParams{};
     };
 

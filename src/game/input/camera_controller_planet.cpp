@@ -31,7 +31,9 @@ void CameraControllerPlanet::update(
         navigationState_,
         input,
         frameTime,
-        planetRadiusMeters);
+        planetRadiusMeters,
+        {},
+        localControlWeightOverride_);
     const PlanetNavigationCameraPose pose = planetNavigationCameraPose(
         navigationState_,
         planetRadiusMeters);
@@ -43,6 +45,15 @@ void CameraControllerPlanet::update(
     // Using the camera itself as the current origin maximizes nearby float
     // precision; patch identities and terrain requests remain global.
     camera.rebaseRenderOrigin(camera.globalPosition());
+}
+
+void CameraControllerPlanet::setLocalControlWeightOverride(
+        std::optional<double> value) {
+    if (value && (!std::isfinite(*value) || *value < 0.0 || *value > 1.0)) {
+        throw std::invalid_argument{
+            "planet local control override must be between zero and one"};
+    }
+    localControlWeightOverride_ = value;
 }
 
 } // namespace lve

@@ -4,6 +4,8 @@
 #include "game/input/input_state.hpp"
 #include "game/input/planet_navigation.hpp"
 
+#include <optional>
+
 namespace lve {
 
 class CameraControllerPlanet {
@@ -20,9 +22,11 @@ public:
     const PlanetNavigationState& navigationState() const {
         return navigationState_;
     }
+    void setLocalControlWeightOverride(std::optional<double> value);
 
 private:
     PlanetNavigationState navigationState_{};
+    std::optional<double> localControlWeightOverride_{};
     bool locationInitialized_{false};
 };
 

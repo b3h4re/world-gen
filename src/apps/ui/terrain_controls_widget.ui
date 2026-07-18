@@ -238,6 +238,78 @@
                </property>
               </widget>
              </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="freezeGeometryBlendLabel">
+               <property name="text">
+                <string>Freeze geometry blend</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QCheckBox" name="freezeGeometryBlendCheckBox"/>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="geometryBlendValueLabel">
+               <property name="text">
+                <string>Geometry blend</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QDoubleSpinBox" name="geometryBlendValueSpinBox">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="minimum">
+                <double>0.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.050000000000000</double>
+               </property>
+               <property name="value">
+                <double>1.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="freezeNavigationBlendLabel">
+               <property name="text">
+                <string>Freeze control blend</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="1">
+              <widget class="QCheckBox" name="freezeNavigationBlendCheckBox"/>
+             </item>
+             <item row="7" column="0">
+              <widget class="QLabel" name="navigationBlendValueLabel">
+               <property name="text">
+                <string>Control blend</string>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="1">
+              <widget class="QDoubleSpinBox" name="navigationBlendValueSpinBox">
+               <property name="decimals">
+                <number>2</number>
+               </property>
+               <property name="minimum">
+                <double>0.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.050000000000000</double>
+               </property>
+               <property name="value">
+                <double>1.000000000000000</double>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
            <item>

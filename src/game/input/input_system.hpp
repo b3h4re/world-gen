@@ -8,6 +8,7 @@
 #include "game/input/input_state.hpp"
 #include "renderer/lve_frame_info.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace lve {
@@ -41,6 +42,10 @@ public:
     }
     const PlanetNavigationState& planetNavigationState() const {
         return planetCameraController3d_.navigationState();
+    }
+    void setPlanetNavigationControlWeightOverride(
+        std::optional<double> value) {
+        planetCameraController3d_.setLocalControlWeightOverride(value);
     }
 
 private:

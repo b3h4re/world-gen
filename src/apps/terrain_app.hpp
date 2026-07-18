@@ -9,6 +9,8 @@
 #include "game/input/input_system.hpp"
 #include "renderer/lve_frame_info.hpp"
 
+#include <optional>
+
 namespace lve {
 
 class TerrainApp {
@@ -41,6 +43,8 @@ private:
     TerrainAppGui gui_;
     FrameLimiter limiter_;
     Exporter exporter_;
+    std::optional<double> geometryFlattenDebugOverride_{};
+    std::optional<double> navigationBlendDebugOverride_{};
     TerrainRenderModes renderMode_{TerrainRenderModes::PlanetView};
 };
 

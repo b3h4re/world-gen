@@ -811,26 +811,35 @@ wgen::GeneratorPipelineSpec TerrainAppCore::defaultPipelineSpec(const wgen::Terr
 
 wgen::Generator3dPipelineSpec TerrainAppCore::defaultPlanetPipelineSpec(const wgen::PlanetConfig& planetConfig) {
     wgen::Generator3dPipelineSpec spec{};
+    constexpr std::size_t TERRAIN_DETAIL_STRIDE = 2;
     for (std::size_t n = 0; n < planetConfig.octaves; ++n) {
+        const std::size_t terrainDetail = std::min<std::size_t>(
+            n > wgen::MAX_TERRAIN_DETAIL_LEVEL / TERRAIN_DETAIL_STRIDE
+                ? wgen::MAX_TERRAIN_DETAIL_LEVEL
+                : n * TERRAIN_DETAIL_STRIDE,
+            wgen::MAX_TERRAIN_DETAIL_LEVEL);
+        const auto firstFullyVisibleDetail =
+            static_cast<std::uint8_t>(terrainDetail);
         spec.push_back(wgen::Generator3dSpec{
             .kind = wgen::Generator3dKind::PerlinNoise,
             .config = wgen::PerlinNoise3dGeneratorSpec{
                 .cellSize = planetConfig.perlinCellSize,
             },
-            .scale = 1.0F,
+            // Keep the old persistence envelope, but make height scale
+            // explicit so coordinate frequency can follow the wider terrain
+            // detail layout independently.
+            .scale = std::pow(
+                planetConfig.persistence,
+                static_cast<float>(n)),
             .computeMethod = planetConfig.computeMethod,
             .octaveSettings = wgen::GeneratorOctaveSettings{
-                .numOctave = n,
+                .numOctave = terrainDetail,
                 .lacunarity = planetConfig.lacunarity,
-                .persistance = planetConfig.persistence,
+                .persistance = 1.0F,
             },
-            .firstVisibleLod = static_cast<std::uint8_t>(std::min<std::size_t>(
-                n,
-                wgen::MAX_TERRAIN_DETAIL_LEVEL)),
+            .firstVisibleLod = firstFullyVisibleDetail,
             .terrainDetail = wgen::Generator3dTerrainDetailSpec{
-                .firstFullyVisibleLevel = static_cast<std::uint8_t>(std::min<std::size_t>(
-                    n,
-                    wgen::MAX_TERRAIN_DETAIL_LEVEL)),
+                .firstFullyVisibleLevel = firstFullyVisibleDetail,
             },
         });
     }

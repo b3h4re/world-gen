@@ -80,7 +80,9 @@ void PlanetPipelineListModel::clear() {
 QString PlanetPipelineListModel::displayName(const wgen::Generator3dSpec& spec) {
     switch (spec.kind) {
         case wgen::Generator3dKind::PerlinNoise:
-            return QStringLiteral("3D Perlin");
+            return QStringLiteral("3D Perlin (terrain LOD %1)")
+                .arg(static_cast<unsigned int>(
+                    wgen::generator3dFirstFullyVisibleDetail(spec)));
     }
 
     return QStringLiteral("Unknown generator");

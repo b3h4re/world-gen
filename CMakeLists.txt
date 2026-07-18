@@ -509,6 +509,27 @@ if(BUILD_TESTING)
     target_link_libraries(local_clipmap_mesh_tests PRIVATE glm::glm Vulkan::Vulkan)
     add_test(NAME local_clipmap_mesh_tests COMMAND local_clipmap_mesh_tests)
 
+    # Hybrid local clipmap activation and conservative coverage ownership
+    add_executable(local_clipmap_controller_tests
+        tests/local_clipmap_controller_tests.cpp
+        tests/helpers.cpp
+        tests/helpers.hpp
+        src/terrain/planet/cube_sphere.cpp
+        src/terrain/planet/cube_sphere.hpp
+        src/terrain/planet/planet_location.cpp
+        src/terrain/planet/planet_location.hpp
+        src/terrain/planet/planet_patch.cpp
+        src/terrain/planet/planet_patch.hpp
+        src/terrain/planet/local_planet_frame.cpp
+        src/terrain/planet/local_planet_frame.hpp
+        src/terrain/planet/local_clipmap_controller.cpp
+        src/terrain/planet/local_clipmap_controller.hpp
+    )
+    target_include_directories(local_clipmap_controller_tests PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    target_compile_features(local_clipmap_controller_tests PRIVATE cxx_std_20)
+    target_link_libraries(local_clipmap_controller_tests PRIVATE glm::glm)
+    add_test(NAME local_clipmap_controller_tests COMMAND local_clipmap_controller_tests)
+
     # Renderer-independent terrain detail policy tests
     add_executable(terrain_detail_tests
         tests/terrain_detail_tests.cpp

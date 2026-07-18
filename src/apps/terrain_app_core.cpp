@@ -77,6 +77,23 @@ wgen::LocalClipmapConfig makeLocalClipmapConfig(double planetRadiusMeters) {
     return result;
 }
 
+wgen::LocalClipmapControllerConfig makeLocalClipmapControllerConfig(
+        const wgen::LocalClipmapConfig& clipmapConfig,
+        double planetRadiusMeters) {
+    const double handoffSpacing = wgen::localClipmapCellSpacing(
+        clipmapConfig,
+        clipmapConfig.levelCount - 1);
+    wgen::LocalClipmapControllerConfig result{
+        .activationAltitudeMeters = planetRadiusMeters * 0.015,
+        .deactivationAltitudeMeters = planetRadiusMeters * 0.025,
+        .activationGroundResolutionMeters = handoffSpacing,
+        .deactivationGroundResolutionMeters = handoffSpacing * 1.5,
+        .coolingDurationSeconds = 0.25,
+    };
+    wgen::validateLocalClipmapControllerConfig(result);
+    return result;
+}
+
 bool sameClipmapOrigin(
         const wgen::LocalClipmapCacheOrigin& lhs,
         const wgen::LocalClipmapCacheOrigin& rhs) {
@@ -189,6 +206,9 @@ TerrainAppCore::TerrainAppCore(const wgen::AppConfig& config)
       localClipmapConfig_{makeLocalClipmapConfig(config_.planetConfig.radius)},
       localClipmapTopology_{wgen::buildLocalClipmapTopology(localClipmapConfig_)},
       localClipmapResidency_{localClipmapConfig_},
+      localClipmapController_{makeLocalClipmapControllerConfig(
+          localClipmapConfig_,
+          config_.planetConfig.radius)},
       publishedLocalClipmapIdentities_(localClipmapConfig_.levelCount) {
     const wgen::SeedType seed = activeSeed();
     initGenerators(generators_, pipelineSpec_, seed);
@@ -332,7 +352,11 @@ void TerrainAppCore::setPlanetShape(std::size_t resolution, float radius) {
         localClipmapConfig_);
     localClipmapResidency_ = wgen::LocalClipmapHeightResidency{
         localClipmapConfig_};
+    localClipmapController_ = wgen::LocalClipmapController{
+        makeLocalClipmapControllerConfig(localClipmapConfig_, radius)};
     localClipmapFrame_.reset();
+    localClipmapFootprint_.reset();
+    hybridPlanetDrawStates_ = planetLodCoordinator_.visibleDrawStates();
     requestedLocalClipmapOrigins_.clear();
     publishedLocalClipmapIdentities_.assign(
         localClipmapConfig_.levelCount,
@@ -397,10 +421,25 @@ void TerrainAppCore::updatePlanetLod(
         }
         startPlanetLodJob(std::move(plan));
     }
+    rebuildHybridPlanetDrawStates();
+}
+
+void TerrainAppCore::updateLocalClipmapController(
+        const wgen::LocalClipmapControllerView& view,
+        const wgen::LocalPlanetFrame& frame,
+        double deltaSeconds) {
+    wgen::validateLocalPlanetFrame(frame);
+    localClipmapFrame_ = frame;
+    localClipmapController_.update(
+        view,
+        hasCompleteCurrentLocalClipmap(frame),
+        deltaSeconds);
+    rebuildLocalClipmapFootprint();
+    rebuildHybridPlanetDrawStates();
 }
 
 std::vector<wgen::LocalClipmapGpuUploadBatch>
-TerrainAppCore::updateLocalClipmapDebug(
+TerrainAppCore::updateLocalClipmapResidency(
         const wgen::LocalPlanetFrame& frame,
         const glm::dvec2& cameraPositionInLocalFrameMeters) {
     wgen::validateLocalPlanetFrame(frame);
@@ -550,6 +589,89 @@ LocalClipmapMeshUpdate TerrainAppCore::takeLocalClipmapMeshUpdate() {
         publishedLocalClipmapIdentities_[level] = activeIdentity;
     }
     return update;
+}
+
+bool TerrainAppCore::hasCompleteCurrentLocalClipmap(
+        const wgen::LocalPlanetFrame& frame) const {
+    if (activeTerrainField_ == nullptr || activeTerrainEpoch_ == 0 ||
+            activeTerrainField_->radius() !=
+                static_cast<float>(frame.planetRadiusMeters)) {
+        return false;
+    }
+    for (std::uint32_t level = 0;
+         level < localClipmapConfig_.levelCount;
+         ++level) {
+        const std::optional<wgen::LocalClipmapUpdateIdentity> active =
+            localClipmapResidency_.activeIdentity(level);
+        const std::optional<wgen::LocalClipmapUpdateIdentity> desired =
+            localClipmapResidency_.desiredIdentity(level);
+        if (!active || !desired || *active != *desired ||
+                localClipmapResidency_.hasPendingTarget(level) ||
+                active->terrainEpoch != activeTerrainEpoch_ ||
+                active->localFrameRevision != frame.revision) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void TerrainAppCore::rebuildLocalClipmapFootprint() {
+    localClipmapFootprint_.reset();
+    if (!localClipmapController_.ownsCoverage() || !localClipmapFrame_ ||
+            !hasCompleteCurrentLocalClipmap(*localClipmapFrame_)) {
+        return;
+    }
+    const std::uint32_t outerLevel = localClipmapConfig_.levelCount - 1;
+    const std::optional<wgen::LocalClipmapCacheOrigin> outerOrigin =
+        localClipmapResidency_.activeOrigin(outerLevel);
+    if (!outerOrigin ||
+            outerOrigin->frameRevision != localClipmapFrame_->revision) {
+        return;
+    }
+    const double spacing = wgen::localClipmapCellSpacing(
+        localClipmapConfig_,
+        outerLevel);
+    const glm::dvec2 center = wgen::localClipmapSamplePosition(
+        *outerOrigin,
+        outerOrigin->centerSample,
+        spacing);
+    const double outerHalfExtent =
+        static_cast<double>(localClipmapTopology_.outerHalfExtentCells) *
+        spacing;
+    const double innerHalfExtent = outerHalfExtent -
+        static_cast<double>(localClipmapConfig_.overlapWidthCells) * spacing;
+    localClipmapFootprint_ = wgen::LocalClipmapFootprint{
+        .frame = *localClipmapFrame_,
+        .centerMeters = center,
+        .innerHalfExtentMeters = innerHalfExtent,
+        .outerHalfExtentMeters = outerHalfExtent,
+        .terrainEpoch = activeTerrainEpoch_,
+    };
+    wgen::validateLocalClipmapFootprint(*localClipmapFootprint_);
+}
+
+void TerrainAppCore::rebuildHybridPlanetDrawStates() {
+    const std::vector<wgen::PlanetPatchDrawState>& globalStates =
+        planetLodCoordinator_.visibleDrawStates();
+    if (!localClipmapController_.ownsCoverage() ||
+            !localClipmapFootprint_ ||
+            localClipmapFootprint_->terrainEpoch != activeTerrainEpoch_) {
+        hybridPlanetDrawStates_ = globalStates;
+        return;
+    }
+    hybridPlanetDrawStates_.clear();
+    hybridPlanetDrawStates_.reserve(globalStates.size());
+    const bool allRequiredLevelsCurrent = localClipmapFrame_ &&
+        hasCompleteCurrentLocalClipmap(*localClipmapFrame_);
+    for (const wgen::PlanetPatchDrawState& state : globalStates) {
+        if (!wgen::localClipmapOwnsPlanetPatch(
+                state.id,
+                *localClipmapFootprint_,
+                allRequiredLevelsCurrent,
+                activeTerrainEpoch_)) {
+            hybridPlanetDrawStates_.push_back(state);
+        }
+    }
 }
 
 void TerrainAppCore::setPlanetLodTransitionTimeScale(double timeScale) {

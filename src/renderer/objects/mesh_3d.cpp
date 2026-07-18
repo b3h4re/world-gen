@@ -26,6 +26,15 @@ std::vector<VkVertexInputAttributeDescription> Vertex3d::getMorphAttributeDescri
     };
 }
 
+std::vector<VkVertexInputAttributeDescription>
+Vertex3d::getLocalClipmapAttributeDescriptions() {
+    return {
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex3d, position)},
+        {1, 0, VK_FORMAT_R32_SFLOAT, offsetof(Vertex3d, height)},
+        {2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex3d, parentPosition)},
+    };
+}
+
 Mesh3dIndexSet::Mesh3dIndexSet(
         LveDevice& device,
         std::span<const std::vector<std::uint32_t>> variants) {

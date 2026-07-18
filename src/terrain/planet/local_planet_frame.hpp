@@ -39,6 +39,13 @@ glm::dvec3 localPlanetSurfaceDirection(
     const LocalPlanetFrame& frame,
     glm::dvec2 localPositionMeters);
 
+// Inverse of localPlanetSurfaceDirection for every direction except the
+// anchor's ambiguous antipode. This is also the canonical coordinate mapping
+// used by hybrid quadtree/clipmap coverage.
+glm::dvec2 localPlanetTangentPosition(
+    const LocalPlanetFrame& frame,
+    glm::dvec3 surfaceDirection);
+
 glm::dvec3 localPlanetCurvedPosition(
     const LocalPlanetFrame& frame,
     glm::dvec3 surfaceDirection,

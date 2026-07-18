@@ -59,9 +59,11 @@ void pushObject(
 
 RenderSystemLocalClipmap::RenderSystemLocalClipmap(
         LveDevice& device,
-        VkRenderPass renderPass)
-    : device_{device} {
-    createPipelineLayout();
+        VkRenderPass renderPass,
+        VkDescriptorSetLayout globalSetLayout)
+    : device_{device},
+      hasGlobalSetLayout_{globalSetLayout != VK_NULL_HANDLE} {
+    createPipelineLayout(globalSetLayout);
     createPipelines(renderPass);
 }
 
@@ -73,6 +75,18 @@ RenderSystemLocalClipmap::~RenderSystemLocalClipmap() {
 
 void RenderSystemLocalClipmap::render(FrameInfo& frameInfo) const {
     fillPipeline_->bind(frameInfo.commandBuffer);
+    if (hasGlobalSetLayout_ &&
+            frameInfo.globalDescriptorSet != VK_NULL_HANDLE) {
+        vkCmdBindDescriptorSets(
+            frameInfo.commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipelineLayout_,
+            0,
+            1,
+            &frameInfo.globalDescriptorSet,
+            0,
+            nullptr);
+    }
     for (const LocalClipmapRenderObject& renderObject :
             frameInfo.objectsLocalClipmap) {
         pushObject(
@@ -88,6 +102,9 @@ void RenderSystemLocalClipmap::render(FrameInfo& frameInfo) const {
             renderObject.object.meshIndexVariant);
     }
 
+    if (frameInfo.renderMode != TerrainRenderModes::LocalClipmapDebug) {
+        return;
+    }
     linePipeline_->bind(frameInfo.commandBuffer);
     for (const LocalClipmapRenderObject& renderObject :
             frameInfo.objectsLocalClipmap) {
@@ -104,7 +121,8 @@ void RenderSystemLocalClipmap::render(FrameInfo& frameInfo) const {
     }
 }
 
-void RenderSystemLocalClipmap::createPipelineLayout() {
+void RenderSystemLocalClipmap::createPipelineLayout(
+        VkDescriptorSetLayout globalSetLayout) {
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags =
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -112,6 +130,10 @@ void RenderSystemLocalClipmap::createPipelineLayout() {
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    if (globalSetLayout != VK_NULL_HANDLE) {
+        layoutInfo.setLayoutCount = 1;
+        layoutInfo.pSetLayouts = &globalSetLayout;
+    }
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges = &pushConstantRange;
     if (vkCreatePipelineLayout(
@@ -128,7 +150,8 @@ void RenderSystemLocalClipmap::createPipelines(VkRenderPass renderPass) {
     PipelineConfigInfo fillConfig{};
     LvePipeline::defaultPipelineConfigInfo(fillConfig);
     fillConfig.bindingDescriptions = Vertex3d::getBindingDescriptions();
-    fillConfig.attributeDescriptions = Vertex3d::getAttributeDescriptions();
+    fillConfig.attributeDescriptions =
+        Vertex3d::getLocalClipmapAttributeDescriptions();
     fillConfig.depthStencilInfo.depthTestEnable = VK_TRUE;
     fillConfig.depthStencilInfo.depthWriteEnable = VK_TRUE;
     fillConfig.renderPass = renderPass;
@@ -142,7 +165,8 @@ void RenderSystemLocalClipmap::createPipelines(VkRenderPass renderPass) {
     PipelineConfigInfo lineConfig{};
     LvePipeline::defaultPipelineConfigInfo(lineConfig);
     lineConfig.bindingDescriptions = Vertex3d::getBindingDescriptions();
-    lineConfig.attributeDescriptions = Vertex3d::getAttributeDescriptions();
+    lineConfig.attributeDescriptions =
+        Vertex3d::getLocalClipmapAttributeDescriptions();
     lineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     lineConfig.depthStencilInfo.depthTestEnable = VK_TRUE;
     lineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;

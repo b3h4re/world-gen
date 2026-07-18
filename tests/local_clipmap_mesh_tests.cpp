@@ -95,10 +95,14 @@ void testCurvedPositionsMatchSurfaceContract() {
             "CPU fallback position should match the shared curved sampler");
         wgen::tests::require(
             mesh.vertices[index].height == heights[index] &&
-                mesh.vertices[index].parentPosition ==
-                    mesh.vertices[index].position &&
+                std::abs(
+                    mesh.vertices[index].parentPosition.x -
+                    static_cast<float>(localPosition.x)) < 1.0e-5F &&
+                std::abs(
+                    mesh.vertices[index].parentPosition.y -
+                    static_cast<float>(localPosition.y)) < 1.0e-5F &&
                 mesh.vertices[index].parentHeight == heights[index],
-            "CPU fallback should retain height and disable patch morphing");
+            "CPU fallback should retain height and tangent coverage coordinates");
     }
 }
 

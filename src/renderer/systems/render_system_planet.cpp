@@ -11,11 +11,14 @@ struct PushConstantDataPlanet {
     glm::mat4 projectionView{1.0F};
     glm::vec3 relativePatchOrigin{};
     float terrainMorph{1.0F};
+    glm::vec3 globalPatchOrigin{};
+    float padding{};
 };
 
 static_assert(offsetof(PushConstantDataPlanet, relativePatchOrigin) == 64);
 static_assert(offsetof(PushConstantDataPlanet, terrainMorph) == 76);
-static_assert(sizeof(PushConstantDataPlanet) == 80);
+static_assert(offsetof(PushConstantDataPlanet, globalPatchOrigin) == 80);
+static_assert(sizeof(PushConstantDataPlanet) == 96);
 
 RenderSystemPlanet::RenderSystemPlanet(
         LveDevice &device,
@@ -95,6 +98,7 @@ void RenderSystemPlanet::render(
         push.relativePatchOrigin =
             camera.positionRelativeToRenderOrigin(object.globalOrigin);
         push.terrainMorph = object.terrainMorph;
+        push.globalPatchOrigin = glm::vec3{object.globalOrigin};
         vkCmdPushConstants(
             commandBuffer,
             pipelineLayout_,

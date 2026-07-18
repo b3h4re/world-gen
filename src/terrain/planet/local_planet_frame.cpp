@@ -122,6 +122,39 @@ glm::dvec3 localPlanetSurfaceDirection(
         tangent * std::sin(angle));
 }
 
+glm::dvec2 localPlanetTangentPosition(
+        const LocalPlanetFrame& frame,
+        glm::dvec3 surfaceDirection) {
+    validateLocalPlanetFrame(frame);
+    if (!isFinite(surfaceDirection) ||
+            glm::length(surfaceDirection) <= VECTOR_EPSILON) {
+        throw std::invalid_argument{
+            "local planet surface direction must be finite and non-zero"};
+    }
+    const glm::dvec3 direction = glm::normalize(surfaceDirection);
+    const double cosine = std::clamp(
+        glm::dot(frame.anchorDirection, direction),
+        -1.0,
+        1.0);
+    const glm::dvec3 tangentComponent =
+        direction - frame.anchorDirection * cosine;
+    const double sine = glm::length(tangentComponent);
+    const double angle = std::atan2(sine, cosine);
+    if (angle >= std::numbers::pi - VECTOR_EPSILON) {
+        throw std::invalid_argument{
+            "local planet direction reaches an ambiguous antipode"};
+    }
+    if (sine <= VECTOR_EPSILON) {
+        return {};
+    }
+    const glm::dvec3 tangent = tangentComponent / sine;
+    const double distance = angle * frame.planetRadiusMeters;
+    return {
+        glm::dot(tangent, frame.east) * distance,
+        glm::dot(tangent, frame.north) * distance,
+    };
+}
+
 glm::dvec3 localPlanetCurvedPosition(
         const LocalPlanetFrame& frame,
         glm::dvec3 surfaceDirection,

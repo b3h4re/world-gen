@@ -20,6 +20,8 @@ struct Vertex3d {
     static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
     static std::vector<VkVertexInputAttributeDescription> getMorphAttributeDescriptions();
+    static std::vector<VkVertexInputAttributeDescription>
+        getLocalClipmapAttributeDescriptions();
 };
 
 class Mesh3dIndexSet {

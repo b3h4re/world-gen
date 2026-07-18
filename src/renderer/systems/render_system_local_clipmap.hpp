@@ -10,7 +10,10 @@ namespace lve {
 
 class RenderSystemLocalClipmap {
 public:
-    RenderSystemLocalClipmap(LveDevice& device, VkRenderPass renderPass);
+    RenderSystemLocalClipmap(
+        LveDevice& device,
+        VkRenderPass renderPass,
+        VkDescriptorSetLayout globalSetLayout = VK_NULL_HANDLE);
     ~RenderSystemLocalClipmap();
 
     RenderSystemLocalClipmap(const RenderSystemLocalClipmap&) = delete;
@@ -20,11 +23,12 @@ public:
     void render(FrameInfo& frameInfo) const;
 
 private:
-    void createPipelineLayout();
+    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipelines(VkRenderPass renderPass);
 
     LveDevice& device_;
     VkPipelineLayout pipelineLayout_{};
+    bool hasGlobalSetLayout_{};
     std::unique_ptr<LvePipeline> fillPipeline_{};
     std::unique_ptr<LvePipeline> linePipeline_{};
 };

@@ -86,7 +86,13 @@ LocalClipmapLevelMeshData buildLocalClipmapLevelMesh(
         result.vertices.push_back({
             .position = position,
             .height = heightMeters,
-            .parentPosition = position,
+            // The local pipeline does not patch-morph. Reuse this otherwise
+            // dormant attribute for the shared tangent-space coverage map.
+            .parentPosition = {
+                static_cast<float>(localPositionMeters.x),
+                static_cast<float>(localPositionMeters.y),
+                0.0F,
+            },
             .parentHeight = heightMeters,
         });
     }

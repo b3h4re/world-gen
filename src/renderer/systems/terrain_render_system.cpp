@@ -6,7 +6,7 @@ TerrainRenderSystem::TerrainRenderSystem(LveDevice &device, VkRenderPass renderP
     : renderSystem2d_{device, renderPass, globalSetLayout},
       renderSystem3d_{device, renderPass, globalSetLayout},
       renderSystemPlanet_{device, renderPass, globalSetLayout},
-      renderSystemLocalClipmap_{device, renderPass} {}
+      renderSystemLocalClipmap_{device, renderPass, globalSetLayout} {}
 
 void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
     switch (frameInfo.renderMode) {
@@ -18,6 +18,9 @@ void TerrainRenderSystem::render(FrameInfo &frameInfo) const {
             return;
         case TerrainRenderModes::PlanetView:
             renderSystemPlanet_.render(frameInfo);
+            if (frameInfo.localClipmapCoverageActive) {
+                renderSystemLocalClipmap_.render(frameInfo);
+            }
             return;
         case TerrainRenderModes::LocalClipmapDebug:
             renderSystemLocalClipmap_.render(frameInfo);

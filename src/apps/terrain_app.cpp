@@ -218,7 +218,8 @@ void TerrainApp::run() {
 
             renderer_.clearRetiredObjects(frameIndex);
             applyFinishedTerrainJob(frameIndex);
-            if (renderMode_ == TerrainRenderModes::LocalClipmapDebug) {
+            if (renderMode_ == TerrainRenderModes::PlanetView ||
+                    renderMode_ == TerrainRenderModes::LocalClipmapDebug) {
                 const PlanetNavigationState& navigation =
                     appInputSystem.planetNavigationState();
                 const wgen::LocalPlanetFrame localFrame =
@@ -226,10 +227,34 @@ void TerrainApp::run() {
                         navigation.localFrame,
                         static_cast<double>(config_.planetConfig.radius),
                         navigation.localFrameRevision);
-                const std::vector<wgen::LocalClipmapGpuUploadBatch> uploads =
-                    core_.updateLocalClipmapDebug(
+                std::optional<wgen::LocalClipmapControllerView>
+                    controllerView;
+                if (renderMode_ == TerrainRenderModes::PlanetView) {
+                    const double requestedGroundResolution =
+                        wgen::localClipmapRequestedGroundResolutionMeters(
+                            navigation.location.altitudeMeters,
+                            cameraPlanet.verticalFov(),
+                            lveRenderer.getViewportHeight());
+                    controllerView = wgen::LocalClipmapControllerView{
+                        .altitudeMeters = navigation.location.altitudeMeters,
+                        .requestedGroundResolutionMeters =
+                            requestedGroundResolution,
+                    };
+                    core_.updateLocalClipmapController(
+                        *controllerView,
                         localFrame,
-                        navigation.localOffsetMeters);
+                        frameTime);
+                }
+
+                const bool updateResidency =
+                    renderMode_ == TerrainRenderModes::LocalClipmapDebug ||
+                    core_.localClipmapNeedsResidency();
+                const std::vector<wgen::LocalClipmapGpuUploadBatch> uploads =
+                    updateResidency
+                    ? core_.updateLocalClipmapResidency(
+                        localFrame,
+                        navigation.localOffsetMeters)
+                    : std::vector<wgen::LocalClipmapGpuUploadBatch>{};
                 for (const wgen::LocalClipmapGpuUploadBatch& upload : uploads) {
                     renderer_.applyLocalClipmapHeightUpload(upload);
                     if (!core_.commitLocalClipmapGpuUpload(upload)) {
@@ -240,6 +265,12 @@ void TerrainApp::run() {
                 renderer_.applyLocalClipmapMeshUpdate(
                     frameIndex,
                     core_.takeLocalClipmapMeshUpdate());
+                if (controllerView) {
+                    core_.updateLocalClipmapController(
+                        *controllerView,
+                        localFrame,
+                        0.0);
+                }
             }
             renderer_.setPlanetDrawPatches(core_.planetDrawPatchStates());
 
@@ -255,7 +286,8 @@ void TerrainApp::run() {
                 renderer_.objects2d(),
                 renderer_.objects3d(),
                 renderer_.objectsPlanet(),
-                renderer_.objectsLocalClipmap()
+                renderer_.objectsLocalClipmap(),
+                core_.localClipmapOwnsCoverage()
             };
 
             GlobalUbo ubo{};
@@ -281,6 +313,34 @@ void TerrainApp::run() {
                         displayRange.minimumMeters,
                         displayRange.maximumMeters,
                     };
+                    if (renderMode_ == TerrainRenderModes::PlanetView) {
+                        const std::optional<wgen::LocalClipmapFootprint>&
+                            footprint = core_.localClipmapFootprint();
+                        if (footprint && core_.localClipmapOwnsCoverage()) {
+                            ubo.localFrameEastRadius = {
+                                glm::vec3{footprint->frame.east},
+                                static_cast<float>(
+                                    footprint->frame.planetRadiusMeters),
+                            };
+                            ubo.localFrameNorth = {
+                                glm::vec3{footprint->frame.north},
+                                0.0F,
+                            };
+                            ubo.localFrameUp = {
+                                glm::vec3{footprint->frame.up},
+                                0.0F,
+                            };
+                            ubo.localCoverage = {
+                                static_cast<float>(footprint->centerMeters.x),
+                                static_cast<float>(footprint->centerMeters.y),
+                                static_cast<float>(
+                                    footprint->innerHalfExtentMeters),
+                                static_cast<float>(
+                                    footprint->outerHalfExtentMeters),
+                            };
+                            ubo.hybridParams.x = 1.0F;
+                        }
+                    }
                     break;
                 }
             }

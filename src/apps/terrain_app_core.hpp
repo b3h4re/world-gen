@@ -9,6 +9,7 @@
 #include "terrain/generators/2d/generator_spec.hpp"
 #include "terrain/generators/3d/generator_spec.hpp"
 #include "terrain/planet/planet_lod_coordinator.hpp"
+#include "terrain/planet/local_clipmap_controller.hpp"
 #include "terrain/planet/local_clipmap_mesh.hpp"
 #include "terrain/planet/local_clipmap_residency.hpp"
 #include "terrain/planet/planet_patch_mesh.hpp"
@@ -70,7 +71,11 @@ public:
     void setPlanetShape(std::size_t resolution, float radius);
     void setMaximumPlanetPatchLevel(std::uint8_t level);
     void updatePlanetLod(const wgen::PlanetLodView& view, double deltaSeconds);
-    std::vector<wgen::LocalClipmapGpuUploadBatch> updateLocalClipmapDebug(
+    void updateLocalClipmapController(
+        const wgen::LocalClipmapControllerView& view,
+        const wgen::LocalPlanetFrame& frame,
+        double deltaSeconds);
+    std::vector<wgen::LocalClipmapGpuUploadBatch> updateLocalClipmapResidency(
         const wgen::LocalPlanetFrame& frame,
         const glm::dvec2& cameraPositionInLocalFrameMeters);
     bool commitLocalClipmapGpuUpload(
@@ -86,7 +91,20 @@ public:
     std::size_t pendingPlanetPatchJobCount() const { return planetPatchJobs_.size(); }
     std::size_t queuedPlanetPatchUploadCount() const;
     const std::vector<wgen::PlanetPatchDrawState>& planetDrawPatchStates() const {
-        return planetLodCoordinator_.visibleDrawStates();
+        return hybridPlanetDrawStates_;
+    }
+    bool localClipmapNeedsResidency() const {
+        return localClipmapController_.needsResidency();
+    }
+    bool localClipmapOwnsCoverage() const {
+        return localClipmapController_.ownsCoverage();
+    }
+    wgen::LocalClipmapControllerState localClipmapControllerState() const {
+        return localClipmapController_.state();
+    }
+    const std::optional<wgen::LocalClipmapFootprint>&
+        localClipmapFootprint() const {
+        return localClipmapFootprint_;
     }
 
     const wgen::AppConfig& config() const { return config_; }
@@ -131,6 +149,10 @@ private:
     void pollFinishedPlanetPatchJobs();
     std::optional<PlanetPatchMeshBatch> takeNextPlanetUploadBatch();
     void discardStalePlanetUploads();
+    bool hasCompleteCurrentLocalClipmap(
+        const wgen::LocalPlanetFrame& frame) const;
+    void rebuildLocalClipmapFootprint();
+    void rebuildHybridPlanetDrawStates();
     std::function<glm::vec3(float)> getActiveColorFunc() const;
 
     struct PlanetPatchJob {
@@ -166,7 +188,10 @@ private:
     wgen::LocalClipmapConfig localClipmapConfig_{};
     wgen::LocalClipmapTopology localClipmapTopology_{};
     wgen::LocalClipmapHeightResidency localClipmapResidency_;
+    wgen::LocalClipmapController localClipmapController_;
     std::optional<wgen::LocalPlanetFrame> localClipmapFrame_{};
+    std::optional<wgen::LocalClipmapFootprint> localClipmapFootprint_{};
+    std::vector<wgen::PlanetPatchDrawState> hybridPlanetDrawStates_{};
     std::vector<wgen::LocalClipmapCacheOrigin> requestedLocalClipmapOrigins_{};
     std::vector<std::optional<wgen::LocalClipmapUpdateIdentity>>
         publishedLocalClipmapIdentities_{};
